@@ -275,37 +275,56 @@ export class SkyHopper {
       shake * (Math.random() - 0.5),
     );
 
-    ctx.fillStyle = '#0a1628';
-    ctx.fillRect(0, 0, W, H);
-
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, 'rgba(100, 150, 255, 0.1)');
-    gradient.addColorStop(1, 'rgba(10, 22, 40, 0)');
-    ctx.fillStyle = gradient;
+    // Daytime sky that deepens as you climb
+    const altitude = Math.max(0, -this.cameraY) * 0.0004;
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, `hsl(215, 80%, ${Math.max(28, 58 - altitude * 30)}%)`);
+    sky.addColorStop(1, `hsl(200, 75%, ${Math.max(45, 74 - altitude * 30)}%)`);
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
 
     const offsetY = this.cameraY;
 
-    ctx.fillStyle = '#1a2a4a';
+    // Parallax clouds — deterministic positions, scrolled at half camera speed
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    for (let i = 0; i < 12; i++) {
+      const cx = ((i * 137 + 60) % W);
+      const cy = ((i * 263) % 1400) - ((offsetY * 0.5) % 1400);
+      const y = ((cy % 1400) + 1400) % 1400 - 340;
+      const r = 22 + (i % 4) * 9;
+      ctx.beginPath();
+      ctx.arc(cx, y, r, 0, Math.PI * 2);
+      ctx.arc(cx + r * 0.9, y + 6, r * 0.7, 0, Math.PI * 2);
+      ctx.arc(cx - r * 0.9, y + 7, r * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#fff';
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 30, 70, 0.55)';
+    ctx.shadowBlur = 6;
     ctx.fillText(`Height: ${Math.max(0, Math.floor(this.score))}`, W / 2, 40);
+    ctx.shadowBlur = 0;
 
     for (const p of this.platforms) {
       const y = p.y - offsetY;
       if (y < -50 || y > H + 50) continue;
 
       const isMoving = p.moving;
-      ctx.fillStyle = isMoving ? '#4a9eff' : '#2a7acc';
-      ctx.fillRect(p.x, y, p.w, PLATFORM_H);
+      // Earthy base with a grass (static) or amber (moving) top
+      ctx.fillStyle = '#7a4a2b';
+      ctx.fillRect(p.x, y + 4, p.w, PLATFORM_H - 4);
+      ctx.fillStyle = isMoving ? '#ffb347' : '#3fa34d';
+      ctx.fillRect(p.x, y, p.w, 6);
 
       if (isMoving) {
-        ctx.strokeStyle = '#6ab4ff';
+        ctx.strokeStyle = 'rgba(255, 179, 71, 0.7)';
         ctx.lineWidth = 2;
         ctx.strokeRect(p.x - 2, y - 2, p.w + 4, PLATFORM_H + 4);
       } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.fillRect(p.x + 6, y + 3, p.w - 12, 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(p.x + 6, y + 1, p.w - 12, 2);
       }
     }
 

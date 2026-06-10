@@ -335,8 +335,36 @@ export class BrickBlitz {
   }
 
   render(ctx: CanvasRenderingContext2D): void {
-    ctx.fillStyle = '#0a0f1a';
+    // Neon arena backdrop
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#3d1635');
+    bg.addColorStop(0.5, '#26133f');
+    bg.addColorStop(1, '#141b3d');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
+
+    // Soft glow behind the brick field
+    const glow = ctx.createRadialGradient(W / 2, 140, 30, W / 2, 140, 320);
+    glow.addColorStop(0, 'rgba(255, 107, 107, 0.16)');
+    glow.addColorStop(1, 'rgba(255, 107, 107, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // Faint grid lines for arcade depth
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let gx = 0; gx <= W; gx += 48) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, H);
+      ctx.stroke();
+    }
+    for (let gy = 0; gy <= H; gy += 48) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(W, gy);
+      ctx.stroke();
+    }
 
     this.drawHeader(ctx);
     this.drawBricks(ctx);

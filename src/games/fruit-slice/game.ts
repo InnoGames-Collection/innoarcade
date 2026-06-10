@@ -283,16 +283,49 @@ export class FruitSlice {
       shake * (Math.random() - 0.5),
     );
 
-    ctx.fillStyle = '#0a0e27';
+    // Sunset orchard backdrop
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#2d1b4e');
+    sky.addColorStop(0.45, '#7b2d5e');
+    sky.addColorStop(0.75, '#d4593a');
+    sky.addColorStop(1, '#f2a541');
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = '#1a1f3a';
+    // Sun glow low on the horizon
+    const sun = ctx.createRadialGradient(W / 2, H - 60, 20, W / 2, H - 60, 260);
+    sun.addColorStop(0, 'rgba(255, 230, 150, 0.55)');
+    sun.addColorStop(1, 'rgba(255, 230, 150, 0)');
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, W, H);
+
+    // Rolling hill silhouettes
+    ctx.fillStyle = 'rgba(40, 20, 50, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.quadraticCurveTo(W * 0.25, H - 90, W * 0.55, H - 40);
+    ctx.quadraticCurveTo(W * 0.8, H - 5, W, H - 50);
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(30, 15, 40, 0.35)';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.quadraticCurveTo(W * 0.35, H - 50, W * 0.7, H - 80);
+    ctx.quadraticCurveTo(W * 0.9, H - 95, W, H - 70);
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(20, 10, 35, 0.55)';
     ctx.fillRect(0, 0, W, 60);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(`Score: ${this.score}`, 16, 38);
     ctx.textAlign = 'right';
+    ctx.fillStyle = '#ff8a8a';
     ctx.fillText(`♥ ${this.lives}`, W - 16, 38);
     if (this.combo > 1) {
       ctx.textAlign = 'center';

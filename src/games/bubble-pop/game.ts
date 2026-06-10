@@ -318,19 +318,48 @@ export class BubblePop {
       shake * (Math.random() - 0.5),
     );
 
-    ctx.fillStyle = '#0a1628';
+    // Underwater lagoon backdrop
+    const sea = ctx.createLinearGradient(0, 0, 0, H);
+    sea.addColorStop(0, '#1b6b8f');
+    sea.addColorStop(0.5, '#14506e');
+    sea.addColorStop(1, '#0d3550');
+    ctx.fillStyle = sea;
     ctx.fillRect(0, 0, W, H);
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, 'rgba(100, 200, 255, 0.05)');
-    gradient.addColorStop(1, 'rgba(10, 22, 40, 0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, W, H);
+    // Shafts of light from the surface
+    for (let i = 0; i < 4; i++) {
+      const rx = 70 + i * 120;
+      const sway = Math.sin(this.time * 0.4 + i * 1.7) * 25;
+      const ray = ctx.createLinearGradient(rx, 0, rx + sway, H);
+      ray.addColorStop(0, 'rgba(180, 240, 255, 0.14)');
+      ray.addColorStop(1, 'rgba(180, 240, 255, 0)');
+      ctx.fillStyle = ray;
+      ctx.beginPath();
+      ctx.moveTo(rx - 18, 0);
+      ctx.lineTo(rx + 18, 0);
+      ctx.lineTo(rx + sway + 45, H);
+      ctx.lineTo(rx + sway - 45, H);
+      ctx.closePath();
+      ctx.fill();
+    }
 
-    ctx.fillStyle = '#1a2a4a';
+    // Tiny ambient bubbles drifting up
+    ctx.fillStyle = 'rgba(220, 250, 255, 0.25)';
+    for (let i = 0; i < 14; i++) {
+      const bx = (i * 167 + 35) % W + Math.sin(this.time * 0.8 + i) * 8;
+      const by = H - (((this.time * (18 + (i % 5) * 7) + i * 250) % (H + 40)) - 20);
+      ctx.beginPath();
+      ctx.arc(bx, by, 2 + (i % 3), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#fff';
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 20, 40, 0.6)';
+    ctx.shadowBlur = 6;
     ctx.fillText(`Score: ${this.score}`, W / 2, 40);
+    ctx.shadowBlur = 0;
 
     for (const b of this.bubbles) {
       if (b.popping) {
@@ -369,13 +398,13 @@ export class BubblePop {
       ctx.stroke();
     }
 
-    ctx.fillStyle = '#333';
+    ctx.fillStyle = '#e8f4f8';
     ctx.beginPath();
     ctx.arc(W / 2, CANNON_Y, 12, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#b8d8e8';
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(W / 2, CANNON_Y);
     ctx.lineTo(
