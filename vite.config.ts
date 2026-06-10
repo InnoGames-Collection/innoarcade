@@ -12,6 +12,8 @@ export default defineConfig({
         templeDash: p('games/temple-dash/index.html'),
         metroRush: p('games/metro-rush/index.html'),
         candyCrunch: p('games/candy-crunch/index.html'),
+        dotLink: p('games/dot-link/index.html'),
+        brickBlitz: p('games/brick-blitz/index.html'),
       },
     },
   },

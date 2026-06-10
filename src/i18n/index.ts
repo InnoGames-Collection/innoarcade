@@ -37,6 +37,15 @@ const en = {
   'cc.controls': 'Use arrow keys · ◀ ▶ ▲ ▼ swap candies around the center',
   'cc.levelClear': 'Level clear!',
   'cc.next': 'Next level',
+  'dl.tagline': 'Connect matching colored dots with lines. Lines cannot cross. Fill the entire grid.',
+  'dl.controls': 'Tap and drag to draw lines between matching dots',
+  'dl.levelClear': 'Level clear!',
+  'dl.next': 'Next level',
+  'dl.allClear': 'Puzzle master!',
+  'bb.tagline': 'Smash bricks with a bouncing ball. Catch power-ups for bigger paddles and slow-mo.',
+  'bb.controls': 'Use arrow keys ◀ ▶ to move paddle · tap Space to launch ball',
+  'bb.levelClear': 'Level clear!',
+  'bb.next': 'Next level',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -76,6 +85,15 @@ const am: Dict = {
   'cc.controls': 'የቀስት ቁልፎችን ይጠቀሙ · ◀ ▶ ▲ ▼ ከረሜላዎች ይቀያይሩ',
   'cc.levelClear': 'ደረጃ ተጠናቀቀ!',
   'cc.next': 'ቀጣይ ደረጃ',
+  'dl.tagline': 'ተመሳሳይ ሕብረቁምፍ ነጥቦችን በመስመር ያገናኙ። መስመሮቹ ሊሾርሙ አይችሉም። ሙሉውን ፍርግርግ ይሙሉ።',
+  'dl.controls': 'ተጫንተው በማስታወወር ተጫውተው ተመሳሳይ ነጥቦችን መካከል መስመሮችን ይሳሉ',
+  'dl.levelClear': 'ደረጃ ተጠናቀቀ!',
+  'dl.next': 'ቀጣይ ደረጃ',
+  'dl.allClear': 'የእንቆቅልስ ባለሙያ!',
+  'bb.tagline': 'ብጫታ ቢት በሚንቀሳቀስ ኳስ ውጥብቁ። ኃይል-ላይ ልበ-ልብ ላይ ይጥሉ።',
+  'bb.controls': 'ፓዲል ለመንቀሳቀስ ◀ ▶ የቀስት ቁልፎችን ይጠቀሙ · ኳስ ለማስጀመር Space ይንኩ',
+  'bb.levelClear': 'ደረጃ ተጠናቀቀ!',
+  'bb.next': 'ቀጣይ ደረጃ',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };

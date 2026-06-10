@@ -78,7 +78,18 @@ export class CandyCrunch {
     this.score = 0;
     this.movesUsed = 0;
     this.time = 0;
-    this.grid = this.newGrid();
+    this.grid = [];
+    for (let r = 0; r < ROWS; r++) {
+      this.grid[r] = [];
+      for (let c = 0; c < COLS; c++) {
+        let type: number;
+        do {
+          type = Math.floor(Math.random() * CANDY_TYPES);
+        } while (this.wouldMatch(this.grid, r, c, type));
+        const y = GRID_Y + r * CELL_SIZE;
+        this.grid[r][c] = { type, x: c, y, targetY: y, matched: false };
+      }
+    }
     this.particles = [];
     this.screenShake = 0;
     this.comboCount = 0;
@@ -234,8 +245,7 @@ export class CandyCrunch {
         do {
           type = Math.floor(Math.random() * CANDY_TYPES);
         } while (this.wouldMatch(grid, r, c, type));
-        const y = GRID_Y + r * CELL_SIZE;
-        grid[r][c] = { type, x: c, y, targetY: y, matched: false };
+        grid[r][c] = { type, x: c, y: GRID_Y + r * CELL_SIZE, targetY: GRID_Y + r * CELL_SIZE, matched: false };
       }
     }
     return grid;
@@ -445,10 +455,10 @@ export class CandyCrunch {
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const candy = this.grid[r][c];
-        if (candy.matched) continue;
+        if (!candy || candy.matched) continue;
 
         let x = GRID_X + candy.x * CELL_SIZE + CELL_SIZE / 2;
-        let y = GRID_Y + candy.y;
+        let y = candy.y;
 
         if (this.swapping) {
           const { r1, c1, r2, c2, progress: p } = this.swapping;
