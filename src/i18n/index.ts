@@ -33,6 +33,10 @@ const en = {
   'mr.tokens': 'Tokens',
   'mr.start': 'Tap or press Space to start',
   'mr.controls': 'Swipe or use arrow keys · ◀ ▶ change lane · ▲ jump · ▼ slide',
+  'cc.tagline': 'Swap adjacent candies to match three or more. Cascades and combos boost your score.',
+  'cc.controls': 'Use arrow keys · ◀ ▶ ▲ ▼ swap candies around the center',
+  'cc.levelClear': 'Level clear!',
+  'cc.next': 'Next level',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -68,6 +72,10 @@ const am: Dict = {
   'mr.tokens': 'ቶከን',
   'mr.start': 'ለመጀመር ይንኩ ወይም Space ይጫኑ',
   'mr.controls': 'ያንሸራትቱ ወይም የቀስት ቁልፎችን ይጠቀሙ · ◀ ▶ መስመር · ▲ ዝላይ · ▼ መንሸራተት',
+  'cc.tagline': 'ሦስት ወይም ከዚያ በላይ ከረሜላዎች ያገናኙ። CASCADE እና combos ነጥብ ይሰጥዎታል።',
+  'cc.controls': 'የቀስት ቁልፎችን ይጠቀሙ · ◀ ▶ ▲ ▼ ከረሜላዎች ይቀያይሩ',
+  'cc.levelClear': 'ደረጃ ተጠናቀቀ!',
+  'cc.next': 'ቀጣይ ደረጃ',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };

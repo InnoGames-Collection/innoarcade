@@ -11,6 +11,7 @@ export default defineConfig({
         hub: p('index.html'),
         templeDash: p('games/temple-dash/index.html'),
         metroRush: p('games/metro-rush/index.html'),
+        candyCrunch: p('games/candy-crunch/index.html'),
       },
     },
   },
