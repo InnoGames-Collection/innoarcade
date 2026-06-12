@@ -2,6 +2,7 @@ import '../styles/base.css';
 import './hub.css';
 import { applyTranslations, getLang, setLang, t, type Lang } from '../i18n';
 import { mountSignIn } from './signin';
+import { mergedLeaderboard } from '../platform/backend';
 import { CATALOG, type GameMeta } from '../platform/catalog';
 import {
   activeTournaments, featuredTournament, tournamentGame, leaderboard,
@@ -61,6 +62,32 @@ function renderFeatured(): void {
       </div>
       <div class="fc-glyph">${game.icon}</div>
     </article>`;
+}
+
+// After the instant (seed) render, blend in real Supabase scores and patch the
+// featured leaderboard + your-rank in place. No-ops offline / before any real
+// scores exist, so the seed field stays visible.
+async function refreshFeatured(): Promise<void> {
+  const tour = featuredTournament();
+  if (!tour) return;
+  const board = await mergedLeaderboard(tour.id);
+  if (!board.length) return;
+  const list = document.querySelector('#featured .leader-list');
+  if (list) {
+    list.innerHTML = board.slice(0, 3).map((r) => `
+      <li class="leader-row${r.isPlayer ? ' me' : ''}">
+        <span class="lr-rank">${r.rank}</span>
+        <span class="lr-name">${escapeHtml(r.name)}</span>
+        <span class="lr-score">${r.score.toLocaleString()}</span>
+      </li>`).join('');
+  }
+  const me = board.find((e) => e.isPlayer);
+  const yr = document.querySelector('#featured .fc-yourrank');
+  if (yr) {
+    yr.innerHTML = me
+      ? `${t('hub.yourRank')}: <strong>#${me.rank}</strong>`
+      : `<span class="muted-small">${t('hub.unranked')}</span>`;
+  }
 }
 
 // --- Tournament cards -------------------------------------------------------
@@ -174,6 +201,7 @@ function renderAll(): void {
   renderBrain();
   applyTranslations();
   tickCountdowns();
+  void refreshFeatured(); // swap in real scores once they load
 }
 
 const langEn = $('#langEn');

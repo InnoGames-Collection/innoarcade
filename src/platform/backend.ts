@@ -9,7 +9,7 @@
 // rate limits, best-only). That's the anti-cheat boundary for prize tournaments.
 
 import { isConfigured, supabase } from './supabase';
-import type { LeaderEntry, SubmitResult } from './tournaments';
+import { leaderboard as localBoard, type LeaderEntry, type SubmitResult } from './tournaments';
 
 export function backendReady(): boolean {
   return isConfigured();
@@ -45,6 +45,24 @@ export async function leaderboardRemote(tournamentId: string, limit = 50): Promi
     score: r.score as number,
     isPlayer: r.user_id === me,
   }));
+}
+
+// Real scores blended in front of the simulated "seed" field, so the ladder
+// looks populated while the real player base grows and real players always
+// outrank simulated rivals at equal score. Signed-in players appear with their
+// real standing; signed-out players keep their local (anonymous) rank.
+export async function mergedLeaderboard(tournamentId: string): Promise<LeaderEntry[]> {
+  const local = localBoard(tournamentId);
+  let real: LeaderEntry[] = [];
+  if (isConfigured()) {
+    try { real = await leaderboardRemote(tournamentId, 200); } catch { /* offline → seed only */ }
+  }
+  const signedIn = real.some((e) => e.isPlayer);
+  const sim = local.filter((e) => !e.isPlayer); // simulated rivals
+  const localYou = signedIn ? [] : local.filter((e) => e.isPlayer); // anon local rank
+  const combined = [...real, ...localYou, ...sim];
+  combined.sort((a, b) => b.score - a.score);
+  return combined.map((e, i) => ({ rank: i + 1, name: e.name, score: e.score, isPlayer: e.isPlayer }));
 }
 
 // The signed-in player's own row (even outside the visible top-N).
