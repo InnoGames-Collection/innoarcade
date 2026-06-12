@@ -1,8 +1,8 @@
 // Temple Dash — flagship 3-lane endless runner. Pseudo-3D projection (objects at
-// world distance z, projected toward a horizon vanishing point), authored vector
-// sprites (see art.ts), procedural parallax biomes that crossfade with distance,
-// power-ups, coin economy, skins, achievements and music. Built on the shared
-// engine: AssetStore, Animator, Particles, ScreenFx, Tweens, profile, settings.
+// world distance z, projected toward a horizon vanishing point), Kenney CC0 sprite
+// art (see art.ts + kenney/CREDITS.md), biome backgrounds that crossfade with
+// distance, power-ups, coin economy, skins, achievements and music. Built on the
+// shared engine: AssetStore, Particles, ScreenFx, profile, settings.
 
 import { sfx } from '../../engine/audio';
 import { profile } from '../../engine/profile';
@@ -10,10 +10,9 @@ import { achievements } from '../../engine/achievements';
 import { settings } from '../../engine/settings';
 import { Particles } from '../../engine/particles';
 import { ScreenFx } from '../../engine/fx';
-import { Animator } from '../../engine/anim';
 import type { AssetStore } from '../../engine/assets';
 import type { Action } from '../../engine/input';
-import { FRAME_JUMP, FRAME_RUN, FRAME_SLIDE, SKINS } from './art';
+import { SKINS, WALK_FRAMES } from './art';
 
 export const W = 480;
 export const H = 720;
@@ -51,13 +50,13 @@ interface Obstacle { kind: ObstacleKind; lane: number; z: number; }
 interface Coin { lane: number; z: number; taken: boolean; pull: number; }
 interface PowerUp { kind: PowerKind; lane: number; z: number; taken: boolean; }
 
-interface Biome { name: string; sky: [string, string, string]; sun: string; far: string; mid: string; ground: string; tie: string; }
+interface Biome { name: string; bg: string; ground: string; tie: string; }
 
 const BIOMES: Biome[] = [
-  { name: 'Jungle', sky: ['#191b45', '#5d3a6b', '#d97f3e'], sun: '#ffd98a', far: '#33204a', mid: '#1f3a24', ground: '#b3905f', tie: 'rgba(90,66,40,0.35)' },
-  { name: 'Desert', sky: ['#2a2350', '#9a5a55', '#f0b15a'], sun: '#fff0c0', far: '#6e4a52', mid: '#b9824a', ground: '#d8b37a', tie: 'rgba(120,90,50,0.3)' },
-  { name: 'Cavern', sky: ['#0a0f1e', '#241a40', '#3a2a5a'], sun: '#7fe0d0', far: '#1c2540', mid: '#2a2150', ground: '#6f6486', tie: 'rgba(40,30,70,0.4)' },
-  { name: 'Frost', sky: ['#12233f', '#2a5a7a', '#9fd0e0'], sun: '#eaffff', far: '#274a64', mid: '#3a6f86', ground: '#bcd6e0', tie: 'rgba(80,120,140,0.3)' },
+  { name: 'Jungle', bg: 'bg_jungle', ground: '#b3905f', tie: 'rgba(90,66,40,0.35)' },
+  { name: 'Desert', bg: 'bg_desert', ground: '#d8b37a', tie: 'rgba(120,90,50,0.3)' },
+  { name: 'Cavern', bg: 'bg_cavern', ground: '#6f6486', tie: 'rgba(40,30,70,0.4)' },
+  { name: 'Frost', bg: 'bg_frost', ground: '#bcd6e0', tie: 'rgba(80,120,140,0.3)' },
 ];
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
@@ -89,7 +88,7 @@ export class TempleDash {
 
   private particles = new Particles(500);
   private fx = new ScreenFx();
-  private anim: Animator;
+  private walkPhase = 0; // advances with speed; drives the walk-cycle frame
 
   private time = 0;
   private elapsed = 0;
@@ -109,14 +108,6 @@ export class TempleDash {
 
   constructor(private assets: AssetStore) {
     this.skinId = profile.selectedSkin(GAME_ID, 'scout');
-    this.anim = new Animator(
-      {
-        run: { frames: [FRAME_RUN, FRAME_RUN + 1, FRAME_RUN + 2, FRAME_RUN + 3], fps: 12 },
-        jump: { frames: [FRAME_JUMP], fps: 1, loop: false },
-        slide: { frames: [FRAME_SLIDE], fps: 1, loop: false },
-      },
-      'run',
-    );
     this.fx.reducedMotion = settings.data.reducedMotion;
     settings.onChange((s) => { this.fx.reducedMotion = s.reducedMotion; });
   }
@@ -136,7 +127,7 @@ export class TempleDash {
     this.obstacles = []; this.coinsArr = []; this.powerups = [];
     this.spawnCursor = 25;
     this.particles.clear(); this.fx.reset();
-    this.anim.play('run', true);
+    this.walkPhase = 0;
     profile.stats(GAME_ID); // ensure record exists
     this.setState('playing');
     sfx.startMusic([262, 0, 330, 392, 0, 330, 294, 0], 104);
@@ -152,8 +143,8 @@ export class TempleDash {
       case 'playing':
         if (a === 'left') this.lane = Math.max(-1, this.lane - 1);
         else if (a === 'right') this.lane = Math.min(1, this.lane + 1);
-        else if (a === 'up' && this.jumpT < 0) { this.jumpT = 0; this.slideT = -1; this.anim.play('jump', true); sfx.jump(); }
-        else if (a === 'down' && this.jumpT < 0 && this.slideT < 0) { this.slideT = 0; this.anim.play('slide', true); sfx.slide(); }
+        else if (a === 'up' && this.jumpT < 0) { this.jumpT = 0; this.slideT = -1; sfx.jump(); }
+        else if (a === 'down' && this.jumpT < 0 && this.slideT < 0) { this.slideT = 0; sfx.slide(); }
         break;
     }
   }
@@ -168,7 +159,7 @@ export class TempleDash {
     this.elapsed += dt;
     this.speed = Math.min(MAX_SPEED, BASE_SPEED + this.elapsed * ACCEL);
     this.dist += this.speed * dt;
-    this.anim.update(dt * (this.speed / BASE_SPEED));
+    this.walkPhase += dt * (this.speed / BASE_SPEED) * 10;
 
     if (this.invuln > 0) this.invuln -= dt;
     if (this.magnetT > 0) this.magnetT -= dt;
@@ -182,8 +173,8 @@ export class TempleDash {
     const step = LANE_LERP * dt;
     this.laneF += Math.abs(delta) <= step ? delta : Math.sign(delta) * step;
 
-    if (this.jumpT >= 0 && (this.jumpT += dt) >= JUMP_DURATION) { this.jumpT = -1; this.anim.play('run', true); }
-    if (this.slideT >= 0 && (this.slideT += dt) >= SLIDE_DURATION) { this.slideT = -1; this.anim.play('run', true); }
+    if (this.jumpT >= 0 && (this.jumpT += dt) >= JUMP_DURATION) this.jumpT = -1;
+    if (this.slideT >= 0 && (this.slideT += dt) >= SLIDE_DURATION) this.slideT = -1;
 
     while (this.spawnCursor < this.dist + VIEW_Z) this.spawnPattern();
 
@@ -321,36 +312,25 @@ export class TempleDash {
   }
 
   private drawSky(ctx: CanvasRenderingContext2D): void {
-    const { from, to, t } = this.biomeBlend();
-    const sky = (i: 0 | 1 | 2): string => lerpHex(from.sky[i], to.sky[i], t);
-    const g = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
-    g.addColorStop(0, sky(0)); g.addColorStop(0.5, sky(1)); g.addColorStop(1, sky(2));
-    ctx.fillStyle = g;
+    ctx.fillStyle = '#1a2540'; // deep sky behind the parallax art
     ctx.fillRect(0, 0, W, HORIZON_Y + 2);
-
-    // Sun glow.
-    const sun = lerpHex(from.sun, to.sun, t);
-    ctx.fillStyle = sun;
-    ctx.globalAlpha = 0.25;
-    ctx.beginPath(); ctx.arc(W / 2, HORIZON_Y - 26, 70, 0, TAU); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.beginPath(); ctx.arc(W / 2, HORIZON_Y - 26, 34, 0, TAU); ctx.fill();
-
-    // Parametric far + mid ridgelines (procedural silhouettes, scroll w/ distance).
-    this.drawRidge(ctx, lerpHex(from.far, to.far, t), 0.0008, 70, 0.9);
-    this.drawRidge(ctx, lerpHex(from.mid, to.mid, t), 0.0022, 46, 1.7);
+    const { from, to, t } = this.biomeBlend();
+    this.drawBg(ctx, from.bg, 1);
+    if (t > 0 && to.bg !== from.bg) this.drawBg(ctx, to.bg, t); // crossfade biomes
   }
 
-  private drawRidge(ctx: CanvasRenderingContext2D, color: string, freq: number, amp: number, scroll: number): void {
-    const off = this.dist * scroll;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(0, HORIZON_Y);
-    for (let x = 0; x <= W; x += 16) {
-      const n = Math.sin((x + off) * freq * 12) + 0.5 * Math.sin((x + off) * freq * 31 + 1.3);
-      ctx.lineTo(x, HORIZON_Y - amp * (0.5 + 0.5 * n));
+  // Tile a 2:1 Kenney scene background across the sky band, scrolling with distance.
+  private drawBg(ctx: CanvasRenderingContext2D, sheet: string, alpha: number): void {
+    if (!this.assets.has(sheet)) return;
+    const dispH = HORIZON_Y + 30;
+    const tileW = dispH * 2;
+    let startX = -((this.dist * 0.6) % tileW);
+    if (startX > 0) startX -= tileW;
+    ctx.globalAlpha = alpha;
+    for (let x = startX; x < W; x += tileW) {
+      this.assets.draw(ctx, sheet, 0, x, 0, tileW, dispH);
     }
-    ctx.lineTo(W, HORIZON_Y); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   private drawGround(ctx: CanvasRenderingContext2D): void {
@@ -410,10 +390,22 @@ export class TempleDash {
     const pr = this.p(zr);
     const x = this.sx(o.lane, zr);
     const y = this.sy(zr);
-    const size = LANE_SPREAD * pr * 1.05;
-    const frame = o.kind === 'block' ? 0 : o.kind === 'hurdle' ? 1 : 2;
+    const laneW = LANE_SPREAD * pr;
     ctx.globalAlpha = Math.min(1, (VIEW_Z - zr) / 8);
-    this.assets.draw(ctx, 'obstacles', frame, x - size / 2, y - size, size, size);
+    if (o.kind === 'block') {
+      // Stacked crates fill the lane — must change lane.
+      const s = laneW * 0.92;
+      this.assets.draw(ctx, 'obs_block', 0, x - s / 2, y - s, s, s);
+      this.assets.draw(ctx, 'obs_block', 0, x - s / 2, y - s * 2 + 1, s, s);
+    } else if (o.kind === 'hurdle') {
+      // Low cactus — jump over.
+      const s = laneW * 0.7;
+      this.assets.draw(ctx, 'obs_hurdle', 0, x - s / 2, y - s, s, s);
+    } else {
+      // Overhead flyer (2:1) at head height — slide under.
+      const w = laneW * 0.85, h = w * 0.5;
+      this.assets.draw(ctx, 'obs_beam', 0, x - w / 2, y - 150 * pr, w, h);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -424,10 +416,12 @@ export class TempleDash {
     const bob = Math.sin(this.time * 5 + c.z) * 6 * pr;
     const x = this.sx(c.lane, zr);
     const cy = this.sy(zr) - 34 * pr + bob;
-    const size = 46 * pr;
-    const frame = Math.floor(this.time * 12 + c.z) % 6;
+    const size = 42 * pr;
+    // Horizontal squash fakes a spin from the single coin sprite.
+    const spin = Math.abs(Math.cos(this.time * 5 + c.z));
+    const w = Math.max(2, size * spin);
     ctx.globalAlpha = Math.min(1, (VIEW_Z - zr) / 8);
-    this.assets.draw(ctx, 'coin', frame, x - size / 2, cy - size / 2, size, size);
+    this.assets.draw(ctx, 'coin', 0, x - w / 2, cy - size / 2, w, size);
     ctx.globalAlpha = 1;
   }
 
@@ -438,17 +432,22 @@ export class TempleDash {
     const bob = Math.sin(this.time * 4 + p.z) * 7 * pr;
     const x = this.sx(p.lane, zr);
     const cy = this.sy(zr) - 46 * pr + bob;
-    const size = 60 * pr;
-    const frame = p.kind === 'magnet' ? 0 : p.kind === 'shield' ? 1 : 2;
+    const r = 26 * pr;
+    const color = p.kind === 'shield' ? '#4a90d9' : p.kind === 'magnet' ? '#d63031' : '#f1c40f';
+    const icon = p.kind === 'shield' ? '🛡️' : p.kind === 'magnet' ? '🧲' : '2×';
     ctx.globalAlpha = Math.min(1, (VIEW_Z - zr) / 8);
-    // Halo.
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.35 * Math.min(1, (VIEW_Z - zr) / 8);
-    ctx.fillStyle = p.kind === 'shield' ? '#4a90d9' : p.kind === 'magnet' ? '#d63031' : '#f1c40f';
-    ctx.beginPath(); ctx.arc(x, cy, size * 0.55, 0, TAU); ctx.fill();
+    ctx.globalAlpha = (0.35 + 0.12 * Math.sin(this.time * 6)) * Math.min(1, (VIEW_Z - zr) / 8);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, cy, r * 1.5, 0, TAU); ctx.fill();
     ctx.restore();
-    this.assets.draw(ctx, 'powerups', frame, x - size / 2, cy - size / 2, size, size);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, cy, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.round(r * 1.1)}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(icon, x, cy + 1);
     ctx.globalAlpha = 1;
   }
 
@@ -457,14 +456,16 @@ export class TempleDash {
     const x = this.sx(this.laneF, PLAYER_Z);
     const groundY = this.sy(PLAYER_Z);
     const jumping = this.jumpT >= 0;
+    const sliding = this.slideT >= 0;
     const jp = jumping ? this.jumpT / JUMP_DURATION : 0;
     const lift = jumping ? Math.sin(Math.PI * jp) * JUMP_HEIGHT * pr : 0;
-    const size = 180 * pr;
+    const charH = 150 * pr;
+    const charW = charH * 0.74; // Kenney player ~72x97
 
     // Shadow.
     ctx.fillStyle = `rgba(0,0,0,${0.3 - 0.15 * Math.sin(Math.PI * jp)})`;
     ctx.beginPath();
-    ctx.ellipse(x, groundY, 36 * pr * (1 - 0.25 * Math.sin(Math.PI * jp)), 9 * pr, 0, 0, TAU);
+    ctx.ellipse(x, groundY, 34 * pr * (1 - 0.25 * Math.sin(Math.PI * jp)), 9 * pr, 0, 0, TAU);
     ctx.fill();
 
     // Shield bubble.
@@ -473,24 +474,28 @@ export class TempleDash {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.4 + 0.15 * Math.sin(this.time * 6);
       ctx.fillStyle = '#5aa0e0';
-      ctx.beginPath(); ctx.arc(x, groundY - lift - size * 0.32, size * 0.42, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, groundY - lift - charH * 0.4, charH * 0.5, 0, TAU); ctx.fill();
       ctx.restore();
     }
-
     // Magnet aura.
     if (this.magnetT > 0) {
       ctx.save();
       ctx.globalAlpha = 0.25 + 0.1 * Math.sin(this.time * 8);
       ctx.strokeStyle = '#d63031'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, groundY - lift - size * 0.3, size * 0.5, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, groundY - lift - charH * 0.4, charH * 0.55, 0, TAU); ctx.stroke();
       ctx.restore();
     }
 
     const blink = this.invuln > 0 && Math.floor(this.time * 18) % 2 === 0;
-    if (!blink) {
-      const sheet = `char_${this.skinId}`;
-      this.anim.draw(this.assets, sheet, ctx, x, groundY - lift - size / 2, size, size);
-    }
+    if (blink) return;
+
+    const pose = jumping
+      ? `${this.skinId}_jump`
+      : sliding
+        ? `${this.skinId}_slide`
+        : `${this.skinId}_walk${(Math.floor(this.walkPhase) % WALK_FRAMES) + 1}`;
+    const h = sliding ? charH * 0.7 : charH;
+    this.assets.draw(ctx, pose, 0, x - charW / 2, groundY - lift - h, charW, h);
   }
 }
 

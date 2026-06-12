@@ -117,7 +117,9 @@ function run(assets: AssetStore): void {
     const c = document.createElement('canvas');
     c.width = c.height = 72;
     const tctx = c.getContext('2d')!;
-    assets.draw(tctx, `char_${id}`, 0, 0, -6, 72, 72);
+    // Kenney player ~66x92 — draw the stand pose centered, preserving aspect.
+    const w = 72 * 0.72;
+    assets.draw(tctx, `${id}_stand`, 0, (72 - w) / 2, 2, w, 68);
     return c;
   }
   function buildShop(): void {
