@@ -11,7 +11,16 @@
 // these checks pass. This is what makes a prize tournament defensible.
 //
 // Deploy:  supabase functions deploy submit-score
-// Runtime: Deno (Supabase Edge Functions).
+// Runtime: Deno (Supabase Edge Functions). This is the anti-cheat boundary for prize tournaments.
+//
+// The frontend NEVER writes the scores table directly. It calls this function,
+// which (1) identifies the player from their JWT, (2) validates the score against
+// per-game bounds, (3) rate-limits submissions, and (4) keeps only the best.
+// Because it runs with the service role it can write past RLS — but only after
+// these checks pass. This is what makes a prize tournament defensible.
+//
+// Deploy:  supabase functions deploy submit-score
+// Runtime: Deno (Supabase Edge Functions). This is the anti-cheat boundary for prize tournaments.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
