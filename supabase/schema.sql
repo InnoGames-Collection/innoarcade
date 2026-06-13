@@ -13,9 +13,13 @@
 create table if not exists public.profiles (
   id         uuid primary key references auth.users (id) on delete cascade,
   name       text not null default 'Player',
+  phone      text,
   coins      bigint not null default 0,
   created_at timestamptz not null default now()
 );
+
+-- (idempotent for projects created before phone was stored on the profile)
+alter table public.profiles add column if not exists phone text;
 
 alter table public.profiles enable row level security;
 
@@ -35,9 +39,9 @@ create policy "update own profile" on public.profiles
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, name)
-  values (new.id, coalesce(new.raw_user_meta_data ->> 'name', 'Player'))
-  on conflict (id) do nothing;
+  insert into public.profiles (id, name, phone)
+  values (new.id, coalesce(new.raw_user_meta_data ->> 'name', 'Player'), new.phone)
+  on conflict (id) do update set phone = coalesce(public.profiles.phone, excluded.phone);
   return new;
 end;
 $$;

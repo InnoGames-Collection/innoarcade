@@ -9,6 +9,7 @@ import './admin.css';
 import { getLang, setLang } from '../i18n';
 import {
   authAvailable, currentUser, onAuthChange, requestOtp, verifyOtp, signOut, normalizePhone,
+  devOtpEcho, fetchDevOtp,
 } from '../platform/auth';
 import { isAdmin } from '../platform/admin';
 import { t, esc } from './ui';
@@ -119,6 +120,7 @@ function promptCode(phone: string): void {
   card.innerHTML = `
     <div class="a-logo big">🔑</div>
     <h2>${esc(phone)}</h2>
+    <p class="a-demo-code" id="demo" hidden></p>
     <input class="a-input" id="code" inputmode="numeric" maxlength="6" placeholder="123456" />
     <p class="a-err" id="err"></p>
     <button class="a-btn primary" id="verify">${t('signIn')}</button>`;
@@ -127,6 +129,15 @@ function promptCode(phone: string): void {
     try { await verifyOtp(phone, code.value); boot(); }
     catch { card.querySelector('#err')!.textContent = '✕'; }
   });
+  // DEMO ONLY: show the OTP the send-sms mock stashed (no SMS gateway needed).
+  if (devOtpEcho()) {
+    void fetchDevOtp(phone).then((c) => {
+      if (!c) return;
+      const banner = card.querySelector<HTMLElement>('#demo');
+      if (banner) { banner.hidden = false; banner.textContent = `Demo code: ${c}`; }
+      if (!code.value) code.value = c;
+    });
+  }
 }
 
 // --- Boot -------------------------------------------------------------------

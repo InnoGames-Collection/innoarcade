@@ -180,11 +180,11 @@ export async function listPlayers(query = ''): Promise<AdminPlayer[]> {
     const all = syntheticPlayers();
     return query ? all.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) || p.phone.includes(query)) : all;
   }
-  let q = supabase().from('profiles').select('id, name, coins, role, created_at').limit(200);
-  if (query) q = q.ilike('name', `%${query}%`);
+  let q = supabase().from('profiles').select('id, name, phone, coins, role, created_at').limit(200);
+  if (query) q = q.or(`name.ilike.%${query}%,phone.ilike.%${query}%`);
   const { data } = await q;
   return (data ?? []).map((r) => ({
-    id: String(r.id), name: String(r.name), phone: '',
+    id: String(r.id), name: String(r.name), phone: String(r.phone ?? ''),
     coins: Number(r.coins), role: (r.role as Role) ?? 'player',
     createdAt: new Date(r.created_at as string).getTime(),
   }));

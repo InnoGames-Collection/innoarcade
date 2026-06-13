@@ -21,6 +21,7 @@
 //   send-sms, and copy the generated hook secret into SEND_SMS_HOOK_SECRET.
 
 import { createHmac } from 'node:crypto';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 interface HookPayload {
   user: { phone?: string };
@@ -76,8 +77,21 @@ Deno.serve(async (req: Request) => {
     }
   } else {
     // --- MOCK (free dev) ----------------------------------------------------
-    // The OTP appears in this function's logs so you can complete sign-in.
+    // The OTP appears in this function's logs so you can complete sign-in...
     console.log(`[send-sms:mock] → ${phone}: ${message}`);
+    // ...and, for a real-feeling demo with no SMS gateway, it's also written to
+    // the public `dev_otps` table so the sign-in screen can show it directly
+    // (see supabase/dev.sql). Best-effort: never let this break the auth hook.
+    try {
+      const url = Deno.env.get('SUPABASE_URL');
+      const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (url && service && phone) {
+        const admin = createClient(url, service);
+        await admin.from('dev_otps').upsert({ phone, code: otp, created_at: new Date().toISOString() });
+      }
+    } catch (e) {
+      console.error('[send-sms:mock] dev_otps write skipped', e);
+    }
   }
 
   // Empty 200 tells Supabase Auth the SMS was handled.

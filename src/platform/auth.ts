@@ -20,6 +20,30 @@ export function authAvailable(): boolean {
   return isConfigured();
 }
 
+// DEV/DEMO only: when there is no SMS gateway, the send-sms hook (mock mode)
+// writes each OTP to a public `dev_otps` table; with VITE_DEV_OTP_ECHO=true the
+// sign-in UI fetches it and shows the code on screen, so any phone can sign in
+// without real SMS. Always false in production (flag unset) — see supabase/dev.sql.
+export function devOtpEcho(): boolean {
+  return isConfigured() && import.meta.env.VITE_DEV_OTP_ECHO === 'true';
+}
+
+// Read the demo OTP for a phone (the most recent code the hook stored). Polls a
+// few times because the auth hook fires a beat after signInWithOtp returns.
+export async function fetchDevOtp(phone: string): Promise<string | null> {
+  if (!devOtpEcho()) return null;
+  const p = normalizePhone(phone);
+  for (let i = 0; i < 8; i++) {
+    try {
+      const { data } = await supabase()
+        .from('dev_otps').select('code, created_at').eq('phone', p).maybeSingle();
+      if (data?.code) return String(data.code);
+    } catch { /* table may not exist in a hardened deploy — just stop echoing */ return null; }
+    await new Promise((r) => setTimeout(r, 600));
+  }
+  return null;
+}
+
 // Synchronous "is a user signed in" cache, kept fresh by currentUser() and
 // onAuthChange(). Lets the wallet / payments / tournament modules choose the
 // server path only for authenticated users (anonymous players stay on the local

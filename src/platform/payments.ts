@@ -73,8 +73,14 @@ export async function startCheckout(packageId: string, method: PayMethod): Promi
     return { order, sandbox: true };
   }
 
+  // The hosted checkout page (real TeleBirr, or the demo page in sandbox) needs
+  // to know where the app lives so it can send the player back here afterwards.
+  const dir = location.pathname.replace(/[^/]*$/, ''); // strip the filename
+  const appBase = location.origin + dir;               // e.g. https://host/innoarcade/
+  const returnUrl = location.origin + location.pathname; // back to this exact page
+
   const { data, error } = await supabase().functions.invoke('buy-coins', {
-    body: { packageId, method },
+    body: { packageId, method, appBase, returnUrl },
   });
   if (error) throw error;
   return { order: data.order as Order, sandbox: Boolean(data.sandbox) };

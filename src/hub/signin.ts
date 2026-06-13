@@ -5,7 +5,7 @@
 
 import {
   authAvailable, requestOtp, verifyOtp, currentUser, signOut, setDisplayName,
-  onAuthChange, type AuthUser,
+  onAuthChange, devOtpEcho, fetchDevOtp, type AuthUser,
 } from '../platform/auth';
 import { getLang } from '../i18n';
 
@@ -15,9 +15,10 @@ const STR = {
     send: 'Send code', sending: 'Sending…', code: 'Enter the 6-digit code',
     verify: 'Verify', verifying: 'Verifying…', resend: 'Resend code',
     name: 'Display name', save: 'Save', signOut: 'Sign out',
-    sent: 'Code sent. Check your SMS (or the function logs in test mode).',
+    sent: 'Code sent. Check your SMS.',
     errSend: "Couldn't send the code. Check the number and try again.",
     errVerify: 'Wrong or expired code.', close: 'Close',
+    demoCode: 'Demo mode — your code is',
   },
   am: {
     signIn: 'ግባ', title: 'ለመወዳደር ይግቡ', phone: 'ስልክ ቁጥር',
@@ -27,6 +28,7 @@ const STR = {
     sent: 'ኮድ ተልኳል። SMS ይመልከቱ (ወይም በፈተና ሁነታ የ function logs)።',
     errSend: 'ኮዱን መላክ አልተቻለም። ቁጥሩን አረጋግጠው እንደገና ይሞክሩ።',
     errVerify: 'የተሳሳተ ወይም ጊዜው ያለፈበት ኮድ።', close: 'ዝጋ',
+    demoCode: 'የማሳያ ሁነታ — ኮድዎ',
   },
 };
 const t = (k: keyof typeof STR.en): string => (STR[getLang()] ?? STR.en)[k];
@@ -103,6 +105,7 @@ function openCode(): void {
   const m = shell(`
     <h3>${t('code')}</h3>
     <p class="auth-hint">${t('sent')}</p>
+    <p class="auth-demo" id="demo" hidden></p>
     <input class="auth-input" id="code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" />
     <p class="auth-err" id="err"></p>
     <button class="auth-primary" id="go">${t('verify')}</button>
@@ -110,6 +113,7 @@ function openCode(): void {
   const input = m.querySelector<HTMLInputElement>('#code')!;
   const go = m.querySelector<HTMLButtonElement>('#go')!;
   input.focus();
+  void showDemoCode(m, input);
   go.addEventListener('click', async () => {
     const code = input.value.trim();
     if (code.length < 4) return;
@@ -123,7 +127,20 @@ function openCode(): void {
       go.disabled = false; go.textContent = t('verify');
     }
   });
-  m.querySelector('#resend')!.addEventListener('click', () => { void requestOtp(phone); });
+  m.querySelector('#resend')!.addEventListener('click', () => {
+    void requestOtp(phone).then(() => showDemoCode(m, input));
+  });
+}
+
+// DEMO ONLY: surface the OTP the send-sms mock stashed, so a no-SMS-gateway demo
+// still signs in with any phone. Shows the code and prefills it. Inert in prod.
+async function showDemoCode(m: HTMLElement, input: HTMLInputElement): Promise<void> {
+  if (!devOtpEcho()) return;
+  const code = await fetchDevOtp(phone);
+  if (!code) return;
+  const banner = m.querySelector<HTMLElement>('#demo');
+  if (banner) { banner.hidden = false; banner.innerHTML = `${t('demoCode')} <strong>${esc(code)}</strong>`; }
+  if (!input.value) input.value = code;
 }
 
 function openProfile(): void {
@@ -168,6 +185,9 @@ function injectStyles(): void {
     .auth-link { background: none; border: none; color: var(--muted); font: inherit; cursor: pointer; padding: 4px; }
     .auth-link.danger { color: var(--accent-2); }
     .auth-hint { font-size: 0.82rem; color: var(--muted); }
+    .auth-demo { font-size: 0.86rem; color: #1f6f43; background: #e9f8ef; border: 1px solid #bce8cf;
+      border-radius: 8px; padding: 6px 10px; margin: 0; }
+    .auth-demo strong { font-size: 1.05rem; letter-spacing: 2px; }
     .auth-err { font-size: 0.82rem; color: #d64545; min-height: 1em; margin: 0; }`;
   document.head.appendChild(s);
 }

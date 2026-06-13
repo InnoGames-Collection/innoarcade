@@ -4,12 +4,14 @@
 // the signed-in player and returns a checkout descriptor:
 //   • TeleBirr (real): builds the hosted-payment redirect URL; the provider
 //     later calls `payment-callback`, which credits the wallet.
-//   • Sandbox (no TELEBIRR_* secrets set): settles immediately — credits the
-//     wallet via apply_coins() and returns the paid order — so the purchase
-//     journey works end-to-end without merchant onboarding.
+//   • Sandbox (no TELEBIRR_* secrets set): returns a redirect to the app's OWN
+//     demo TeleBirr page (/checkout/), which calls `payment-callback` just like
+//     the real provider would. This exercises the EXACT production flow
+//     (pending order → hosted page → webhook → apply_coins) with no merchant
+//     account — so going live is purely filling the TeleBirr request-signing
+//     block below and pointing the merchant notify URL at payment-callback.
 //
-// Filling the TeleBirr block (request signing) is the only change needed to go
-// live; nothing on the client changes.
+// Nothing on the client changes between sandbox and live.
 //
 // Deploy: supabase functions deploy buy-coins
 
@@ -47,7 +49,7 @@ Deno.serve(async (req: Request) => {
   const user = u.user;
   if (!user) return json({ error: 'not signed in' }, 401);
 
-  let body: { packageId?: string; method?: string };
+  let body: { packageId?: string; method?: string; appBase?: string; returnUrl?: string };
   try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
   const method = body.method === 'topup' ? 'topup' : 'telebirr';
 
@@ -82,8 +84,14 @@ Deno.serve(async (req: Request) => {
     return json({ order: { ...order, redirectUrl }, sandbox: false });
   }
 
-  // Sandbox: settle now so the demo works without merchant credentials.
-  await admin.rpc('apply_coins', { p_user: user.id, p_delta: coins, p_reason: 'purchase', p_ref: orderId });
-  await admin.from('payment_orders').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', orderId);
-  return json({ order: { ...order, status: 'paid' }, sandbox: true });
+  // Sandbox: redirect to the app's own demo TeleBirr page, which calls
+  // payment-callback (the real webhook) on "Pay". The order stays PENDING until
+  // that callback credits it — identical to the live flow, no money involved.
+  const appBase = String(body.appBase ?? '').replace(/\/?$/, '/'); // ensure trailing slash
+  const ret = encodeURIComponent(String(body.returnUrl ?? ''));
+  const redirectUrl = appBase
+    ? `${appBase}checkout/index.html?order=${orderId}&ref=${providerRef}` +
+      `&amount=${pkg.priceEtb}&coins=${coins}&pkg=${pkg.id}&method=${method}&return=${ret}`
+    : '';
+  return json({ order: { ...order, redirectUrl }, sandbox: true });
 });

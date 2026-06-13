@@ -4,7 +4,7 @@
 // wallet / payments / config modules. Strings are inline EN/AM.
 
 import { getLang } from '../i18n';
-import { onAuthChange } from '../platform/auth';
+import { onAuthChange, currentUser } from '../platform/auth';
 import { openSignIn } from './signin';
 import { balance, balanceSync, onWalletChange } from '../platform/wallet';
 import { loadConfig, coinPackages, paymentMethodsEnabled, isMaintenance, economyNeedsAuth, type CoinPackage } from '../platform/config';
@@ -51,6 +51,28 @@ export async function mountWallet(): Promise<void> {
   await loadConfig();
   await balance();
   renderChip();
+  void resumePendingCheckout();
+}
+
+// After the hosted checkout page redirects back with ?order=<id>, finish the
+// purchase: poll the order the webhook updated, refresh the balance and (on
+// success) pop the celebration. Cleans the query string so a refresh is inert.
+export async function resumePendingCheckout(): Promise<void> {
+  const params = new URLSearchParams(location.search);
+  const orderId = params.get('order');
+  if (!orderId) return;
+  const cancelled = params.get('cancel') === '1';
+  ['order', 'paid', 'cancel', 'ref'].forEach((k) => params.delete(k));
+  const clean = location.pathname + (params.toString() ? `?${params}` : '');
+  history.replaceState(null, '', clean);
+  if (cancelled) return;
+  try {
+    await currentUser(); // ensure the session is loaded so pollOrder hits the server path
+    const order = await pollOrder(orderId);
+    await balance();
+    renderChip();
+    if (order.status === 'paid') showSuccess(shell(''), order.coins);
+  } catch { /* leave the balance as-is; the order book still shows the attempt */ }
 }
 
 function renderChip(): void {
@@ -132,8 +154,11 @@ function openCheckout(pkg: CoinPackage): void {
     pay.disabled = true;
     pay.textContent = t('processing');
     try {
-      const { order, sandbox } = await startCheckout(pkg.id, chosen);
-      if (!sandbox && order.redirectUrl) { window.location.href = order.redirectUrl; return; }
+      const { order } = await startCheckout(pkg.id, chosen);
+      // Online (real TeleBirr or the demo checkout page) hands off via a hosted
+      // page; we leave the app and resume on return (see resumePendingCheckout).
+      if (order.redirectUrl) { window.location.href = order.redirectUrl; return; }
+      // Offline/local: no hosted page — pollOrder settles the local mock wallet.
       await pollOrder(order.id);
       await balance();
       showSuccess(m, total);

@@ -10,3 +10,15 @@ verify_jwt = true
 # verification is off; it authenticates via the hook secret instead.
 [functions.send-sms]
 verify_jwt = false
+
+# Payment webhook — the PSP (TeleBirr) and the demo checkout page call this
+# server-to-server with no user JWT, so verification is off; the unguessable
+# provider_ref (and, in production, the signature check) is the trust boundary.
+[functions.payment-callback]
+verify_jwt = false
+
+# Tournament settlement — authorised by an admin JWT OR the x-cron-secret header
+# (for a scheduled job that has no user session), so gateway JWT checks are off
+# and the function authorises internally.
+[functions.settle-tournament]
+verify_jwt = false
