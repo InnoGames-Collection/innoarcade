@@ -30,13 +30,20 @@ A full competitive-tournament layer, built the same way — a clean
 + Edge Function swap-in. Coins never move on the client: every credit/debit goes
 through an Edge Function (the same integrity boundary as scores).
 
+- **Sign-in** ([auth.ts](src/platform/auth.ts), [signin.ts](src/hub/signin.ts))
+  — real Supabase **phone-OTP** accounts (the SIM is the identity). Until a real
+  SMS gateway is wired, the `send-sms` hook runs in mock mode and the demo shows
+  the code **on screen** (`VITE_DEV_OTP_ECHO`), so any phone signs in with a real
+  session — see the [backend demo](#backend-demo-mocked-sms--telebirr).
 - **Coin wallet** ([wallet.ts](src/platform/wallet.ts)) — balance + immutable
   ledger; a live coin chip and the player dashboard sit on the hub.
 - **Coin store & payments** ([payments.ts](src/platform/payments.ts),
   [config.ts](src/platform/config.ts)) — buy coin packages via **TeleBirr** or
-  **airtime top-up**. With no merchant keys it runs in **sandbox** (credits
-  instantly) so the whole purchase journey demos offline; real TeleBirr drops in
-  via the `buy-coins` / `payment-callback` functions.
+  **airtime top-up**. With no merchant keys it runs in **sandbox**, redirecting to
+  a demo TeleBirr page ([/checkout/](src/checkout/main.ts)) that calls the real
+  `payment-callback` webhook — the *exact* `pending order → hosted page → webhook
+  → credit` flow, no money. Real TeleBirr drops into `buy-coins` /
+  `payment-callback` with no client change.
 - **Hybrid tournaments** ([tournaments.ts](src/platform/tournaments.ts)) —
   **free** (house-sponsored prizes) *and* **paid** (coin entry fee → prize pool,
   split by tiers) tournaments, with states (upcoming → live → ended → settled),
@@ -50,6 +57,27 @@ through an Edge Function (the same integrity boundary as scores).
 > **Note:** real-money skill tournaments may require a licensing/compliance
 > review in Ethiopia before launch. The code ships the mechanism; the legal
 > posture is a separate decision.
+
+### Backend demo (mocked SMS + TeleBirr)
+
+The platform runs in two modes, switched by env:
+
+| | Offline / local | Backend demo |
+| --- | --- | --- |
+| Switch | *(default — no flag)* | `VITE_ECONOMY_ONLINE=true` |
+| Data | localStorage mock | **real** Supabase tables + RLS |
+| Sign-in | anonymous local player | real phone-OTP session |
+| Coins | local wallet | **real** `apply_coins` ledger |
+| Admin | open (demo) | **role-gated** (`profiles.role`) |
+
+The **backend demo** stands up the whole thing on real Supabase with **mocked but
+real-feeling** SMS and TeleBirr (genuine coin movements, no SMS gateway, no
+merchant account): the OTP shows on screen, and checkout runs through the demo
+TeleBirr page → real webhook. A seed script (`npm run seed`) fills a believable
+roster, orders, tournaments and scores so the admin console looks live on day one.
+
+→ Full runbook: **[DEMO_SETUP.md](DEMO_SETUP.md)**. Backend internals (schema,
+Edge Functions, going live): **[supabase/README.md](supabase/README.md)**.
 
 ## Games
 
@@ -77,6 +105,10 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) — the hub. Temple Dash lives at
 [http://localhost:5173/games/temple-dash/](http://localhost:5173/games/temple-dash/).
+
+This runs the **offline/local** mode — fully playable with no backend. For the
+**backend demo** (real Supabase, mocked SMS + TeleBirr, seeded data) follow
+[DEMO_SETUP.md](DEMO_SETUP.md).
 
 `npm run build` type-checks and produces a static `dist/` deployable to any
 static host (multi-page Vite build, relative asset paths).
