@@ -141,7 +141,7 @@ function renderEntryActions(m: HTMLElement, tour: Tournament, game: GameMeta): v
         void renderDashboard();
       } catch (e) {
         if (e instanceof InsufficientCoinsError) { renderEntryActions(m, tour, game); return; }
-        m.querySelector('#err')!.textContent = t('hub.needCoins');
+        m.querySelector('#err')!.textContent = t('hub.entryFailed');
         btn.disabled = false;
       }
     });

@@ -176,7 +176,11 @@ export async function loadTournaments(): Promise<Tournament[]> {
       .select('id, game_id, title_en, title_am, type, entry_fee_coins, prize_model, sponsored_prize, prize_tiers, starts_at, ends_at')
       .order('starts_at', { ascending: false });
     if (error) throw error;
-    remoteCache = (data ?? []).map((r) => {
+    const rows = data ?? [];
+    // An empty/absent tournaments table means the operator hasn't created any —
+    // keep using the calendar-derived defaults (null) rather than blanking the
+    // list, otherwise getTournament() can't resolve the visible cards.
+    remoteCache = rows.length ? rows.map((r) => {
       const t: Tournament = {
         id: String(r.id), gameId: String(r.game_id),
         titleEn: String(r.title_en), titleAm: String(r.title_am),
@@ -191,7 +195,7 @@ export async function loadTournaments(): Promise<Tournament[]> {
       };
       t.prizeCoins = prizePool(t);
       return t;
-    });
+    }) : null;
   } catch {
     remoteCache = null; // offline → fall back to local derivation
   }

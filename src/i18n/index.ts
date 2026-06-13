@@ -133,6 +133,7 @@ const en = {
   'hub.settled': 'Settled',
   'hub.prizeSplit': 'Prize split',
   'hub.joined': "You're in! Good luck.",
+  'hub.entryFailed': "Couldn't join — please try again.",
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -268,6 +269,7 @@ const am: Dict = {
   'hub.settled': 'ተወራርዷል',
   'hub.prizeSplit': 'የሽልማት ክፍፍል',
   'hub.joined': 'ገብተዋል! መልካም ዕድል።',
+  'hub.entryFailed': 'መግባት አልተቻለም — እንደገና ይሞክሩ።',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };
