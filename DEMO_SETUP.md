@@ -6,12 +6,14 @@ genuine** (real wallet ledger in the DB). Nothing here is fake state — it's th
 production code paths with the SMS gateway and the PSP swapped for stand-ins, so
 going live later is just dropping in credentials.
 
-| Piece | In this demo | For production |
-| --- | --- | --- |
-| Phone OTP | Real Supabase Auth session via **Test phone numbers** (fixed code, no SMS) | Deploy `send-sms` hook + `SMS_MODE=gateway` → real SMS for any number |
-| TeleBirr | A demo hosted page calls the real `payment-callback` webhook | Set `TELEBIRR_*` secrets + fill 2 signing TODOs; same flow |
-| Coins / wallet / orders | **Real** — `apply_coins`, `wallet_ledger`, `payment_orders` | unchanged |
-| Admin | **Real** role gate (`profiles.role = 'admin'`), real data | unchanged |
+
+| Piece                   | In this demo                                                               | For production                                                        |
+| ----------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Phone OTP               | Real Supabase Auth session via **Test phone numbers** (fixed code, no SMS) | Deploy `send-sms` hook + `SMS_MODE=gateway` → real SMS for any number |
+| TeleBirr                | A demo hosted page calls the real `payment-callback` webhook               | Set `TELEBIRR_`* secrets + fill 2 signing TODOs; same flow            |
+| Coins / wallet / orders | **Real** — `apply_coins`, `wallet_ledger`, `payment_orders`                | unchanged                                                             |
+| Admin                   | **Real** role gate (`profiles.role = 'admin'`), real data                  | unchanged                                                             |
+
 
 Project ref: `aopmkdefqykctrxhflaq`. Run all commands from `Games/innoarcade`.
 
@@ -20,9 +22,9 @@ Project ref: `aopmkdefqykctrxhflaq`. Run all commands from `Games/innoarcade`.
 ## What's already done in the repo
 
 - `.env` → `VITE_ECONOMY_ONLINE=true` (backend on) and `VITE_DEV_OTP_ECHO=false`
-  (sign-in uses Test phone numbers, no on-screen code). URL + anon key are set.
+(sign-in uses Test phone numbers, no on-screen code). URL + anon key are set.
 - The demo TeleBirr page lives at `/checkout/`; `buy-coins` redirects to it in
-  sandbox and it calls the real `payment-callback`.
+sandbox and it calls the real `payment-callback`.
 
 You do the **6 steps** below on the live project.
 
@@ -30,11 +32,11 @@ You do the **6 steps** below on the live project.
 
 ## 1. Apply the database schema
 
-Dashboard → **SQL Editor** → paste and run [`supabase/schema.sql`](supabase/schema.sql)
+Dashboard → **SQL Editor** → paste and run `[supabase/schema.sql](supabase/schema.sql)`
 — tables, RLS, `is_admin()`, `apply_coins()`, the leaderboard view, the signup
 trigger. Safe to re-run.
 
-> Skip [`supabase/dev.sql`](supabase/dev.sql) — it's only for the LOCAL on-screen
+> Skip `[supabase/dev.sql](supabase/dev.sql)` — it's only for the LOCAL on-screen
 > OTP echo. This (public/shared) demo signs in with **Test phone numbers**
 > instead. If `dev_otps` already exists, drop it: `drop table public.dev_otps;`.
 
@@ -72,14 +74,14 @@ supabase secrets set SUPABASE_SERVICE_ROLE_KEY=sb_secret_xxx
 
 1. Dashboard → **Authentication → Sign In / Providers → Phone → Enable**.
 2. Same page → **Test phone numbers** → add one row per account you'll actually
-   sign in as, each with a fixed code. You only need numbers for the **humans**
+  sign in as, each with a fixed code. You only need numbers for the **humans**
    who log in (the operator + a demo player) — the ~40 seeded players are just
    data and never sign in. For example:
 
-   | Phone | Code | Used for |
-   | --- | --- | --- |
-   | `+251911000000` | `123456` | admin / operator |
-   | `+251911000001` | `123456` | demo player |
+  | Phone           | Code     | Used for         |
+  | --------------- | -------- | ---------------- |
+  | `+251911000000` | `123456` | admin / operator |
+  | `+251911000001` | `123456` | demo player      |
 
    Test numbers bypass SMS entirely: Supabase accepts the fixed code, so **no SMS
    gateway, no Send SMS hook, and no `dev_otps` table** are needed for sign-in.
@@ -111,12 +113,12 @@ npm install   # first time
 npm run dev
 ```
 
-- **Hub:** http://localhost:5173/ — sign in with the **demo-player test number +
-  its fixed code**. Buy coins → the demo **telebirr** page → coins land in your
-  real wallet. Enter the paid Monthly Championship (debits real coins).
-- **Admin:** http://localhost:5173/admin/ — sign in with the **admin test number +
-  its fixed code**. Dashboards show the seeded operation; adjust coins, settle
-  tournaments, edit config — all server-validated.
+- **Hub:** [http://localhost:5173/](http://localhost:5173/) — sign in with the **demo-player test number +
+its fixed code**. Buy coins → the demo **telebirr** page → coins land in your
+real wallet. Enter the paid Monthly Championship (debits real coins).
+- **Admin:** [http://localhost:5173/admin/](http://localhost:5173/admin/) — sign in with the **admin test number +
+its fixed code**. Dashboards show the seeded operation; adjust coins, settle
+tournaments, edit config — all server-validated.
 
 ## 5b. Deploy the frontend to Vercel
 
@@ -125,22 +127,16 @@ and is unaffected. The repo is a monorepo, and `VITE_*` vars are **inlined at
 build time**, so:
 
 1. **Import the project** → set **Root Directory = `Games/innoarcade`**. Framework
-   auto-detects as Vite (`vercel.json` pins `npm run build` → `dist`).
+  auto-detects as Vite (`vercel.json` pins `npm run build` → `dist`).
 2. **Project → Settings → Environment Variables** — add the same vars as `.env`
-   (`.env` is gitignored, so Vercel doesn't get it). Set them for **Production**
+  (`.env` is gitignored, so Vercel doesn't get it). Set them for **Production**
    (and Preview if you use it):
-   ```
-   VITE_SUPABASE_URL=https://aopmkdefqykctrxhflaq.supabase.co
-   VITE_SUPABASE_ANON_KEY=sb_publishable_…
-   VITE_ECONOMY_ONLINE=true
-   VITE_DEV_OTP_ECHO=false
-   ```
-   > These bake in at build time. **Change one → Redeploy** for it to take effect.
-3. **Deploy.** The multi-page build serves `/`, `/admin/`, `/checkout/`, `/games/*`
-   as real files — **do not add a SPA catch-all rewrite** (it would break those
+  > These bake in at build time. **Change one → Redeploy** for it to take effect.
+3. **Deploy.** The multi-page build serves `/`, `/admin/`, `/checkout/`, `/games/`*
+  as real files — **do not add a SPA catch-all rewrite** (it would break those
    routes). No `vercel.json` `rewrites` needed.
 4. **Supabase has no allow-list to update** — phone-OTP uses no redirect URLs, and
-   the function CORS is `*`, so the Vercel domain calls Supabase as-is.
+  the function CORS is `*`, so the Vercel domain calls Supabase as-is.
 
 > ✅ **Locked down for a public URL.** With `VITE_DEV_OTP_ECHO=false` and
 > `dev_otps` dropped, no OTP is ever exposed. Only the phones you added as **Test
@@ -161,3 +157,4 @@ secret). Or just click **Settle** in the admin console.
 - **Real SMS (arbitrary numbers, not just test phones):** deploy `send-sms`, set it as the Auth Send-SMS hook with `SEND_SMS_HOOK_SECRET`, then `supabase secrets set SMS_MODE=gateway TELECOM_SMS_URL=… TELECOM_SMS_TOKEN=…`.
 - **Real TeleBirr:** `supabase secrets set TELEBIRR_APP_KEY=… TELEBIRR_APP_ID=… TELEBIRR_PUBLIC_KEY=… TELEBIRR_CHECKOUT_URL=…`, then fill the request-signing TODO in `buy-coins` and the signature-verification TODO in `payment-callback`. `buy-coins` then redirects to TeleBirr's real page instead of `/checkout/`.
 - **Data sovereignty:** self-host Supabase in-country; only `VITE_SUPABASE_URL` changes.
+

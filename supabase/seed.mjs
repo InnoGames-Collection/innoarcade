@@ -87,17 +87,39 @@ const SEED_PREFIX = '+2519000000'; // demo accounts live here (NN appended)
 const COUNT = 40;
 const seedPhone = (i) => `${SEED_PREFIX}${String(i).padStart(2, '0')}`;
 
+// auth.users.phone is digits-only (no '+'); match on digits so phone formatting
+// never causes a miss (this was the "promoted admin didn't stick" bug).
+const digitsOf = (p) => String(p ?? '').replace(/[^\d]/g, '');
+
+// Cache the auth user list for format-proof lookups of pre-existing users.
+let _allUsers = null;
+async function allUsers() {
+  if (_allUsers) return _allUsers;
+  _allUsers = [];
+  for (let page = 1; ; page++) {
+    const { data } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+    const list = data?.users ?? [];
+    _allUsers.push(...list);
+    if (list.length < 1000) break;
+  }
+  return _allUsers;
+}
+async function findUserId(phone) {
+  const d = digitsOf(phone);
+  return (await allUsers()).find((u) => digitsOf(u.phone) === d)?.id ?? null;
+}
+
 async function ensureUser(phone, name) {
-  // Create the auth user (trigger creates the profile with name+phone). If the
-  // phone already exists, fall back to the profile id.
-  const { error } = await db.auth.admin.createUser({
+  // Create the auth user (trigger creates the profile). Returns the id straight
+  // from the create; on "already exists", look it up by phone digits.
+  const { data, error } = await db.auth.admin.createUser({
     phone, phone_confirm: true, user_metadata: { name },
   });
+  if (!error && data?.user?.id) { if (_allUsers) _allUsers.push(data.user); return data.user.id; }
   if (error && !/already|registered|exists|duplicate/i.test(error.message)) {
     console.warn(`  createUser(${phone}) → ${error.message}`);
   }
-  const { data } = await db.from('profiles').select('id').eq('phone', phone).maybeSingle();
-  return data?.id ?? null;
+  return findUserId(phone);
 }
 
 async function resetSeedAccounts(ids) {
@@ -209,16 +231,15 @@ async function main() {
   }
   console.log(`• scores ✓ (${scores})   • tournament_entries ✓ (${entries})`);
 
-  // admin
+  // admin — find the existing auth user (e.g. one created by signing in with a
+  // Test phone number), or create it; then promote by id.
   if (ADMIN_PHONE) {
-    let { data: prof } = await db.from('profiles').select('id').eq('phone', ADMIN_PHONE).maybeSingle();
-    if (!prof) {
-      const id = await ensureUser(ADMIN_PHONE, 'Operator');
-      prof = id ? { id } : null;
-    }
-    if (prof) {
-      await db.from('profiles').update({ role: 'admin' }).eq('id', prof.id);
+    const id = (await findUserId(ADMIN_PHONE)) ?? (await ensureUser(ADMIN_PHONE, 'Operator'));
+    if (id) {
+      await db.from('profiles').update({ role: 'admin' }).eq('id', id);
       console.log(`• admin ✓ — ${ADMIN_PHONE} is now an operator`);
+    } else {
+      console.warn(`• admin ✗ — couldn't resolve ${ADMIN_PHONE}`);
     }
   } else {
     console.log('• admin — set ADMIN_PHONE to auto-promote an operator (skipped)');
