@@ -3,6 +3,13 @@
 Server-authoritative scores, leaderboards and phone-OTP accounts. The app runs
 fine **without** this (local mock); adding the keys lights it up.
 
+> **Want the fully-backed demo with mocked SMS + TeleBirr?** Follow
+> [`../DEMO_SETUP.md`](../DEMO_SETUP.md) — it wraps the steps below into a 6-step
+> runbook where OTP shows on screen (no SMS gateway), TeleBirr is a demo hosted
+> page hitting the real `payment-callback`, and coins move for real. The extra
+> demo-only bits it uses: [`dev.sql`](dev.sql) (on-screen OTP table),
+> [`seed.mjs`](seed.mjs) (`npm run seed`), and the `/checkout/` demo page.
+
 ## 1. Create the project & get your keys
 
 1. supabase.com → **New project** (region: closest to Ethiopia, e.g. Frankfurt).

@@ -1,1 +1,0 @@
-Now the player dashboard widget (balance, transaction history, my tournaments, prizes).
