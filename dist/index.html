@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>" />
     <title>InnoArcade — Play & Compete</title>
-    <script type="module" crossorigin src="./assets/hub-CWtEmHeC.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/index-BOWQewco.js">
+    <script type="module" crossorigin src="./assets/hub-XaRMhvsy.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-DtEKC5ZX.js">
     <link rel="modulepreload" crossorigin href="./assets/tournaments-DoyEuF7n.js">
     <link rel="modulepreload" crossorigin href="./assets/backend-DdCACMGM.js">
-    <link rel="stylesheet" crossorigin href="./assets/hub-Ur8H6hHK.css">
+    <link rel="stylesheet" crossorigin href="./assets/hub-DrYW9t--.css">
     <link rel="stylesheet" crossorigin href="./assets/base-HPgZI6Yo.css">
   </head>
   <body>
@@ -31,6 +31,11 @@
     </header>
 
     <main class="hub-main">
+      <section id="promo" class="promo-section" aria-label="Promotions">
+        <div class="promo-track" id="promoTrack"></div>
+        <div class="promo-dots" id="promoDots"></div>
+      </section>
+
       <section id="dashboard" class="featured-section">
         <span class="section-eyebrow" data-i18n="hub.heroEyebrow">Compete &amp; win</span>
         <h2 class="section-title" data-i18n="hub.featured">Featured tournament</h2>
@@ -49,8 +54,28 @@
       </section>
 
       <section id="games" class="games-section">
-        <h2 class="section-title" data-i18n="hub.freeGames">Free games</h2>
+        <div class="games-head">
+          <h2 class="section-title" data-i18n="hub.freeGames">Free games</h2>
+          <div class="games-tools">
+            <div class="seg" id="gameSeg" role="tablist">
+              <button class="seg-btn active" data-filter="all" data-i18n="hub.allGames">All</button>
+              <button class="seg-btn" data-filter="tournament" data-i18n="hub.tournament">Tournament</button>
+              <button class="seg-btn" data-filter="free" data-i18n="arc.free">Free</button>
+            </div>
+            <input id="gameSearch" class="game-search" type="search" aria-label="Search games" />
+          </div>
+        </div>
         <div id="gameGrid"></div>
+      </section>
+
+      <section id="draws" class="draws-section">
+        <h2 class="section-title">🎁 <span data-i18n="hub.draws">Draws</span></h2>
+        <p class="coming-soon" data-i18n="hub.comingSoon">Coming soon — daily, weekly &amp; monthly prize draws.</p>
+      </section>
+
+      <section id="winners" class="winners-section">
+        <h2 class="section-title">🏆 <span data-i18n="hub.winners">Winners</span></h2>
+        <p class="coming-soon" data-i18n="hub.comingSoonW">Coming soon — the latest lucky winners.</p>
       </section>
 
       <section id="brain" class="brain-section">
@@ -65,6 +90,14 @@
     <footer class="hub-footer">
       <p data-i18n="hub.footer">Built by InnoSphere Technologies</p>
     </footer>
+
+    <nav class="bottomnav" aria-label="Primary">
+      <a href="#dashboard" class="bn-item active"><span class="bn-ico">🏠</span><span data-i18n="nav.home">Home</span></a>
+      <a href="#games" class="bn-item"><span class="bn-ico">🎮</span><span data-i18n="nav.games">Games</span></a>
+      <a href="#draws" class="bn-item"><span class="bn-ico">🎁</span><span data-i18n="nav.draws">Draws</span></a>
+      <a href="#winners" class="bn-item"><span class="bn-ico">🏆</span><span data-i18n="nav.winners">Winners</span></a>
+      <button class="bn-item" id="bnAccount"><span class="bn-ico">👤</span><span data-i18n="nav.account">Account</span></button>
+    </nav>
 
   </body>
 </html>

@@ -239,6 +239,16 @@ const en = {
   'cg.cashedOut': '🎉 Cashed out at {m}x — +{p} pts',
   'cg.crashed': '💥 Crashed!',
   'cg.prevCrashes': 'Previous crashes',
+  // Portal shell (bottom nav, draws/winners, browse)
+  'nav.home': 'Home', 'nav.games': 'Games', 'nav.draws': 'Draws', 'nav.winners': 'Winners', 'nav.account': 'Account',
+  'hub.draws': 'Draws', 'hub.winners': 'Winners',
+  'hub.comingSoon': 'Coming soon — daily, weekly & monthly prize draws.',
+  'hub.comingSoonW': 'Coming soon — the latest lucky winners.',
+  'hub.searchGames': 'Search games…',
+  'hub.points': 'Points', 'hub.gold': 'Gold',
+  'set.terms': 'Terms & conditions', 'set.faq': 'FAQ', 'set.logout': 'Log out', 'set.unsub': 'Unsubscribe',
+  'auth.promo': 'Win weekly & monthly prizes',
+  'hub.noResults': 'No games match.',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -480,6 +490,16 @@ const am: Dict = {
   'cg.cashedOut': '🎉 በ{m}x ወሰዱ — +{p} ነጥብ',
   'cg.crashed': '💥 ወደቀ!',
   'cg.prevCrashes': 'ያለፉ ውድቀቶች',
+  // Portal shell (bottom nav, draws/winners, browse)
+  'nav.home': 'መነሻ', 'nav.games': 'ጨዋታዎች', 'nav.draws': 'ዕጣዎች', 'nav.winners': 'አሸናፊዎች', 'nav.account': 'መለያ',
+  'hub.draws': 'ዕጣዎች', 'hub.winners': 'አሸናፊዎች',
+  'hub.comingSoon': 'በቅርቡ — ዕለታዊ፣ ሳምንታዊ እና ወርሃዊ ዕጣዎች።',
+  'hub.comingSoonW': 'በቅርቡ — የቅርብ ጊዜ አሸናፊዎች።',
+  'hub.searchGames': 'ጨዋታ ይፈልጉ…',
+  'hub.points': 'ነጥብ', 'hub.gold': 'ወርቅ',
+  'set.terms': 'ውሎች እና ሁኔታዎች', 'set.faq': 'ተደጋጋሚ ጥያቄዎች', 'set.logout': 'ውጣ', 'set.unsub': 'ይቅር',
+  'auth.promo': 'ሳምንታዊ እና ወርሃዊ ሽልማቶችን ያሸንፉ',
+  'hub.noResults': 'ምንም ጨዋታ አልተገኘም።',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };

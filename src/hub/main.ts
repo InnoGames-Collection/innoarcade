@@ -30,6 +30,23 @@ function thumbStyle(g: GameMeta): string {
   return `background:linear-gradient(145deg, ${g.thumb[0]}, ${g.thumb[1]});`;
 }
 
+// --- Promo banner carousel --------------------------------------------------
+const PROMOS = [
+  { en: 'Win weekly & monthly prizes', am: 'ሳምንታዊ እና ወርሃዊ ሽልማቶችን ያሸንፉ', icon: '🎁', grad: ['#2f8fe6', '#1f5fc4'] },
+  { en: 'Enter tournaments — climb the leaderboard', am: 'ውድድሮችን ይቀላቀሉ — ደረጃ ይውጡ', icon: '🏆', grad: ['#62c12e', '#3f9e16'] },
+  { en: 'Play Lucky games for instant rewards', am: 'ለፈጣን ሽልማት ዕድል ጨዋታዎችን ይጫወቱ', icon: '🍀', grad: ['#f0a832', '#d8761b'] },
+];
+let promoIdx = 0;
+function renderPromo(): void {
+  const track = document.querySelector('#promoTrack');
+  const dots = document.querySelector('#promoDots');
+  if (!track || !dots) return;
+  const p = PROMOS[promoIdx];
+  track.innerHTML = `<div class="promo-slide" style="background:linear-gradient(135deg, ${p.grad[0]}, ${p.grad[1]})">${p.icon} ${escapeHtml(lang() === 'am' ? p.am : p.en)}</div>`;
+  dots.innerHTML = PROMOS.map((_, i) => `<span class="promo-dot${i === promoIdx ? ' on' : ''}"></span>`).join('');
+}
+function advancePromo(): void { promoIdx = (promoIdx + 1) % PROMOS.length; renderPromo(); }
+
 // --- Tournament entry economy (CTA + confirm flow) --------------------------
 
 const STATE_LABEL: Record<string, () => string> = {
@@ -261,11 +278,23 @@ function renderTournaments(): void {
 }
 
 // --- Games grid, grouped into category rows ---------------------------------
-const AM_CAT: Record<string, string> = {
-  Arcade: 'አርኬድ', Puzzle: 'እንቆቅልሽ', Runner: 'ሩጫ', Skill: 'ክህሎት', Casual: 'ቀላል',
+// Curated shelf labels (EN/AM) + the order categories appear in. Derived from
+// the catalog genre's first token; unknown keys fall back to the raw key and
+// sort to the end.
+const CAT_LABEL: Record<string, { en: string; am: string }> = {
+  Chance: { en: 'Lucky & casino', am: 'ዕድል እና ካዚኖ' },
+  Arcade: { en: 'Arcade', am: 'አርኬድ' },
+  Puzzle: { en: 'Puzzle', am: 'እንቆቅልሽ' },
+  'Match-3': { en: 'Match 3', am: 'ሦስት አዛምድ' },
+  Runner: { en: 'Runner', am: 'ሩጫ' },
+  Shooter: { en: 'Shooter', am: 'ተኳሽ' },
 };
+const CAT_ORDER = ['Chance', 'Arcade', 'Puzzle', 'Match-3', 'Runner', 'Shooter'];
 function catKey(g: GameMeta): string { return g.genreEn.split('·')[0].trim(); }
-function catLabel(key: string): string { return lang() === 'am' ? (AM_CAT[key] ?? key) : key; }
+function catLabel(key: string): string {
+  const l = CAT_LABEL[key];
+  return l ? (lang() === 'am' ? l.am : l.en) : key;
+}
 
 function gameCard(g: GameMeta): string {
   return `
@@ -281,19 +310,41 @@ function gameCard(g: GameMeta): string {
     </a>`;
 }
 
+// Browse state for the games section (segmented filter + search).
+let gameFilter: 'all' | 'tournament' | 'free' = 'all';
+let gameQuery = '';
+
 function renderGames(): void {
   const host = $('#gameGrid');
+  const q = gameQuery.trim().toLowerCase();
+  const pool = CATALOG.filter((g) => {
+    if (gameFilter !== 'all' && g.mode !== gameFilter) return false;
+    if (q && !`${g.nameEn} ${g.nameAm} ${g.genreEn}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (!pool.length) {
+    host.innerHTML = `<p class="cat-empty">${t('hub.noResults')}</p>`;
+    return;
+  }
   const cats = new Map<string, GameMeta[]>();
-  for (const g of CATALOG) {
+  for (const g of pool) {
     const k = catKey(g);
     if (!cats.has(k)) cats.set(k, []);
     cats.get(k)!.push(g);
   }
-  host.innerHTML = [...cats.entries()].map(([key, list]) => `
+  const keys = [...cats.keys()].sort((a, b) => {
+    const ia = CAT_ORDER.indexOf(a);
+    const ib = CAT_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  host.innerHTML = keys.map((key) => {
+    const list = cats.get(key)!;
+    return `
     <div class="cat-block">
-      <div class="cat-head"><h3>${escapeHtml(catLabel(key))}</h3></div>
-      <div class="cat-grid">${list.map(gameCard).join('')}</div>
-    </div>`).join('');
+      <div class="cat-head"><h3>${escapeHtml(catLabel(key))}<span class="cat-count">${list.length}</span></h3></div>
+      <div class="cat-shelf">${list.map(gameCard).join('')}</div>
+    </div>`;
+  }).join('');
 }
 
 // --- LexiQuest brain-games category (links into the LexiQuest app) -----------
@@ -344,12 +395,15 @@ function tickCountdowns(): void {
 
 // --- Render all + language --------------------------------------------------
 function renderAll(): void {
+  renderPromo();
   renderFeatured();
   renderStats();
   renderTournaments();
   renderGames();
   renderBrain();
   applyTranslations();
+  const search = document.querySelector<HTMLInputElement>('#gameSearch');
+  if (search) search.placeholder = t('hub.searchGames');
   tickCountdowns();
   void refreshFeatured(); // swap in real scores once they load
   void renderDashboard();
@@ -374,26 +428,49 @@ function pick(l: Lang): void { setLang(l); syncLangButtons(); renderAll(); }
 langEn.addEventListener('click', () => pick('en'));
 langAm.addEventListener('click', () => pick('am'));
 
-// Nav active-state on scroll.
-const sections = ['dashboard', 'tournaments', 'games', 'brain'];
-window.addEventListener('scroll', () => {
+// Nav active-state on scroll (top nav + mobile bottom nav).
+const sections = ['dashboard', 'tournaments', 'games', 'draws', 'winners', 'brain'];
+function syncNavActive(): void {
   let current = sections[0];
   for (const id of sections) {
     const el = document.getElementById(id);
     if (el && el.getBoundingClientRect().top <= 120) current = id;
   }
-  document.querySelectorAll<HTMLAnchorElement>('.nav-link').forEach((a) => {
-    a.classList.toggle('active', a.getAttribute('href') === `#${current}`);
+  document.querySelectorAll<HTMLElement>('.nav-link, .bn-item').forEach((a) => {
+    const href = a.getAttribute('href');
+    if (href) a.classList.toggle('active', href === `#${current}`);
   });
-}, { passive: true });
+}
+window.addEventListener('scroll', syncNavActive, { passive: true });
+
+// Browse controls (segmented filter + search) and the bottom-nav account tab.
+function setupBrowse(): void {
+  const search = document.querySelector<HTMLInputElement>('#gameSearch');
+  if (search) {
+    search.placeholder = t('hub.searchGames');
+    search.addEventListener('input', () => { gameQuery = search.value; renderGames(); });
+  }
+  document.querySelectorAll<HTMLButtonElement>('#gameSeg .seg-btn').forEach((b) => {
+    b.addEventListener('click', () => {
+      gameFilter = (b.dataset.filter as typeof gameFilter) ?? 'all';
+      document.querySelectorAll('#gameSeg .seg-btn').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      renderGames();
+    });
+  });
+  document.querySelector('#bnAccount')?.addEventListener('click', () => openSignIn());
+}
 
 document.documentElement.lang = getLang();
 syncLangButtons();
 injectDashboardStyles();
 renderAll();
+setupBrowse();
+syncNavActive();
 mountSignIn();
 void mountWallet();
 void refreshData();
 // Re-pull wallet/entries/standing when the player signs in or out.
 onAuthChange(() => { void refreshData(); });
 setInterval(tickCountdowns, 1000);
+setInterval(advancePromo, 4500);

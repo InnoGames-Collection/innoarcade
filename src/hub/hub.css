@@ -8,42 +8,47 @@
    otherwise --text/--accent can flip to the dark-theme values and render cream
    text on white. */
 html:root {
-  --bg: #f4f6fc;
+  --bg: #e9f4df;
   --bg-2: #ffffff;
   --card: #ffffff;
-  --text: #131a30;
-  --muted: #6a748f;
-  --line: #e7eaf3;
-  --accent: #4f5bff;
-  --accent-2: #ff6a3d;
+  --text: #15291a;
+  --muted: #5f7262;
+  --line: #d9e7cf;
+  /* brand = telecom green; primary CTAs = blue (telefun convention) */
+  --accent: #4aa520;
+  --accent-2: #1f74e0;
+  --cta: #1f74e0;
   --good: #16a673;
-  --gold: #f5b53d;
-  /* brand gradient for hero / logo / accents */
-  --brand-1: #5b6cff;
-  --brand-2: #8b5cf6;
-  --brand-3: #2563eb;
-  --grad-brand: linear-gradient(135deg, #5b6cff 0%, #8b5cf6 55%, #6366f1 100%);
-  --grad-hero: radial-gradient(120% 140% at 12% 10%, #2b3a8f 0%, #161d4d 45%, #0c1234 100%);
-  --shadow-sm: 0 2px 8px rgba(31, 41, 80, 0.06);
-  --shadow-md: 0 10px 30px rgba(31, 41, 80, 0.10);
-  --shadow-lg: 0 22px 50px rgba(31, 41, 80, 0.18);
+  --gold: #f2b21a;
+  --brand-1: #62c12e;
+  --brand-2: #3f9e16;
+  --brand-3: #2f8c0e;
+  --grad-brand: linear-gradient(135deg, #62c12e 0%, #3f9e16 100%);
+  --grad-cta: linear-gradient(135deg, #2f8fe6 0%, #1f5fc4 100%);
+  --grad-hero: radial-gradient(130% 150% at 12% 8%, #4fae21 0%, #2f8c0e 48%, #1e6207 100%);
+  --shadow-sm: 0 2px 8px rgba(27, 51, 20, 0.06);
+  --shadow-md: 0 10px 30px rgba(27, 51, 20, 0.12);
+  --shadow-lg: 0 22px 50px rgba(20, 60, 16, 0.20);
   --radius: 18px;
+  /* faint star pattern (telefun-style) painted on the page background */
+  --stars: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath fill='%233f9e16' fill-opacity='0.06' d='M30 12l4 9 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1zM86 60l3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1zM52 86l3 6 6 1-4 4 1 6-6-3-5 3 1-6-5-4 6-1z'/%3E%3C/svg%3E");
 }
 
 /* Primary buttons: brand gradient + white text, with a soft lift on hover. */
 .btn.primary {
   color: #fff;
-  background: var(--grad-brand);
+  background: var(--grad-cta);
   border-color: transparent;
-  box-shadow: 0 6px 16px rgba(91, 108, 255, 0.30);
+  box-shadow: 0 6px 16px rgba(31, 116, 224, 0.30);
   transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
-.btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(91, 108, 255, 0.38); filter: brightness(1.03); }
+.btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(31, 116, 224, 0.40); filter: brightness(1.04); }
 
 body {
   background:
-    radial-gradient(60% 50% at 100% 0%, rgba(139, 92, 246, 0.10) 0%, transparent 60%),
-    radial-gradient(50% 40% at 0% 0%, rgba(91, 108, 255, 0.10) 0%, transparent 55%),
+    var(--stars),
+    radial-gradient(60% 45% at 100% 0%, rgba(98, 193, 46, 0.16) 0%, transparent 60%),
+    radial-gradient(50% 40% at 0% 0%, rgba(63, 158, 22, 0.14) 0%, transparent 55%),
     var(--bg);
   color: var(--text);
 }
@@ -186,6 +191,24 @@ body {
 .cat-head .view-all:hover { text-decoration: underline; }
 
 .game-grid, .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+
+/* Horizontal category shelves (telecom-portal style): swipeable rows of cards. */
+.cat-count { font-size: 0.74rem; font-weight: 800; color: var(--muted); background: var(--line); border-radius: 999px; padding: 0.05rem 0.5rem; margin-left: 0.5rem; vertical-align: middle; }
+.cat-shelf {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding: 0.25rem 0.25rem 0.75rem;
+  margin: 0 -0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.cat-shelf::-webkit-scrollbar { height: 7px; }
+.cat-shelf::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+.cat-shelf::-webkit-scrollbar-track { background: transparent; }
+.cat-shelf .game-card { flex: 0 0 auto; width: clamp(144px, 44vw, 172px); scroll-snap-align: start; }
 .game-card {
   text-decoration: none; color: inherit;
   background: var(--card); border: 1px solid var(--line);
@@ -284,3 +307,56 @@ body {
 /* --- footer --- */
 .hub-footer { background: var(--bg-2); }
 .hub-footer p { font-weight: 600; }
+
+/* ====================================================================== */
+/* Portal shell: bottom nav, browse toolbar, poster cards                 */
+/* ====================================================================== */
+
+.coming-soon { color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 1.4rem 1rem; text-align: center; font-size: 0.92rem; }
+
+/* promo banner carousel (top of the portal) */
+.promo-section { margin-bottom: 0.25rem; }
+.promo-slide { color: #fff; font-weight: 800; text-align: center; padding: 1.05rem 1.2rem; border-radius: 18px; font-size: 1.04rem; box-shadow: var(--shadow-md); }
+.promo-dots { display: flex; justify-content: center; gap: 6px; margin-top: 9px; }
+.promo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: width 0.2s, background 0.2s; }
+.promo-dot.on { background: var(--accent); width: 18px; border-radius: 999px; }
+
+/* games toolbar — segmented filter + search */
+.games-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
+.games-head .section-title { margin-bottom: 0; }
+.games-tools { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.seg { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg-btn { border: none; background: none; color: var(--muted); font: inherit; font-size: 0.84rem; font-weight: 700; padding: 0.34rem 0.85rem; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.seg-btn.active { background: var(--accent); color: #fff; }
+.game-search { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 0.42rem 0.9rem; font: inherit; font-size: 0.86rem; width: 180px; color: var(--text); }
+.game-search:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+
+/* poster-style game cards (taller portrait thumb) */
+.gc-thumb { aspect-ratio: 4 / 5; }
+.gc-glyph { font-size: 3.4rem; }
+.cat-shelf .game-card { width: clamp(140px, 42vw, 158px); }
+.cat-empty { color: var(--muted); font-size: 0.9rem; padding: 1rem 0.25rem; }
+
+/* bottom navigation (mobile app shell) */
+.bottomnav { display: none; }
+@media (max-width: 720px) {
+  .bottomnav {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    background: rgba(255, 255, 255, 0.97); backdrop-filter: saturate(150%) blur(12px);
+    border-top: 1px solid var(--line); justify-content: space-around;
+    padding: 0.3rem 0.2rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -4px 16px rgba(20, 60, 16, 0.08);
+  }
+  .bn-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: none; border: none; color: var(--muted); font: inherit; font-size: 0.6rem; font-weight: 700;
+    text-decoration: none; cursor: pointer; padding: 0.25rem 0;
+  }
+  .bn-ico { font-size: 1.2rem; line-height: 1; }
+  .bn-item.active { color: var(--accent); }
+  .hub-main { padding-bottom: 4.5rem; }
+  .games-tools { width: 100%; }
+  .game-search { width: 100%; flex: 1; }
+  .seg { flex: 1; }
+  .seg-btn { flex: 1; text-align: center; }
+}

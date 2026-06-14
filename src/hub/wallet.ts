@@ -75,9 +75,20 @@ export async function resumePendingCheckout(): Promise<void> {
   } catch { /* leave the balance as-is; the order book still shows the attempt */ }
 }
 
+// Points & Gold are display-only placeholders in this phase (local, default 0);
+// Phase 3 wires real earning/spending. Coins are the live wallet balance.
+function localNum(key: string): number {
+  const n = Number(localStorage.getItem(key));
+  return Number.isFinite(n) ? n : 0;
+}
 function renderChip(): void {
   if (!chip) return;
-  chip.innerHTML = `<span class="cc-icon">🪙</span><span class="cc-bal">${balanceSync().toLocaleString()}</span><span class="cc-plus">+</span>`;
+  const points = localNum('innoarcade.points.v1');
+  const gold = localNum('innoarcade.gold.v1');
+  chip.innerHTML =
+    `<span class="cc-seg cc-points">⭐ ${points.toLocaleString()}</span>` +
+    `<span class="cc-seg cc-coins">🪙 ${balanceSync().toLocaleString()}</span>` +
+    `<span class="cc-seg cc-gold">👑 ${gold.toLocaleString()}</span>`;
 }
 
 // --- store ------------------------------------------------------------------
@@ -190,12 +201,14 @@ function injectStyles(): void {
   const s = document.createElement('style');
   s.id = 'wallet-styles';
   s.textContent = `
-    .coin-chip { display:inline-flex; align-items:center; gap:.35rem; border:1px solid var(--line);
-      background:linear-gradient(180deg,#fff,#fff7e8); color:#7a5212; font:inherit; font-weight:800;
-      padding:.34rem .7rem; border-radius:999px; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.06); }
-    .coin-chip:hover { filter:brightness(1.02); }
-    .coin-chip .cc-plus { width:1.1em; height:1.1em; line-height:1.05em; text-align:center; border-radius:50%;
-      background:var(--accent); color:#fff; font-weight:900; }
+    .coin-chip { display:inline-flex; align-items:center; gap:.18rem; border:1px solid var(--line);
+      background:#fff; color:var(--text); font:inherit; font-weight:800; font-size:.8rem;
+      padding:.2rem .26rem; border-radius:999px; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+    .coin-chip:hover { filter:brightness(1.01); }
+    .cc-seg { display:inline-flex; align-items:center; gap:.18rem; padding:.16rem .44rem; border-radius:999px; white-space:nowrap; }
+    .cc-points { color:#1f5fc4; background:#eaf1fc; }
+    .cc-coins { color:#8a6310; background:#fff3d6; }
+    .cc-gold { color:#9a6b12; background:#fbeec4; }
     .coin-chip.bump { animation:coinbump .6s ease; }
     @keyframes coinbump { 30%{transform:scale(1.18);} 60%{transform:scale(.96);} }
     .wallet-modal { position:fixed; inset:0; z-index:9991; display:flex; align-items:center; justify-content:center; }

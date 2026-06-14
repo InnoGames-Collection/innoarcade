@@ -19,6 +19,7 @@ const STR = {
     errSend: "Couldn't send the code. Check the number and try again.",
     errVerify: 'Wrong or expired code.', close: 'Close',
     demoCode: 'Demo mode — your code is',
+    promo: 'Win weekly & monthly prizes',
   },
   am: {
     signIn: 'ግባ', title: 'ለመወዳደር ይግቡ', phone: 'ስልክ ቁጥር',
@@ -29,6 +30,7 @@ const STR = {
     errSend: 'ኮዱን መላክ አልተቻለም። ቁጥሩን አረጋግጠው እንደገና ይሞክሩ።',
     errVerify: 'የተሳሳተ ወይም ጊዜው ያለፈበት ኮድ።', close: 'ዝጋ',
     demoCode: 'የማሳያ ሁነታ — ኮድዎ',
+    promo: 'ሳምንታዊ እና ወርሃዊ ሽልማቶችን ያሸንፉ',
   },
 };
 const t = (k: keyof typeof STR.en): string => (STR[getLang()] ?? STR.en)[k];
@@ -60,13 +62,22 @@ function render(): void {
 
 // --- modal -----------------------------------------------------------------
 
+// A full-page sign-in surface (telecom-portal style): brand header, a back
+// control and a centred card. The same shell hosts every step of the phone→OTP
+// flow and the profile editor.
 function shell(inner: string): HTMLElement {
   document.querySelector('.auth-modal')?.remove();
   const m = document.createElement('div');
   m.className = 'auth-modal';
-  m.innerHTML = `<div class="auth-scrim"></div><div class="auth-card">${inner}</div>`;
+  m.innerHTML = `
+    <div class="auth-brand"><span class="auth-brand-icon">🕹️</span><span>InnoArcade</span></div>
+    <button class="auth-back" aria-label="${t('close')}">✕</button>
+    <div class="auth-stack">
+      <div class="auth-promo">🎁 ${t('promo')}</div>
+      <div class="auth-card">${inner}</div>
+    </div>`;
   document.body.appendChild(m);
-  m.querySelector('.auth-scrim')!.addEventListener('click', () => m.remove());
+  m.querySelector('.auth-back')!.addEventListener('click', () => m.remove());
   return m;
 }
 
@@ -109,17 +120,39 @@ function openCode(): void {
     <input class="auth-input" id="code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" />
     <p class="auth-err" id="err"></p>
     <button class="auth-primary" id="go">${t('verify')}</button>
-    <button class="auth-link" id="resend">${t('resend')}</button>`);
+    <button class="auth-link" id="resend" disabled>${t('resend')} <span id="timer"></span></button>`);
   const input = m.querySelector<HTMLInputElement>('#code')!;
   const go = m.querySelector<HTMLButtonElement>('#go')!;
+  const resend = m.querySelector<HTMLButtonElement>('#resend')!;
+  const timerEl = m.querySelector<HTMLElement>('#timer')!;
   input.focus();
   void showDemoCode(m, input);
+
+  // Resend rate-limit: a 90s countdown gates the resend button (telefun-style).
+  let left = 0;
+  let iv: ReturnType<typeof setInterval> | undefined;
+  function startCountdown(): void {
+    left = 90;
+    resend.disabled = true;
+    const tick = (): void => {
+      const ss = String(left % 60).padStart(2, '0');
+      timerEl.textContent = `(${Math.floor(left / 60)}:${ss})`;
+      if (left <= 0) { if (iv) clearInterval(iv); resend.disabled = false; timerEl.textContent = ''; }
+      left--;
+    };
+    tick();
+    iv = setInterval(tick, 1000);
+  }
+  startCountdown();
+  m.querySelector('.auth-back')!.addEventListener('click', () => { if (iv) clearInterval(iv); });
+
   go.addEventListener('click', async () => {
     const code = input.value.trim();
     if (code.length < 4) return;
     go.disabled = true; go.textContent = t('verifying');
     try {
       user = await verifyOtp(phone, code);
+      if (iv) clearInterval(iv);
       m.remove(); render();
       if (!user.name) openProfile();
     } catch {
@@ -127,8 +160,9 @@ function openCode(): void {
       go.disabled = false; go.textContent = t('verify');
     }
   });
-  m.querySelector('#resend')!.addEventListener('click', () => {
-    void requestOtp(phone).then(() => showDemoCode(m, input));
+  resend.addEventListener('click', () => {
+    if (resend.disabled) return;
+    void requestOtp(phone).then(() => { void showDemoCode(m, input); startCountdown(); });
   });
 }
 
@@ -171,11 +205,23 @@ function injectStyles(): void {
     .auth-btn { border: 1px solid var(--accent); background: var(--accent); color: #fff;
       font: inherit; font-weight: 700; font-size: 0.9rem; padding: 0.4rem 1rem; border-radius: 999px; cursor: pointer; }
     .auth-btn:hover { filter: brightness(1.05); }
-    .auth-modal { position: fixed; inset: 0; z-index: 9990; display: flex; align-items: center; justify-content: center; }
-    .auth-scrim { position: absolute; inset: 0; background: rgba(12,16,30,.5); backdrop-filter: blur(3px); }
-    .auth-card { position: relative; width: min(340px, 92vw); background: #fff; color: var(--text);
-      border-radius: 16px; padding: 22px; box-shadow: 0 20px 50px rgba(20,30,60,.3); display: flex; flex-direction: column; gap: 10px; }
-    .auth-card h3 { font-size: 1.15rem; }
+    .auth-modal { position: fixed; inset: 0; z-index: 9990; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 1.5rem;
+      background: var(--grad-hero, linear-gradient(160deg, #1d2769 0%, #11163b 100%)); }
+    .auth-brand { position: absolute; top: 1.25rem; left: 1.4rem; display: flex; align-items: center; gap: .5rem;
+      color: #fff; font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+    .auth-brand-icon { width: 1.95rem; height: 1.95rem; display: grid; place-items: center;
+      background: var(--accent); border-radius: 9px; font-size: 1rem; }
+    .auth-back { position: absolute; top: 1.1rem; right: 1.3rem; width: 2.3rem; height: 2.3rem; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); color: #fff; font-size: 1rem; cursor: pointer; }
+    .auth-back:hover { background: rgba(255,255,255,.22); }
+    .auth-stack { display: flex; flex-direction: column; gap: 14px; width: min(400px, 94vw); }
+    .auth-promo { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.32); color: #fff;
+      border-radius: 14px; padding: .7rem 1rem; text-align: center; font-weight: 800; font-size: .95rem; }
+    #timer { color: var(--muted); font-weight: 700; }
+    .auth-card { position: relative; width: 100%; background: #fff; color: var(--text);
+      border-radius: 18px; padding: 28px 26px; box-shadow: 0 24px 60px rgba(8,12,34,.45); display: flex; flex-direction: column; gap: 11px; }
+    .auth-card h3 { font-size: 1.3rem; margin-bottom: 2px; }
     .auth-card label { font-size: 0.8rem; color: var(--muted); }
     .auth-input { width: 100%; padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 1rem; }
     .auth-input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
