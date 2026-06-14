@@ -203,20 +203,13 @@ body {
 /* Horizontal category shelves (telecom-portal style): swipeable rows of cards. */
 .cat-count { font-size: 0.74rem; font-weight: 800; color: var(--muted); background: var(--line); border-radius: 999px; padding: 0.05rem 0.5rem; margin-left: 0.5rem; vertical-align: middle; }
 .cat-shelf {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  padding: 0.25rem 0.25rem 0.75rem;
-  margin: 0 -0.25rem;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
 }
-.cat-shelf::-webkit-scrollbar { height: 7px; }
-.cat-shelf::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
-.cat-shelf::-webkit-scrollbar-track { background: transparent; }
-.cat-shelf .game-card { flex: 0 0 auto; width: clamp(144px, 44vw, 172px); scroll-snap-align: start; }
+@media (min-width: 700px) {
+  .cat-shelf { grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
+}
 .game-card {
   text-decoration: none; color: inherit;
   background: var(--card); border: 1px solid var(--line);
@@ -372,7 +365,19 @@ body {
 .gc-thumb::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 36%;
   background: linear-gradient(to top, rgba(47, 124, 14, 0.45), transparent); z-index: 0; }
 .gc-glyph { font-size: 3.4rem; position: relative; z-index: 1; }
-.cat-shelf .game-card { width: clamp(140px, 42vw, 158px); }
+.cat-shelf .game-card { width: auto; }
+
+/* minimal "My dashboard" balances strip (awetar-style stat cards) */
+.mystats-section { margin-bottom: 0.25rem; }
+.mystats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
+.ms-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 0.9rem 0.6rem;
+  text-align: center; box-shadow: var(--shadow-sm); }
+.ms-ico { font-size: 1.3rem; line-height: 1; }
+.ms-val { font-size: clamp(1.2rem, 5vw, 1.6rem); font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; margin-top: 0.15rem; }
+.ms-label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.1rem; }
+.ms-coins .ms-val { color: #8a6310; }
+.ms-points .ms-val { color: var(--accent); }
+.ms-gold .ms-val { color: #9a6b12; }
 .cat-empty { color: var(--muted); font-size: 0.9rem; padding: 1rem 0.25rem; }
 
 /* settings gear + dropdown */

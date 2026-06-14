@@ -15,10 +15,10 @@ import {
   tournamentState, isPaid, isEntered, enterTournament, prizePool,
   InsufficientCoinsError, type Tournament,
 } from '../platform/tournaments';
-import { balanceSync } from '../platform/wallet';
+import { balanceSync, onWalletChange } from '../platform/wallet';
 import { SignInRequiredError } from '../platform/payments';
 import { activeDraws, myTickets, enterDraw, recentWinners, NotEnoughPointsError } from '../platform/draws';
-import { points as pointsBal } from '../platform/currency';
+import { points as pointsBal, gold as goldBal, onCurrencyChange } from '../platform/currency';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const lang = (): Lang => getLang();
@@ -50,6 +50,18 @@ function renderPromo(): void {
   dots.innerHTML = PROMOS.map((_, i) => `<span class="promo-dot${i === promoIdx ? ' on' : ''}"></span>`).join('');
 }
 function advancePromo(): void { promoIdx = (promoIdx + 1) % PROMOS.length; renderPromo(); }
+
+// --- Minimal "My dashboard" balances strip (top of the portal) --------------
+function renderMyStats(): void {
+  const host = document.querySelector('#myStatsGrid');
+  if (!host) return;
+  const card = (icon: string, val: string, label: string, cls: string): string =>
+    `<div class="ms-card ${cls}"><div class="ms-ico">${icon}</div><div class="ms-val">${val}</div><div class="ms-label">${label}</div></div>`;
+  host.innerHTML =
+    card('🪙', balanceSync().toLocaleString(), t('hub.coinsLabel'), 'ms-coins') +
+    card('⭐', pointsBal().toLocaleString(), t('hub.points'), 'ms-points') +
+    card('👑', goldBal().toLocaleString(), t('hub.gold'), 'ms-gold');
+}
 
 // --- Tournament entry economy (CTA + confirm flow) --------------------------
 
@@ -444,6 +456,7 @@ function tickCountdowns(): void {
 // --- Render all + language --------------------------------------------------
 function renderAll(): void {
   renderPromo();
+  renderMyStats();
   renderFeatured();
   renderStats();
   renderTournaments();
@@ -528,7 +541,7 @@ function mountSettings(): void {
 }
 
 // Nav active-state on scroll (top nav + mobile bottom nav).
-const sections = ['dashboard', 'tournaments', 'games', 'draws', 'winners', 'brain'];
+const sections = ['myStats', 'games', 'tournaments', 'draws', 'winners', 'dashboard', 'brain'];
 function syncNavActive(): void {
   let current = sections[0];
   for (const id of sections) {
@@ -560,10 +573,20 @@ function setupBrowse(): void {
   document.querySelector('#bnAccount')?.addEventListener('click', () => void openAccount());
 }
 
+// One-time economy reset — wipe stale cached balances so everyone starts fresh.
+if (localStorage.getItem('innoarcade.reset.v3') !== '1') {
+  ['innoarcade.points.v1', 'innoarcade.gold.v1', 'innoarcade.wallet.balance.v1',
+   'innoarcade.wallet.ledger.v1', 'innoarcade.draw.tickets.v1'].forEach((k) => localStorage.removeItem(k));
+  localStorage.setItem('innoarcade.reset.v3', '1');
+}
+
 document.documentElement.lang = getLang();
 syncLangButtons();
 injectDashboardStyles();
 renderAll();
+// Keep the top balances strip live as coins/points/gold change.
+onWalletChange(renderMyStats);
+onCurrencyChange(renderMyStats);
 setupBrowse();
 syncNavActive();
 mountSettings();

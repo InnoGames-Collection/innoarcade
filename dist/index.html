@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>" />
     <title>InnoArcade — Play & Compete</title>
-    <script type="module" crossorigin src="./assets/hub-5Yl21PAK.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/index-DUcw8145.js">
+    <script type="module" crossorigin src="./assets/hub-Bi2L6dsX.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-C8BkLz8x.js">
     <link rel="modulepreload" crossorigin href="./assets/audio-B72F-rOv.js">
     <link rel="modulepreload" crossorigin href="./assets/tournaments-DyCKfGH2.js">
     <link rel="modulepreload" crossorigin href="./assets/currency-BW70_o0L.js">
     <link rel="modulepreload" crossorigin href="./assets/backend-Bq_Er9oI.js">
     <link rel="stylesheet" crossorigin href="./assets/audio-HPgZI6Yo.css">
-    <link rel="stylesheet" crossorigin href="./assets/hub-D5PlZcZ4.css">
+    <link rel="stylesheet" crossorigin href="./assets/hub-CC82JsGb.css">
   </head>
   <body>
     <header class="topbar">
@@ -21,7 +21,7 @@
         <span class="brand-name" data-i18n="app.title">InnoArcade</span>
       </div>
       <nav class="topnav">
-        <a href="#dashboard" class="nav-link active" data-i18n="hub.dashboard">Dashboard</a>
+        <a href="#myStats" class="nav-link active" data-i18n="hub.dashboard">Dashboard</a>
         <a href="#tournaments" class="nav-link" data-i18n="hub.tournaments">Tournaments</a>
         <a href="#games" class="nav-link" data-i18n="hub.freeGames">Free games</a>
         <a href="#brain" class="nav-link" data-i18n="hub.brain">Brain &amp; Word</a>
@@ -35,26 +35,13 @@
         <div class="promo-dots" id="promoDots"></div>
       </section>
 
-      <section id="dashboard" class="featured-section">
-        <span class="section-eyebrow" data-i18n="hub.heroEyebrow">Compete &amp; win</span>
-        <h2 class="section-title" data-i18n="hub.featured">Featured tournament</h2>
-        <div id="featured"></div>
-        <div id="statsStrip" class="stats-strip" style="margin-top:1.25rem"></div>
-      </section>
-
-      <section id="me" class="dashboard-section">
-        <h2 class="section-title" data-i18n="hub.myDashboard">My dashboard</h2>
-        <div id="playerDashboard"></div>
-      </section>
-
-      <section id="tournaments" class="tournaments-section">
-        <h2 class="section-title" data-i18n="hub.tournaments">Tournaments</h2>
-        <div id="tournamentList" class="tournament-cards"></div>
+      <section id="myStats" class="mystats-section" aria-label="Your balances">
+        <div id="myStatsGrid" class="mystats-grid"></div>
       </section>
 
       <section id="games" class="games-section">
         <div class="games-head">
-          <h2 class="section-title" data-i18n="hub.freeGames">Free games</h2>
+          <h2 class="section-title">🎮 <span data-i18n="hub.available">Available games</span></h2>
           <div class="games-tools">
             <div class="seg" id="gameSeg" role="tablist">
               <button class="seg-btn active" data-filter="all" data-i18n="hub.allGames">All</button>
@@ -67,6 +54,11 @@
         <div id="gameGrid"></div>
       </section>
 
+      <section id="tournaments" class="tournaments-section">
+        <h2 class="section-title" data-i18n="hub.tournaments">Tournaments</h2>
+        <div id="tournamentList" class="tournament-cards"></div>
+      </section>
+
       <section id="draws" class="draws-section">
         <h2 class="section-title">🎁 <span data-i18n="hub.draws">Draws</span></h2>
         <p class="section-sub" data-i18n="hub.drawIntro">Spend points on tickets — more tickets, more chances.</p>
@@ -76,6 +68,13 @@
       <section id="winners" class="winners-section">
         <h2 class="section-title">🏆 <span data-i18n="hub.winners">Winners</span></h2>
         <div id="winnerList" class="winner-list"></div>
+      </section>
+
+      <section id="dashboard" class="featured-section">
+        <span class="section-eyebrow" data-i18n="hub.heroEyebrow">Compete &amp; win</span>
+        <h2 class="section-title" data-i18n="hub.featured">Featured tournament</h2>
+        <div id="featured"></div>
+        <div id="statsStrip" class="stats-strip" style="margin-top:1.25rem"></div>
       </section>
 
       <section id="brain" class="brain-section">
@@ -92,7 +91,7 @@
     </footer>
 
     <nav class="bottomnav" aria-label="Primary">
-      <a href="#dashboard" class="bn-item active"><span class="bn-ico">🏠</span><span data-i18n="nav.home">Home</span></a>
+      <a href="#myStats" class="bn-item active"><span class="bn-ico">🏠</span><span data-i18n="nav.home">Home</span></a>
       <a href="#games" class="bn-item"><span class="bn-ico">🎮</span><span data-i18n="nav.games">Games</span></a>
       <a href="#draws" class="bn-item"><span class="bn-ico">🎁</span><span data-i18n="nav.draws">Draws</span></a>
       <a href="#winners" class="bn-item"><span class="bn-ico">🏆</span><span data-i18n="nav.winners">Winners</span></a>

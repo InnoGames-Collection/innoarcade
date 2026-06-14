@@ -252,6 +252,7 @@ const en = {
   'hub.drawIntro': 'Spend points on tickets — more tickets, more chances.',
   'hub.yourTickets': 'Your tickets', 'hub.enterDraw': 'Enter', 'hub.needPoints': 'Not enough points',
   'hub.won': 'won',
+  'hub.available': 'Available games', 'hub.coinsLabel': 'Coins',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -506,6 +507,7 @@ const am: Dict = {
   'hub.drawIntro': 'ነጥቦችን በቲኬት ይጠቀሙ — ብዙ ቲኬት፣ ብዙ ዕድል።',
   'hub.yourTickets': 'የእርስዎ ቲኬቶች', 'hub.enterDraw': 'ይግቡ', 'hub.needPoints': 'በቂ ነጥብ የለም',
   'hub.won': 'አሸንፏል',
+  'hub.available': 'ያሉ ጨዋታዎች', 'hub.coinsLabel': 'ሳንቲም',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };
