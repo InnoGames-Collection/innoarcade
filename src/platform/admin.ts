@@ -11,6 +11,7 @@
 import { supabase } from './supabase';
 import { config, saveConfigLocal, economyBackendLive as serverMode, type AppConfig } from './config';
 import { myOrders, type Order } from './payments';
+import { currentUser } from './auth';
 import {
   activeTournaments, loadTournaments, tournamentState, prizePool,
   saveTournamentLocal, settleLocal, type Tournament,
@@ -41,8 +42,21 @@ export interface Metrics {
 
 // --- Role gate --------------------------------------------------------------
 
+// A designated demo-admin phone so the offline console genuinely separates
+// admins from players (any other signed-in user gets the "not authorised" gate).
+// Sign in with 0911111111 to reach the console in the demo. Setting
+// localStorage 'innoarcade.demo.role' = 'admin' also grants it locally.
+const DEMO_ADMIN_DIGITS = '911111111';
+
 export async function isAdmin(): Promise<boolean> {
-  if (!serverMode()) return true; // demo console is open offline
+  if (!serverMode()) {
+    try {
+      const u = await currentUser();
+      const digits = (u?.phone ?? '').replace(/\D/g, '');
+      if (digits.endsWith(DEMO_ADMIN_DIGITS)) return true;
+    } catch { /* fall through to the local grant */ }
+    return localStorage.getItem('innoarcade.demo.role') === 'admin';
+  }
   try {
     const sb = supabase();
     const me = (await sb.auth.getUser()).data.user?.id;

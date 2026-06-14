@@ -2,6 +2,7 @@ import '../styles/base.css';
 import './hub.css';
 import { applyTranslations, getLang, setLang, t, type Lang } from '../i18n';
 import { mountSignIn, openSignIn } from './signin';
+import { openAccount } from './account';
 import { mountWallet, openStore, needsSignInToBuy } from './wallet';
 import { onAuthChange, currentUser, signOut } from '../platform/auth';
 import { sfx } from '../engine/audio';
@@ -556,7 +557,7 @@ function setupBrowse(): void {
       renderGames();
     });
   });
-  document.querySelector('#bnAccount')?.addEventListener('click', () => openSignIn());
+  document.querySelector('#bnAccount')?.addEventListener('click', () => void openAccount());
 }
 
 document.documentElement.lang = getLang();

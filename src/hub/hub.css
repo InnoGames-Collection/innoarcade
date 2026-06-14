@@ -366,9 +366,12 @@ body {
 .game-search { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 0.42rem 0.9rem; font: inherit; font-size: 0.86rem; width: 180px; color: var(--text); }
 .game-search:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
 
-/* poster-style game cards (taller portrait thumb) */
+/* poster-style game cards (taller portrait thumb), bound to the telecom-green
+   brand with a subtle green wash at the foot of every cover. */
 .gc-thumb { aspect-ratio: 4 / 5; }
-.gc-glyph { font-size: 3.4rem; }
+.gc-thumb::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 36%;
+  background: linear-gradient(to top, rgba(47, 124, 14, 0.45), transparent); z-index: 0; }
+.gc-glyph { font-size: 3.4rem; position: relative; z-index: 1; }
 .cat-shelf .game-card { width: clamp(140px, 42vw, 158px); }
 .cat-empty { color: var(--muted); font-size: 0.9rem; padding: 1rem 0.25rem; }
 

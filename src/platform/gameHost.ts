@@ -27,6 +27,7 @@ import { SignInRequiredError } from './payments';
 import { backendReady, submitScoreRemote, leaderboardRemote } from './backend';
 import { currentUser } from './auth';
 import { profile } from '../engine/profile';
+import { earn } from './currency';
 
 export type BeginBlock = 'coins' | 'auth';
 export interface BeginResult {
@@ -103,10 +104,11 @@ export class GameHost {
   // Record a finished round. `score` is the points the round earned (0 on a
   // loss for chance games; the run score for skill games).
   finish(score: number, isWin: boolean): FinishResult {
+    // A win mints portal Points — the currency spent on draw tickets and the
+    // leaderboard — closing the play → earn → draw loop for every game.
+    if (isWin && this.winPoints > 0) earn('points', this.winPoints);
     if (!this.isTournament) {
       const isRecord = profile.recordRun(this.meta.id, score);
-      // A win mints its points into the in-game coin balance (free-play reward).
-      if (isWin && this.winPoints > 0) profile.addCoins(this.winPoints);
       return { best: profile.stats(this.meta.id).best, isRecord };
     }
     const t = this.tournament!;
