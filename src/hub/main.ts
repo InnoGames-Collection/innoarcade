@@ -3,7 +3,8 @@ import './hub.css';
 import { applyTranslations, getLang, setLang, t, type Lang } from '../i18n';
 import { mountSignIn, openSignIn } from './signin';
 import { mountWallet, openStore, needsSignInToBuy } from './wallet';
-import { onAuthChange } from '../platform/auth';
+import { onAuthChange, currentUser, signOut } from '../platform/auth';
+import { sfx } from '../engine/audio';
 import { renderDashboard, injectDashboardStyles } from './dashboard';
 import { mergedLeaderboard } from '../platform/backend';
 import { CATALOG, type GameMeta } from '../platform/catalog';
@@ -15,6 +16,8 @@ import {
 } from '../platform/tournaments';
 import { balanceSync } from '../platform/wallet';
 import { SignInRequiredError } from '../platform/payments';
+import { activeDraws, myTickets, enterDraw, recentWinners, NotEnoughPointsError } from '../platform/draws';
+import { points as pointsBal } from '../platform/currency';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const lang = (): Lang => getLang();
@@ -370,6 +373,50 @@ function renderBrain(): void {
     </a>`).join('');
 }
 
+// --- Draws / lottery --------------------------------------------------------
+function renderDraws(): void {
+  const host = document.querySelector('#drawList');
+  if (!host) return;
+  const draws = activeDraws();
+  host.innerHTML = draws.map((d) => {
+    const tickets = myTickets(d.id);
+    const afford = pointsBal() >= d.ticketCostPoints;
+    return `
+      <article class="draw-card draw-${d.period}">
+        <div class="dc-top">
+          <span class="dc-period">${escapeHtml(lang() === 'am' ? d.titleAm : d.titleEn)}</span>
+          <span class="dc-prize">${d.prizeEtb.toLocaleString()} ETB</span>
+        </div>
+        <div class="dc-count" data-ends="${d.endsAt}"></div>
+        <div class="dc-foot">
+          <span class="dc-tickets">🎟️ ${t('hub.yourTickets')}: <strong>${tickets}</strong></span>
+          <button class="btn primary dc-enter${afford ? '' : ' disabled'}" data-draw="${d.id}">${t('hub.enterDraw')} · ${d.ticketCostPoints} ⭐</button>
+        </div>
+      </article>`;
+  }).join('');
+  host.querySelectorAll<HTMLButtonElement>('.dc-enter').forEach((b) => {
+    b.addEventListener('click', () => {
+      const d = draws.find((x) => x.id === b.dataset.draw);
+      if (!d) return;
+      try { enterDraw(d); renderDraws(); }
+      catch (e) {
+        if (e instanceof NotEnoughPointsError) { b.textContent = t('hub.needPoints'); b.classList.add('disabled'); }
+      }
+    });
+  });
+}
+
+function renderWinners(): void {
+  const host = document.querySelector('#winnerList');
+  if (!host) return;
+  host.innerHTML = recentWinners().map((w) => `
+    <div class="winner-row">
+      <span class="wr-ico">🎉</span>
+      <span class="wr-phone">${escapeHtml(w.phone)}</span>
+      <span class="wr-prize">${w.prizeEtb.toLocaleString()} ETB</span>
+    </div>`).join('');
+}
+
 // --- Live countdowns --------------------------------------------------------
 const dShort = (): string => (lang() === 'am' ? 'ቀ' : 'd');
 const hShort = (): string => (lang() === 'am' ? 'ሰ' : 'h');
@@ -387,7 +434,7 @@ function tickCountdowns(): void {
   const tour = featuredTournament();
   const fc = document.querySelector('#fcCountdown');
   if (fc && tour) fc.innerHTML = `<span class="cd-label">${t('hub.endsIn')}</span> <span class="cd-val">${fmt(tour.endsAt)}</span>`;
-  document.querySelectorAll<HTMLElement>('.tc-count').forEach((el) => {
+  document.querySelectorAll<HTMLElement>('.tc-count, .dc-count').forEach((el) => {
     const end = Number(el.dataset.ends);
     el.innerHTML = `<span class="cd-label">${t('hub.endsIn')}</span> <strong>${fmt(end)}</strong>`;
   });
@@ -400,6 +447,8 @@ function renderAll(): void {
   renderStats();
   renderTournaments();
   renderGames();
+  renderDraws();
+  renderWinners();
   renderBrain();
   applyTranslations();
   const search = document.querySelector<HTMLInputElement>('#gameSearch');
@@ -418,15 +467,64 @@ async function refreshData(): Promise<void> {
   void renderDashboard();
 }
 
-const langEn = $('#langEn');
-const langAm = $('#langAm');
 function syncLangButtons(): void {
-  langEn.classList.toggle('active', lang() === 'en');
-  langAm.classList.toggle('active', lang() === 'am');
+  document.querySelectorAll<HTMLButtonElement>('.set-lang-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.lang === lang());
+  });
 }
 function pick(l: Lang): void { setLang(l); syncLangButtons(); renderAll(); }
-langEn.addEventListener('click', () => pick('en'));
-langAm.addEventListener('click', () => pick('am'));
+
+// --- Settings dropdown (gear menu) -----------------------------------------
+// Houses the language switch (so it's reachable on mobile where the top nav is
+// hidden), a sound toggle, terms/FAQ, and account actions — telefun-style.
+function mountSettings(): void {
+  const btn = document.querySelector<HTMLButtonElement>('#settingsBtn');
+  if (!btn) return;
+  const menu = document.createElement('div');
+  menu.className = 'settings-menu';
+  menu.hidden = true;
+  document.body.appendChild(menu);
+
+  const close = (): void => { menu.hidden = true; };
+  const position = (): void => {
+    const r = btn.getBoundingClientRect();
+    menu.style.top = `${r.bottom + 8}px`;
+    menu.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
+  };
+
+  async function build(): Promise<void> {
+    const user = await currentUser();
+    menu.innerHTML = `
+      <div class="sm-row sm-static">
+        <span class="sm-label">${t('set.language')}</span>
+        <span class="sm-langbtns">
+          <button class="set-lang-btn" data-lang="en">EN</button>
+          <button class="set-lang-btn" data-lang="am">አማ</button>
+        </span>
+      </div>
+      <button class="sm-row" id="smSound"><span class="sm-label">${t('set.sound')}</span><span class="sm-toggle${sfx.muted ? '' : ' on'}"></span></button>
+      <a class="sm-row" href="#" id="smTerms"><span class="sm-label">${t('set.terms')}</span><span class="sm-chev">›</span></a>
+      <a class="sm-row" href="#" id="smFaq"><span class="sm-label">${t('set.faq')}</span><span class="sm-chev">›</span></a>
+      <button class="sm-row" id="smUnsub"><span class="sm-label">${t('set.unsub')}</span></button>
+      ${user ? `<button class="sm-row danger" id="smLogout"><span class="sm-label">${t('set.logout')}</span></button>` : ''}`;
+    syncLangButtons();
+    menu.querySelectorAll<HTMLButtonElement>('.set-lang-btn').forEach((b) =>
+      b.addEventListener('click', () => { pick(b.dataset.lang as Lang); void build(); }));
+    menu.querySelector('#smSound')!.addEventListener('click', () => { sfx.toggleMute(); void build(); });
+    menu.querySelector('#smTerms')!.addEventListener('click', (e) => e.preventDefault());
+    menu.querySelector('#smFaq')!.addEventListener('click', (e) => e.preventDefault());
+    menu.querySelector('#smUnsub')!.addEventListener('click', close);
+    menu.querySelector('#smLogout')?.addEventListener('click', async () => { await signOut(); close(); });
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.hidden) { void build().then(() => { position(); menu.hidden = false; }); }
+    else close();
+  });
+  document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target as Node)) close(); });
+  window.addEventListener('resize', () => { if (!menu.hidden) position(); });
+}
 
 // Nav active-state on scroll (top nav + mobile bottom nav).
 const sections = ['dashboard', 'tournaments', 'games', 'draws', 'winners', 'brain'];
@@ -467,6 +565,7 @@ injectDashboardStyles();
 renderAll();
 setupBrowse();
 syncNavActive();
+mountSettings();
 mountSignIn();
 void mountWallet();
 void refreshData();

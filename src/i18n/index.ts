@@ -246,9 +246,12 @@ const en = {
   'hub.comingSoonW': 'Coming soon — the latest lucky winners.',
   'hub.searchGames': 'Search games…',
   'hub.points': 'Points', 'hub.gold': 'Gold',
-  'set.terms': 'Terms & conditions', 'set.faq': 'FAQ', 'set.logout': 'Log out', 'set.unsub': 'Unsubscribe',
+  'set.sound': 'Sound', 'set.terms': 'Terms & conditions', 'set.faq': 'FAQ', 'set.logout': 'Log out', 'set.unsub': 'Unsubscribe',
   'auth.promo': 'Win weekly & monthly prizes',
   'hub.noResults': 'No games match.',
+  'hub.drawIntro': 'Spend points on tickets — more tickets, more chances.',
+  'hub.yourTickets': 'Your tickets', 'hub.enterDraw': 'Enter', 'hub.needPoints': 'Not enough points',
+  'hub.won': 'won',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -497,9 +500,12 @@ const am: Dict = {
   'hub.comingSoonW': 'በቅርቡ — የቅርብ ጊዜ አሸናፊዎች።',
   'hub.searchGames': 'ጨዋታ ይፈልጉ…',
   'hub.points': 'ነጥብ', 'hub.gold': 'ወርቅ',
-  'set.terms': 'ውሎች እና ሁኔታዎች', 'set.faq': 'ተደጋጋሚ ጥያቄዎች', 'set.logout': 'ውጣ', 'set.unsub': 'ይቅር',
+  'set.sound': 'ድምፅ', 'set.terms': 'ውሎች እና ሁኔታዎች', 'set.faq': 'ተደጋጋሚ ጥያቄዎች', 'set.logout': 'ውጣ', 'set.unsub': 'ይቅር',
   'auth.promo': 'ሳምንታዊ እና ወርሃዊ ሽልማቶችን ያሸንፉ',
   'hub.noResults': 'ምንም ጨዋታ አልተገኘም።',
+  'hub.drawIntro': 'ነጥቦችን በቲኬት ይጠቀሙ — ብዙ ቲኬት፣ ብዙ ዕድል።',
+  'hub.yourTickets': 'የእርስዎ ቲኬቶች', 'hub.enterDraw': 'ይግቡ', 'hub.needPoints': 'በቂ ነጥብ የለም',
+  'hub.won': 'አሸንፏል',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };

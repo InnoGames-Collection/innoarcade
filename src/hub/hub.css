@@ -8,30 +8,31 @@
    otherwise --text/--accent can flip to the dark-theme values and render cream
    text on white. */
 html:root {
-  --bg: #e9f4df;
+  /* Ethio Telecom brand: vivid green identity + blue primary actions (telefun
+     convention). Bright green page like the telecom portals, white content cards. */
+  --bg: #74bf2e;
   --bg-2: #ffffff;
   --card: #ffffff;
-  --text: #15291a;
+  --text: #14271a;
   --muted: #5f7262;
-  --line: #d9e7cf;
-  /* brand = telecom green; primary CTAs = blue (telefun convention) */
-  --accent: #4aa520;
+  --line: #e6efdc;
+  --accent: #4f9e16;
   --accent-2: #1f74e0;
   --cta: #1f74e0;
   --good: #16a673;
   --gold: #f2b21a;
-  --brand-1: #62c12e;
-  --brand-2: #3f9e16;
-  --brand-3: #2f8c0e;
-  --grad-brand: linear-gradient(135deg, #62c12e 0%, #3f9e16 100%);
+  --brand-1: #8cd64a;
+  --brand-2: #5cb022;
+  --brand-3: #3f8f12;
+  --grad-brand: linear-gradient(135deg, #6cc52f 0%, #4f9e16 100%);
   --grad-cta: linear-gradient(135deg, #2f8fe6 0%, #1f5fc4 100%);
-  --grad-hero: radial-gradient(130% 150% at 12% 8%, #4fae21 0%, #2f8c0e 48%, #1e6207 100%);
-  --shadow-sm: 0 2px 8px rgba(27, 51, 20, 0.06);
-  --shadow-md: 0 10px 30px rgba(27, 51, 20, 0.12);
-  --shadow-lg: 0 22px 50px rgba(20, 60, 16, 0.20);
+  --grad-hero: radial-gradient(130% 150% at 12% 8%, #74c93a 0%, #3f9112 50%, #2a6e0a 100%);
+  --shadow-sm: 0 2px 8px rgba(20, 45, 14, 0.10);
+  --shadow-md: 0 10px 30px rgba(20, 45, 14, 0.16);
+  --shadow-lg: 0 22px 50px rgba(16, 50, 10, 0.26);
   --radius: 18px;
-  /* faint star pattern (telefun-style) painted on the page background */
-  --stars: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath fill='%233f9e16' fill-opacity='0.06' d='M30 12l4 9 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1zM86 60l3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1zM52 86l3 6 6 1-4 4 1 6-6-3-5 3 1-6-5-4 6-1z'/%3E%3C/svg%3E");
+  /* faint star pattern (telecom-portal style) painted over the green page */
+  --stars: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath fill='%23ffffff' fill-opacity='0.10' d='M30 12l4 9 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1zM86 60l3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1zM52 86l3 6 6 1-4 4 1 6-6-3-5 3 1-6-5-4 6-1z'/%3E%3C/svg%3E");
 }
 
 /* Primary buttons: brand gradient + white text, with a soft lift on hover. */
@@ -47,11 +48,18 @@ html:root {
 body {
   background:
     var(--stars),
-    radial-gradient(60% 45% at 100% 0%, rgba(98, 193, 46, 0.16) 0%, transparent 60%),
-    radial-gradient(50% 40% at 0% 0%, rgba(63, 158, 22, 0.14) 0%, transparent 55%),
+    radial-gradient(85% 55% at 50% -12%, rgba(255, 255, 255, 0.20) 0%, transparent 60%),
+    radial-gradient(70% 60% at 100% 105%, rgba(18, 78, 8, 0.22) 0%, transparent 60%),
     var(--bg);
+  background-attachment: fixed;
   color: var(--text);
 }
+
+/* Section headings sit directly on the green page → white for contrast. */
+.section-title { color: #ffffff; text-shadow: 0 1px 2px rgba(12, 40, 8, 0.25); }
+.section-eyebrow { color: rgba(255, 255, 255, 0.92); }
+.cat-head h3 { color: #ffffff; }
+.games-head .section-title { color: #ffffff; }
 
 /* ---- top bar ---- */
 .topbar {
@@ -321,6 +329,33 @@ body {
 .promo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: width 0.2s, background 0.2s; }
 .promo-dot.on { background: var(--accent); width: 18px; border-radius: 999px; }
 
+/* draws / lottery */
+.section-sub { color: rgba(255, 255, 255, 0.92); font-size: 0.9rem; margin: -0.5rem 0 1rem; }
+.draw-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 1rem; }
+.draw-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem 1rem 1.25rem;
+  box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.55rem; position: relative; overflow: hidden; }
+.draw-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+.draw-daily::before { background: #2f8fe6; }
+.draw-weekly::before { background: var(--accent); }
+.draw-monthly::before { background: var(--gold); }
+.dc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.dc-period { font-weight: 800; font-size: 1rem; }
+.dc-prize { font-weight: 900; color: var(--accent); font-size: 1.05rem; white-space: nowrap; }
+.dc-count { font-size: 0.82rem; color: var(--muted); }
+.dc-count strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.dc-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.15rem; }
+.dc-tickets { font-size: 0.82rem; color: var(--muted); }
+.dc-tickets strong { color: var(--text); }
+.dc-enter { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
+
+/* winners */
+.winner-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.winner-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.7rem;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.65rem 0.9rem; box-shadow: var(--shadow-sm); }
+.wr-ico { font-size: 1.05rem; }
+.wr-phone { font-weight: 700; font-variant-numeric: tabular-nums; }
+.wr-prize { font-weight: 900; color: var(--accent); }
+
 /* games toolbar — segmented filter + search */
 .games-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
 .games-head .section-title { margin-bottom: 0; }
@@ -336,6 +371,35 @@ body {
 .gc-glyph { font-size: 3.4rem; }
 .cat-shelf .game-card { width: clamp(140px, 42vw, 158px); }
 .cat-empty { color: var(--muted); font-size: 0.9rem; padding: 1rem 0.25rem; }
+
+/* settings gear + dropdown */
+.settings-btn { width: 2.2rem; height: 2.2rem; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; color: var(--muted); font-size: 1.05rem; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
+.settings-btn:hover { color: var(--text); }
+.settings-menu { position: fixed; z-index: 80; width: 232px; background: #fff; border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; display: flex; flex-direction: column; }
+.settings-menu[hidden] { display: none; }
+.sm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+  padding: 0.62rem 0.7rem; border: none; background: none; font: inherit; font-size: 0.9rem; color: var(--text);
+  text-decoration: none; border-radius: 10px; cursor: pointer; }
+.sm-row:not(.sm-static):hover { background: #f2f7ec; }
+.sm-row.danger .sm-label { color: #d64545; }
+.sm-label { font-weight: 600; }
+.sm-langbtns { display: inline-flex; gap: 4px; }
+.set-lang-btn { border: 1px solid var(--line); background: #fff; color: var(--muted); border-radius: 999px;
+  padding: 0.2rem 0.62rem; font: inherit; font-size: 0.78rem; cursor: pointer; }
+.set-lang-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.sm-toggle { width: 34px; height: 20px; border-radius: 999px; background: #cdd6c4; position: relative; transition: background 0.15s; flex-shrink: 0; }
+.sm-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.sm-toggle.on { background: var(--accent); }
+.sm-toggle.on::after { transform: translateX(14px); }
+.sm-chev { color: var(--muted); }
+
+@media (max-width: 720px) {
+  .topbar { gap: 0.5rem; padding-inline: 0.8rem; }
+  .coin-chip { font-size: 0.72rem; }
+  .cc-seg { padding: 0.14rem 0.34rem; }
+}
 
 /* bottom navigation (mobile app shell) */
 .bottomnav { display: none; }

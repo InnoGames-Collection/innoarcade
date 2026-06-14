@@ -47,7 +47,7 @@ export function mountSignIn(): void {
   if (!bar) return;
   slot = document.createElement('div');
   slot.className = 'auth-slot';
-  bar.insertBefore(slot, bar.querySelector('.lang-switch'));
+  bar.insertBefore(slot, bar.querySelector('#settingsBtn'));
   render();
   void currentUser().then((u) => { user = u; render(); });
   onAuthChange((u) => { user = u; render(); });

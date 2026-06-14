@@ -18,10 +18,7 @@
         <a href="#games" class="nav-link" data-i18n="hub.freeGames">Free games</a>
         <a href="#brain" class="nav-link" data-i18n="hub.brain">Brain &amp; Word</a>
       </nav>
-      <div class="lang-switch" role="group" aria-label="Language">
-        <button id="langEn" class="lang-btn">EN</button>
-        <button id="langAm" class="lang-btn">አማ</button>
-      </div>
+      <button id="settingsBtn" class="settings-btn" aria-label="Settings">⚙</button>
     </header>
 
     <main class="hub-main">
@@ -64,12 +61,13 @@
 
       <section id="draws" class="draws-section">
         <h2 class="section-title">🎁 <span data-i18n="hub.draws">Draws</span></h2>
-        <p class="coming-soon" data-i18n="hub.comingSoon">Coming soon — daily, weekly &amp; monthly prize draws.</p>
+        <p class="section-sub" data-i18n="hub.drawIntro">Spend points on tickets — more tickets, more chances.</p>
+        <div id="drawList" class="draw-cards"></div>
       </section>
 
       <section id="winners" class="winners-section">
         <h2 class="section-title">🏆 <span data-i18n="hub.winners">Winners</span></h2>
-        <p class="coming-soon" data-i18n="hub.comingSoonW">Coming soon — the latest lucky winners.</p>
+        <div id="winnerList" class="winner-list"></div>
       </section>
 
       <section id="brain" class="brain-section">

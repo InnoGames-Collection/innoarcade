@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>" />
     <title>InnoArcade — Play & Compete</title>
-    <script type="module" crossorigin src="./assets/hub-XaRMhvsy.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/index-DtEKC5ZX.js">
+    <script type="module" crossorigin src="./assets/hub-ijN94NVl.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-DUcw8145.js">
+    <link rel="modulepreload" crossorigin href="./assets/audio-B72F-rOv.js">
     <link rel="modulepreload" crossorigin href="./assets/tournaments-DoyEuF7n.js">
     <link rel="modulepreload" crossorigin href="./assets/backend-DdCACMGM.js">
-    <link rel="stylesheet" crossorigin href="./assets/hub-DrYW9t--.css">
-    <link rel="stylesheet" crossorigin href="./assets/base-HPgZI6Yo.css">
+    <link rel="stylesheet" crossorigin href="./assets/audio-HPgZI6Yo.css">
+    <link rel="stylesheet" crossorigin href="./assets/hub-De3kc9Gj.css">
   </head>
   <body>
     <header class="topbar">
@@ -24,10 +25,7 @@
         <a href="#games" class="nav-link" data-i18n="hub.freeGames">Free games</a>
         <a href="#brain" class="nav-link" data-i18n="hub.brain">Brain &amp; Word</a>
       </nav>
-      <div class="lang-switch" role="group" aria-label="Language">
-        <button id="langEn" class="lang-btn">EN</button>
-        <button id="langAm" class="lang-btn">አማ</button>
-      </div>
+      <button id="settingsBtn" class="settings-btn" aria-label="Settings">⚙</button>
     </header>
 
     <main class="hub-main">
@@ -70,12 +68,13 @@
 
       <section id="draws" class="draws-section">
         <h2 class="section-title">🎁 <span data-i18n="hub.draws">Draws</span></h2>
-        <p class="coming-soon" data-i18n="hub.comingSoon">Coming soon — daily, weekly &amp; monthly prize draws.</p>
+        <p class="section-sub" data-i18n="hub.drawIntro">Spend points on tickets — more tickets, more chances.</p>
+        <div id="drawList" class="draw-cards"></div>
       </section>
 
       <section id="winners" class="winners-section">
         <h2 class="section-title">🏆 <span data-i18n="hub.winners">Winners</span></h2>
-        <p class="coming-soon" data-i18n="hub.comingSoonW">Coming soon — the latest lucky winners.</p>
+        <div id="winnerList" class="winner-list"></div>
       </section>
 
       <section id="brain" class="brain-section">

@@ -7,6 +7,7 @@ import { getLang } from '../i18n';
 import { onAuthChange, currentUser } from '../platform/auth';
 import { openSignIn } from './signin';
 import { balance, balanceSync, onWalletChange } from '../platform/wallet';
+import { points, gold, onCurrencyChange } from '../platform/currency';
 import { loadConfig, coinPackages, paymentMethodsEnabled, isMaintenance, economyNeedsAuth, type CoinPackage } from '../platform/config';
 import { startCheckout, pollOrder, PAY_METHOD_LABEL, SignInRequiredError, type PayMethod } from '../platform/payments';
 
@@ -42,10 +43,11 @@ export async function mountWallet(): Promise<void> {
   if (!bar) return;
   chip = document.createElement('button');
   chip.className = 'coin-chip';
-  bar.insertBefore(chip, bar.querySelector('.lang-switch'));
+  bar.insertBefore(chip, bar.querySelector('#settingsBtn'));
   chip.addEventListener('click', openStore);
   renderChip();
   onWalletChange(renderChip);
+  onCurrencyChange(renderChip);
   // Switch wallets (guest ↔ account) on sign-in/out.
   onAuthChange(() => { void balance().then(renderChip); });
   await loadConfig();
@@ -75,20 +77,14 @@ export async function resumePendingCheckout(): Promise<void> {
   } catch { /* leave the balance as-is; the order book still shows the attempt */ }
 }
 
-// Points & Gold are display-only placeholders in this phase (local, default 0);
-// Phase 3 wires real earning/spending. Coins are the live wallet balance.
-function localNum(key: string): number {
-  const n = Number(localStorage.getItem(key));
-  return Number.isFinite(n) ? n : 0;
-}
+// The 3-tier chip: Points & Gold come from the currency module, Coins from the
+// live wallet. All three react to their respective change events.
 function renderChip(): void {
   if (!chip) return;
-  const points = localNum('innoarcade.points.v1');
-  const gold = localNum('innoarcade.gold.v1');
   chip.innerHTML =
-    `<span class="cc-seg cc-points">⭐ ${points.toLocaleString()}</span>` +
+    `<span class="cc-seg cc-points">⭐ ${points().toLocaleString()}</span>` +
     `<span class="cc-seg cc-coins">🪙 ${balanceSync().toLocaleString()}</span>` +
-    `<span class="cc-seg cc-gold">👑 ${gold.toLocaleString()}</span>`;
+    `<span class="cc-seg cc-gold">👑 ${gold().toLocaleString()}</span>`;
 }
 
 // --- store ------------------------------------------------------------------
