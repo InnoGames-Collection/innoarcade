@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>" />
+    <title>Lucky Boxes — InnoArcade</title>
+  </head>
+  <body>
+    <div id="stage">
+      <header class="topbar">
+        <a class="back-link" href="../../" data-i18n="arc.back">All games</a>
+        <span class="game-name" data-i18n="lb.title">Lucky Boxes</span>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button id="langEn" class="lang-btn">EN</button>
+          <button id="langAm" class="lang-btn">አማ</button>
+        </div>
+      </header>
+
+      <div id="lucky-box-wrapper">
+        <div class="lb-hud">
+          <div class="lb-hud-item"><span>🪙</span><div><div class="lb-hud-sub" data-i18n="arc.cost">Cost</div><div class="lb-hud-val" id="lb-hud-cost">…</div></div></div>
+          <div class="lb-hud-title">📦 <span data-i18n="lb.title">Lucky Boxes</span></div>
+          <div class="lb-hud-item r"><div style="text-align:right"><div class="lb-hud-sub" data-i18n="arc.win">Win</div><div class="lb-hud-val gold" id="lb-hud-win">…</div></div><span>⭐</span></div>
+        </div>
+
+        <div class="lb-tourney" id="lb-tourney">
+          <span class="lb-t-name" id="lb-t-name">—</span>
+          <span class="lb-t-rank"><span data-i18n="arc.yourRank">Your rank</span> <strong id="lb-rank">#—</strong></span>
+        </div>
+
+        <div class="lb-boxes-container" id="lb-boxes-container">
+          <div class="lb-box" data-index="0"><div class="lb-box-inner">📦</div><div class="lb-box-label"><span data-i18n="lb.box">Box</span> 1</div></div>
+          <div class="lb-box" data-index="1"><div class="lb-box-inner">📦</div><div class="lb-box-label"><span data-i18n="lb.box">Box</span> 2</div></div>
+          <div class="lb-box" data-index="2"><div class="lb-box-inner">📦</div><div class="lb-box-label"><span data-i18n="lb.box">Box</span> 3</div></div>
+        </div>
+        <div class="lb-message" id="lb-message"></div>
+
+        <div id="lb-gamble-container" class="lb-gamble-container">
+          <div class="lb-message lb-gamble-title" id="lb-gamble-title" data-i18n="lb.doubleOrNothing">⚡ DOUBLE OR NOTHING ⚡</div>
+          <div class="lb-boxes-container">
+            <div class="lb-gamble-chest" data-gidx="0"><div class="lb-box-inner">🔮</div><div class="lb-box-label"><span data-i18n="lb.chest">Chest</span> A</div></div>
+            <div class="lb-gamble-chest" data-gidx="1"><div class="lb-box-inner">🔮</div><div class="lb-box-label"><span data-i18n="lb.chest">Chest</span> B</div></div>
+          </div>
+          <div class="lb-gamble-actions">
+            <button class="lb-reset-btn lb-cashout" id="lb-cashout-btn" data-i18n="lb.takeWin">TAKE WIN</button>
+          </div>
+        </div>
+
+        <button class="lb-reset-btn" id="lb-reset-btn" data-i18n="arc.playAgain">PLAY AGAIN</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/games/lucky-box/main.ts"></script>
+  </body>
+</html>

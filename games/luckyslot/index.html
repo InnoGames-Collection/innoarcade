@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>" />
+    <title>Lucky Slot — InnoArcade</title>
+  </head>
+  <body>
+    <div id="stage">
+      <header class="topbar">
+        <a class="back-link" href="../../" data-i18n="arc.back">All games</a>
+        <span class="game-name" data-i18n="sl.title">Lucky Slot</span>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button id="langEn" class="lang-btn">EN</button>
+          <button id="langAm" class="lang-btn">አማ</button>
+        </div>
+      </header>
+
+      <div id="slot-game-wrapper">
+        <div class="slot-hud">
+          <div class="slot-hud-item">
+            <span class="slot-hud-icon">🪙</span>
+            <div><div class="slot-hud-sub" data-i18n="arc.cost">Cost</div><div class="slot-hud-val" id="slot-hud-cost">…</div></div>
+          </div>
+          <div class="slot-hud-title">🎰 <span data-i18n="sl.title">Lucky Slot</span></div>
+          <div class="slot-hud-item right">
+            <div style="text-align:right"><div class="slot-hud-sub" data-i18n="arc.win">Win</div><div class="slot-hud-val gold" id="slot-hud-win">…</div></div>
+            <span class="slot-hud-icon">⭐</span>
+          </div>
+        </div>
+
+        <div class="slot-tourney" id="slot-tourney">
+          <span class="slot-t-name" id="slot-t-name">—</span>
+          <span class="slot-t-rank"><span data-i18n="arc.yourRank">Your rank</span> <strong id="slot-rank">#—</strong></span>
+        </div>
+
+        <div class="slot-game-container">
+          <div class="slot-machine" id="slot-machine-body">
+            <div class="slot-reels-container">
+              <div class="slot-reel"><div class="slot-symbol-strip" id="slot-reel1"></div></div>
+              <div class="slot-reel"><div class="slot-symbol-strip" id="slot-reel2"></div></div>
+              <div class="slot-reel"><div class="slot-symbol-strip" id="slot-reel3"></div></div>
+            </div>
+            <div class="slot-controls">
+              <div class="slot-message" id="slot-message-display"></div>
+              <button class="slot-spin-btn" id="slot-spinBtn" data-i18n="sl.spinBtn">SPIN</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/games/luckyslot/main.ts"></script>
+  </body>
+</html>

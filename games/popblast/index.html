@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>" />
+    <title>Pop Blast — InnoArcade</title>
+  </head>
+  <body>
+    <div id="stage">
+      <header class="topbar">
+        <a class="back-link" href="../../" data-i18n="arc.back">All games</a>
+        <span class="game-name" data-i18n="pb.title">Pop Blast</span>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button id="langEn" class="lang-btn">EN</button>
+          <button id="langAm" class="lang-btn">አማ</button>
+        </div>
+      </header>
+
+      <div id="popblast-game-wrapper">
+        <div class="popblast-hud">
+          <div class="popblast-hud-item">
+            <span class="popblast-hud-icon">🪙</span>
+            <div><div class="popblast-hud-sub" data-i18n="arc.cost">Cost</div><div class="popblast-hud-val" id="popblast-hud-cost">…</div></div>
+          </div>
+          <div class="popblast-hud-title">💎 <span data-i18n="pb.title">Pop Blast</span></div>
+          <div class="popblast-hud-item right">
+            <div style="text-align:right"><div class="popblast-hud-sub" data-i18n="arc.win">Win</div><div class="popblast-hud-val pink" id="popblast-hud-win">…</div></div>
+            <span class="popblast-hud-icon">⭐</span>
+          </div>
+        </div>
+
+        <div class="popblast-game-container">
+          <div class="popblast-top">
+            <div class="popblast-card">
+              <h3>⭐ <span data-i18n="pb.score">SCORE</span></h3>
+              <span id="score">0</span>
+            </div>
+            <div class="popblast-card">
+              <h3>🎯 <span data-i18n="pb.moves">MOVES</span></h3>
+              <span id="moves">20</span>
+            </div>
+          </div>
+
+          <div class="board" id="board"></div>
+
+          <div class="popblast-bottom">
+            <button class="popblast-btn" id="popblast-restart" data-i18n="pb.restart">🔄 Restart</button>
+            <div class="message" data-i18n="pb.swap">Swap gems with your finger</div>
+          </div>
+        </div>
+
+        <div class="combo" id="combo" data-i18n="pb.combo">COMBO!</div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/games/popblast/main.ts"></script>
+  </body>
+</html>

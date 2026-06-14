@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌀</text></svg>" />
+    <title>Spin Wheel — InnoArcade</title>
+  </head>
+  <body>
+    <div id="stage">
+      <header class="topbar">
+        <a class="back-link" href="../../" data-i18n="arc.back">All games</a>
+        <span class="game-name" data-i18n="sw.title">Spin Wheel</span>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button id="langEn" class="lang-btn">EN</button>
+          <button id="langAm" class="lang-btn">አማ</button>
+        </div>
+      </header>
+
+      <div id="spin-wheel-wrapper">
+        <div class="sw-hud">
+          <div class="sw-hud-item"><span>🪙</span><div><div class="sw-hud-sub" data-i18n="arc.cost">Cost</div><div class="sw-hud-val" id="sw-hud-cost">…</div></div></div>
+          <div class="sw-hud-title">🌀 <span data-i18n="sw.title">Spin Wheel</span></div>
+          <div class="sw-hud-item r"><div style="text-align:right"><div class="sw-hud-sub" data-i18n="arc.win">Win</div><div class="sw-hud-val gold" id="sw-hud-win">…</div></div><span>⭐</span></div>
+        </div>
+
+        <div class="sw-tourney" id="sw-tourney">
+          <span class="sw-t-name" id="sw-t-name">—</span>
+          <span class="sw-t-rank"><span data-i18n="arc.yourRank">Your rank</span> <strong id="sw-rank">#—</strong></span>
+        </div>
+
+        <div class="sw-wheel-container">
+          <div class="sw-arrow"></div>
+          <div class="sw-3d-frame">
+            <canvas id="sw-canvas" class="sw-canvas"></canvas>
+          </div>
+          <div class="sw-center-cap"></div>
+        </div>
+        <div class="sw-message" id="sw-message"></div>
+        <button class="sw-spin-btn" id="sw-spin-btn" style="user-select:none;-webkit-user-select:none;" data-i18n="sw.holdBtn">HOLD TO SPIN</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/games/spin-wheel/main.ts"></script>
+  </body>
+</html>

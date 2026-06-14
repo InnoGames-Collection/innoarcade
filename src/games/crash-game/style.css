@@ -1,0 +1,112 @@
+/* Crash Game — ported from awetar; full canvas rocket flight kept, chrome
+   adapted to the InnoArcade shell with a compact tournament strip. */
+
+#stage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 12px 28px;
+  gap: 14px;
+}
+.topbar {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.topbar .game-name { font-weight: 800; letter-spacing: 0.3px; color: var(--text); }
+.back-link { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+.back-link:hover { color: var(--text); }
+.lang-switch { display: flex; gap: 6px; }
+.lang-btn {
+  background: transparent; border: 1px solid var(--muted); color: var(--muted);
+  border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 0.78rem; cursor: pointer;
+}
+.lang-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* --- awetar crash-game (scoped) ------------------------------------------- */
+#crash-game-wrapper {
+  --accent: #d18a04;
+  --hud-bg: rgba(255, 255, 255, 0.12);
+  --border-color: rgba(255, 255, 255, 0.2);
+  --chart-bg: rgba(0, 0, 0, 0.3);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: clamp(12px, 3vw, 20px);
+  background: linear-gradient(180deg, #2f0999 0%, #a11fab 50%, #0b6655 100%);
+  border-radius: clamp(16px, 4vw, 24px); font-family: inherit; color: #fff;
+  width: 100%; max-width: 520px; margin: 0 auto; box-sizing: border-box;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  border: 2px solid var(--border-color);
+}
+#crash-game-wrapper * { box-sizing: border-box; }
+.cg-hud {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  background: var(--hud-bg); border: 2px solid var(--border-color);
+  border-radius: 14px; padding: 10px 16px; margin-bottom: 12px; backdrop-filter: blur(10px);
+}
+.cg-hud-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.cg-hud-item.r { flex-direction: row-reverse; }
+.cg-hud-sub { font-size: 10px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
+.cg-hud-val { font-size: 12px; font-weight: 700; }
+.cg-hud-val.gold { color: #d18a04; }
+.cg-hud-title { font-size: 12px; font-weight: 800; opacity: 0.95; color: #ffffff; }
+.cg-tourney {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  font-size: 11px; opacity: 0.95; margin-bottom: 10px; padding: 0 4px; gap: 10px;
+}
+.cg-t-name { font-weight: 800; letter-spacing: 0.4px; }
+.cg-t-rank strong { color: #ffd700; }
+.cg-multiplier {
+  font-size: clamp(2.4rem, 9.5vw, 3.8rem); font-weight: 900; color: #fff;
+  margin-bottom: clamp(0.5rem, 2vw, 0.8rem);
+  font-variant-numeric: tabular-nums; transition: color 0.15s;
+  text-shadow: 0 0 20px rgba(209, 138, 4, 0.5);
+}
+.cg-chart-container {
+  width: 100%; height: clamp(180px, 50vw, 240px);
+  background: var(--chart-bg); border-radius: 18px; position: relative; overflow: hidden;
+  margin-bottom: clamp(0.8rem, 2vw, 1.2rem); border: 2px solid rgba(255, 255, 255, 0.2);
+}
+#cg-canvas { width: 100%; height: 100%; display: block; }
+.cg-message {
+  font-size: 13px; font-weight: 700; margin-bottom: clamp(0.8rem, 2vw, 1.2rem); min-height: 28px;
+  color: #ffffff; text-align: center; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.cg-btn {
+  background: linear-gradient(135deg, #d18a04 0%, #a11fab 100%); color: #fff; border: 2px solid #ffd700;
+  padding: clamp(10px, 2.5vw, 15px) clamp(36px, 9vw, 52px);
+  font-size: 13px; font-weight: 900; border-radius: 50px; cursor: pointer; transition: all 0.2s;
+  text-transform: uppercase; letter-spacing: 2px; font-family: inherit;
+  box-shadow: 0 6px 20px rgba(209, 138, 4, 0.4);
+}
+.cg-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(209, 138, 4, 0.6); }
+.cg-btn:active { transform: scale(0.97); }
+.cg-btn:disabled { background: rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.6); cursor: not-allowed; box-shadow: none; }
+.cg-btn.cashout { background: linear-gradient(135deg, #0b6655 0%, #2f0999 100%); border-color: #0b6655; }
+.cg-btn.cashout:hover:not(:disabled) { background: linear-gradient(135deg, #0b6655 0%, #0b6655 100%); }
+.cg-control-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px; padding: 6px 14px; width: 100%; justify-content: space-between; backdrop-filter: blur(10px);
+}
+.cg-control-row label { font-size: 10px; font-weight: 700; color: #ffffff; }
+.cg-control-row input {
+  background: rgba(0, 0, 0, 0.2); border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px; color: #fff; padding: 4px 10px; width: 90px; text-align: center;
+  font-weight: 700; font-family: inherit; font-size: 10px; transition: all 0.2s;
+}
+.cg-control-row input:focus { outline: none; border-color: #d18a04; }
+.cg-history-label {
+  font-size: 10px; font-weight: 800; opacity: 0.7; text-transform: uppercase;
+  letter-spacing: 1px; margin-top: 14px; margin-bottom: 6px;
+}
+.cg-history { display: flex; gap: 8px; justify-content: center; width: 100%; min-height: 26px; flex-wrap: wrap; margin-bottom: 4px; }
+.cg-badge {
+  font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 30px;
+  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.2s;
+}
+.cg-badge.high { color: #d18a04; border-color: rgba(209, 138, 4, 0.4); }
+.cg-badge.low { color: #fca5a5; border-color: rgba(252, 165, 165, 0.4); }

@@ -1,0 +1,103 @@
+/* Lucky Slot — ported from awetar; 3-reel machine kept, chrome adapted to the
+   InnoArcade shell with a compact tournament strip. */
+
+#stage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 12px 28px;
+  gap: 14px;
+}
+.topbar {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.topbar .game-name { font-weight: 800; letter-spacing: 0.3px; color: var(--text); }
+.back-link { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+.back-link:hover { color: var(--text); }
+.lang-switch { display: flex; gap: 6px; }
+.lang-btn {
+  background: transparent; border: 1px solid var(--muted); color: var(--muted);
+  border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 0.78rem; cursor: pointer;
+}
+.lang-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* --- awetar luckyslot (scoped) -------------------------------------------- */
+#slot-game-wrapper {
+  --gold: #d18a04;
+  --dark-gold: #a11fab;
+  --hud-bg: rgba(255, 255, 255, 0.12);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: clamp(12px, 3vw, 20px);
+  background: linear-gradient(180deg, #2f0999 0%, #a11fab 50%, #0b6655 100%);
+  border-radius: clamp(16px, 4vw, 24px); box-sizing: border-box; max-width: 520px; width: 100%; margin: 0 auto;
+  font-family: inherit; color: #fff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+#slot-game-wrapper * { box-sizing: border-box; }
+.slot-hud {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  background: var(--hud-bg); border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px; padding: 10px 16px; margin-bottom: 12px; backdrop-filter: blur(10px);
+}
+.slot-hud-item { display: flex; align-items: center; gap: 8px; }
+.slot-hud-icon { font-size: 12px; }
+.slot-hud-sub { font-size: 10px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
+.slot-hud-val { font-size: 12px; font-weight: 900; color: #fff; }
+.slot-hud-val.gold { color: var(--gold); }
+.slot-hud-title { font-size: 12px; font-weight: 800; opacity: 0.95; letter-spacing: 1px; }
+.slot-tourney {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  font-size: 11px; opacity: 0.95; margin-bottom: 12px; padding: 0 4px; gap: 10px;
+}
+.slot-t-name { font-weight: 800; letter-spacing: 0.4px; }
+.slot-t-rank strong { color: #ffd700; }
+.slot-game-container { display: flex; align-items: center; position: relative; width: 100%; justify-content: center; }
+.slot-machine {
+  background: #0d0020; border: clamp(3px, 1vw, 5px) solid var(--gold);
+  border-radius: clamp(16px, 4vw, 24px); padding: clamp(20px, 4vw, 28px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); width: 100%; max-width: 100%;
+}
+.slot-reels-container {
+  display: flex; justify-content: space-between;
+  background: #050010; padding: clamp(14px, 3.5vw, 20px); border-radius: clamp(10px, 3vw, 14px);
+  border: 2px solid var(--dark-gold); overflow: hidden; position: relative; height: clamp(140px, 40vw, 190px);
+}
+.slot-reels-container::after {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0) 80%, rgba(0, 0, 0, 0.85) 100%);
+  pointer-events: none;
+}
+.slot-reel {
+  width: clamp(75px, 22vw, 100px); height: clamp(110px, 34vw, 150px);
+  background: #fff; border-radius: clamp(8px, 2vw, 12px); overflow: hidden; text-align: center; position: relative;
+}
+.slot-symbol-strip { position: absolute; width: 100%; top: 0; left: 0; }
+.slot-symbol {
+  height: clamp(110px, 34vw, 150px); line-height: clamp(110px, 34vw, 150px);
+  font-size: clamp(2.8rem, 9vw, 4rem); user-select: none; color: #1a0533;
+}
+.slot-controls { margin-top: clamp(18px, 4vw, 26px); display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.slot-message { height: 32px; font-size: 13px; font-weight: 700; color: var(--gold); text-align: center; }
+.slot-spin-btn {
+  background: linear-gradient(135deg, #d18a04 0%, #a11fab 100%); color: #fff; border: none;
+  padding: clamp(14px, 3.5vw, 18px) clamp(36px, 9vw, 56px); font-size: 13px;
+  font-weight: 900; border-radius: 50px; cursor: pointer; transition: all 0.2s; width: 90%;
+  text-transform: uppercase; letter-spacing: 2px; font-family: inherit;
+  box-shadow: 0 6px 20px rgba(209, 138, 4, 0.4);
+}
+.slot-spin-btn:hover:not(:disabled) { background: #fff; border-color: #fff; color: #150529; transform: translateY(-2px); }
+.slot-spin-btn:active:not(:disabled) { transform: scale(0.97); }
+.slot-spin-btn:disabled { background: #333; border-color: #333; box-shadow: none; cursor: not-allowed; }
+.slot-win-glow { animation: slot-pulse 0.6s ease infinite alternate; }
+@keyframes slot-pulse {
+  0% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.3), 0 0 80px rgba(180, 0, 255, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.8); }
+  100% { box-shadow: 0 0 60px rgba(255, 215, 0, 0.7), 0 0 100px rgba(255, 0, 127, 0.5), inset 0 0 30px rgba(0, 0, 0, 0.8); }
+}
+.slot-blur { filter: blur(4px); }
