@@ -115,3 +115,56 @@
   40% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
   100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
 }
+
+/* ===================== Candy Blast splash (scoped) ===================== */
+/* Poster-art background with live, translatable controls overlaid: a tag chip,
+   a how-to-play icon and a Play button. Background image is set from JS
+   (../../candy-blast.png); this candy gradient is the graceful fallback. */
+.cb-splash {
+  position: fixed; inset: 0; z-index: 9000;
+  background:
+    linear-gradient(160deg, #ff7eb3 0%, #9b5cff 45%, #4ea8ff 100%);
+  background-size: cover; background-position: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+}
+.cb-splash.hidden { display: none; }
+.cb-tag {
+  position: absolute; top: 1rem; left: 1rem;
+  font-weight: 900; font-size: 0.85rem; letter-spacing: 0.06em; color: #7a2db0;
+  background: linear-gradient(180deg, #fff 0%, #ffe9fb 100%);
+  border: 2px solid #ffd34d; border-radius: 10px; padding: 0.3rem 0.8rem;
+  box-shadow: 0 4px 12px rgba(120, 20, 120, 0.35);
+}
+.cb-info {
+  position: absolute; top: 1rem; right: 1rem; width: 2.4rem; height: 2.4rem;
+  border-radius: 999px; border: 2px solid #ffd34d; cursor: pointer;
+  background: rgba(255, 255, 255, 0.92); font-size: 1.15rem; line-height: 1;
+  box-shadow: 0 4px 12px rgba(120, 20, 120, 0.35);
+}
+.cb-close.gp-close {
+  position: absolute; top: 1rem; right: 3.8rem;
+  background: rgba(255, 255, 255, 0.92); border-color: #ffd34d; color: #7a2db0;
+}
+.cb-bottom { width: 100%; display: flex; justify-content: center;
+  padding: 0 1.2rem calc(1.6rem + env(safe-area-inset-bottom)); }
+.cb-play {
+  min-width: 60%; padding: 0.95rem 2rem; cursor: pointer;
+  font-weight: 900; font-size: 1.25rem; letter-spacing: 0.02em; color: #fff;
+  border: 3px solid #fff; border-radius: 999px;
+  background: linear-gradient(180deg, #ff5fa2 0%, #c43cff 100%);
+  box-shadow: 0 10px 28px rgba(150, 20, 120, 0.5), inset 0 2px 0 rgba(255,255,255,0.4);
+  text-shadow: 0 2px 4px rgba(120, 10, 90, 0.5);
+}
+.cb-play:hover { filter: brightness(1.06); }
+.cb-play:active { transform: translateY(1px); }
+/* how-to-play panel */
+.cb-guide { position: absolute; inset: 0; display: grid; place-items: center;
+  background: rgba(40, 6, 50, 0.55); backdrop-filter: blur(3px); padding: 1.4rem; }
+.cb-guide[hidden] { display: none; }
+.cb-guide-card {
+  width: min(380px, 92vw); background: #fff; color: #3a1144; border-radius: 18px;
+  padding: 1.4rem 1.3rem; text-align: center; box-shadow: 0 24px 60px rgba(60, 6, 60, 0.5);
+  display: flex; flex-direction: column; gap: 0.7rem; border: 3px solid #ffd34d;
+}
+.cb-guide-card h3 { font-size: 1.3rem; }
+.cb-guide-card p { font-size: 0.97rem; line-height: 1.55; color: #5a3a66; margin: 0 0 0.3rem; }

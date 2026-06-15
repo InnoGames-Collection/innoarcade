@@ -226,12 +226,14 @@ const en = {
   'sl.tryAgain': '💫 Try again!',
   'sl.spinBtn': 'Spin',
   // Pop Blast (ported · free)
-  'pb.title': 'Pop Blast',
+  'pb.title': 'Candy Blast',
   'pb.score': 'Score',
   'pb.moves': 'Moves',
   'pb.restart': '🔄 Restart',
   'pb.swap': 'Swap gems with your finger',
   'pb.combo': 'COMBO!',
+  'pb.tag': 'PUZZLE',
+  'pb.how': 'Swap two neighbouring candies to line up 3 or more of the same colour. Each match clears them and scores points. Make as many matches as you can before your moves run out!',
   // Crash Game (ported · tournament)
   'cg.title': 'Crash Game',
   'cg.maxWin': 'Max win',
@@ -486,12 +488,14 @@ const am: Dict = {
   'sl.tryAgain': '💫 እንደገና ይሞክሩ!',
   'sl.spinBtn': 'አሽከርክር',
   // Pop Blast (ported · free)
-  'pb.title': 'ፖፕ ብላስት',
+  'pb.title': 'ካንዲ ብላስት',
   'pb.score': 'ነጥብ',
   'pb.moves': 'እንቅስቃሴ',
   'pb.restart': '🔄 እንደገና',
   'pb.swap': 'በጣትዎ ዕንቁዎችን ይቀያይሩ',
   'pb.combo': 'ኮምቦ!',
+  'pb.tag': 'እንቆቅልሽ',
+  'pb.how': 'ተመሳሳይ ቀለም ያላቸውን 3 ወይም ከዚያ በላይ ለማሰለፍ ሁለት ጎረቤት ከረሜላዎችን ይቀያይሩ። እያንዳንዱ ግጥሚያ ነጥብ ይሰጣል። እንቅስቃሴዎ ከማለቁ በፊት በተቻለ መጠን ብዙ ያዛምዱ!',
   // Crash Game (ported · tournament)
   'cg.title': 'ክራሽ ጨዋታ',
   'cg.maxWin': 'ከፍተኛ ሽልማት',

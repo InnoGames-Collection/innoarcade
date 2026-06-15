@@ -304,7 +304,7 @@ const category = (g: GameMeta): string => genre(g).split('·')[0].trim();
 // Short "how to play" guide per game (EN/AM). Surfaced from an ℹ️ button on each
 // card. Falls back to a generic line for any game without a bespoke entry.
 const HOWTO: Record<string, { en: string; am: string }> = {
-  'popblast': { en: 'Tap groups of 2+ matching gems to pop them. Bigger groups score more. Clear as many as you can before moves run out.', am: 'ተመሳሳይ ቀለም ያላቸውን 2+ ዕንቁዎች ነክተው ያፈንዱ። ትልቅ ቡድን ብዙ ነጥብ ይሰጣል።' },
+  'popblast': { en: 'Swap two neighbouring candies to line up 3+ of the same colour. Each match clears them and scores. Match as many as you can before moves run out.', am: 'ተመሳሳይ ቀለም ያላቸውን 3+ ለማሰለፍ ሁለት ጎረቤት ከረሜላዎችን ይቀያይሩ። እያንዳንዱ ግጥሚያ ነጥብ ይሰጣል።' },
   'luckyslot': { en: 'Tap Spin and line up matching symbols across the reels to win. Each spin uses your entry; matches pay out points.', am: 'ስፒን ይንኩ፤ ተመሳሳይ ምልክቶችን ሲያሰልፉ ያሸንፋሉ።' },
   'memory-match': { en: 'Flip two cards at a time to find matching pairs. Match every pair using as few moves as possible.', am: 'ሁለት ካርዶችን ገልብጠው ተመሳሳይ ጥንዶችን ያግኙ። ሁሉንም በትንሹ እንቅስቃሴ ያዛምዱ።' },
   'merge-2048': { en: 'Swipe to slide tiles; equal numbers merge and double. Keep merging to reach the 2048 tile.', am: 'ሰቆችን ያንሸራትቱ፤ እኩል ቁጥሮች ሲገናኙ ይዋሃዳሉ። 2048 ለመድረስ ይቀጥሉ።' },

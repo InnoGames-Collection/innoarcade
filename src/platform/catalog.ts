@@ -198,9 +198,9 @@ export const CATALOG: GameMeta[] = [
   {
     id: 'popblast',
     route: 'games/popblast/',
-    nameEn: 'Pop Blast', nameAm: 'ፖፕ ብላስት',
+    nameEn: 'Candy Blast', nameAm: 'ካንዲ ብላስት',
     genreEn: 'Match-3 · Casual', genreAm: 'ሦስት-አዛምድ · ቀላል',
-    mode: 'free', icon: '💎', accent: '#a11fab', thumb: ['#2f0999', '#0b6655'],
+    mode: 'free', icon: '🍬', accent: '#e85b9c', thumb: ['#8c2b5c', '#2e0c1e'],
     scoreEn: 'Score', scoreAm: 'ነጥብ',
     play: { winPoints: 150, winRate: 50 },
   },
