@@ -28,6 +28,7 @@ import { backendReady, submitScoreRemote, leaderboardRemote } from './backend';
 import { currentUser } from './auth';
 import { profile } from '../engine/profile';
 import { earn } from './currency';
+import { isTestMode } from './testMode';
 
 export type BeginBlock = 'coins' | 'auth';
 export interface BeginResult {
@@ -52,8 +53,8 @@ export class GameHost {
   readonly mode: GameMode;
   /** Points a win awards (score units). */
   readonly winPoints: number;
-  /** Base win chance 0–100 — for chance games to consult; skill games ignore it. */
-  readonly winRate: number;
+  /** Configured base win chance 0–100; see `winRate` for the effective value. */
+  private readonly baseWinRate: number;
   /** The monthly tournament backing this game, when in tournament mode. */
   readonly tournament?: Tournament;
 
@@ -63,10 +64,16 @@ export class GameHost {
     this.meta = meta;
     this.mode = meta.mode;
     this.winPoints = meta.play?.winPoints ?? DEFAULT_PLAY.winPoints;
-    this.winRate = meta.play?.winRate ?? DEFAULT_PLAY.winRate;
+    this.baseWinRate = meta.play?.winRate ?? DEFAULT_PLAY.winRate;
     if (meta.mode === 'tournament') {
       this.tournament = getTournament(`${gameId}-monthly`);
     }
+  }
+
+  /** Effective base win chance 0–100 for chance games. Test mode forces a win so
+   *  the catalog can be played through; otherwise the catalog-configured rate. */
+  get winRate(): number {
+    return isTestMode() ? 100 : this.baseWinRate;
   }
 
   /** True when this game runs a competitive leaderboard. */
@@ -89,21 +96,24 @@ export class GameHost {
   // play in the same window is free because they already paid in.
   async begin(): Promise<BeginResult> {
     if (!this.isTournament) return { ok: true };
+    // Test mode waives the entry fee so every paid game stays reachable for QA.
+    if (isTestMode()) return { ok: true };
     const t = this.tournament!;
     if (isEntered(t.id)) return { ok: true };
-    // Best-effort paid entry: try to join the tournament so the round counts
-    // toward the prize, but NEVER block play if the player isn't signed in or
-    // is short on coins — the game is always playable; only the competitive
-    // entry is gated. (Score submission below is local-first regardless.)
+    // Paid entry: join the tournament so the round counts toward the prize. A
+    // missing account or an empty wallet is a real, recoverable state — report
+    // it (`reason`) so the game can prompt the player to sign in / top up rather
+    // than silently dropping them out of the competition.
     try {
       await enterTournament(t.id);
+      return { ok: true };
     } catch (e) {
-      if (!(e instanceof InsufficientCoinsError) && !(e instanceof SignInRequiredError)) {
-        // Unexpected error — swallow it so play still proceeds.
-        console.warn('tournament entry skipped:', e);
-      }
+      if (e instanceof InsufficientCoinsError) return { ok: false, reason: 'coins' };
+      if (e instanceof SignInRequiredError) return { ok: false, reason: 'auth' };
+      // Unexpected error — don't block play over an infrastructure hiccup.
+      console.warn('tournament entry skipped:', e);
+      return { ok: true };
     }
-    return { ok: true };
   }
 
   // Record a finished round. `score` is the points the round earned (0 on a

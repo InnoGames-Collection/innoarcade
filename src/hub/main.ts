@@ -18,7 +18,8 @@ import {
 import { balanceSync, onWalletChange } from '../platform/wallet';
 import { SignInRequiredError } from '../platform/payments';
 import { activeDraws, myTickets, enterDraw, recentWinners, NotEnoughPointsError } from '../platform/draws';
-import { points as pointsBal, gold as goldBal, onCurrencyChange } from '../platform/currency';
+import { points as pointsBal, gold as goldBal, onCurrencyChange, earn } from '../platform/currency';
+import { isTestMode, setTestMode } from '../platform/testMode';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const lang = (): Lang => getLang();
@@ -315,7 +316,7 @@ function catLabel(key: string): string {
 function gameCard(g: GameMeta): string {
   return `
     <a class="game-card" href="${g.route}">
-      <div class="gc-thumb" style="${thumbStyle(g)}">
+      <div class="gc-thumb">
         <span class="gc-glyph">${g.icon}</span>
         ${g.mode === 'tournament' ? `<span class="gc-tag">🏆 ${t('hub.tournament')}</span>` : ''}
       </div>
@@ -379,7 +380,7 @@ function renderBrain(): void {
   const host = $('#brainGrid');
   host.innerHTML = LEXIQUEST.map((g) => `
     <a class="game-card" href="../lexiquest/#/g/${g.id}">
-      <div class="gc-thumb" style="background:linear-gradient(145deg, ${g.thumb[0]}, ${g.thumb[1]});">
+      <div class="gc-thumb">
         <span class="gc-glyph">${g.icon}</span>
       </div>
       <div class="gc-body"><h4>${escapeHtml(lang() === 'am' ? g.nameAm : g.nameEn)}</h4></div>
@@ -517,6 +518,7 @@ function mountSettings(): void {
         </span>
       </div>
       <button class="sm-row" id="smSound"><span class="sm-label">${t('set.sound')}</span><span class="sm-toggle${sfx.muted ? '' : ' on'}"></span></button>
+      <button class="sm-row" id="smTest"><span class="sm-label">🧪 ${t('set.testMode')}</span><span class="sm-toggle${isTestMode() ? ' on' : ''}"></span></button>
       <a class="sm-row" href="#" id="smTerms"><span class="sm-label">${t('set.terms')}</span><span class="sm-chev">›</span></a>
       <a class="sm-row" href="#" id="smFaq"><span class="sm-label">${t('set.faq')}</span><span class="sm-chev">›</span></a>
       <button class="sm-row" id="smUnsub"><span class="sm-label">${t('set.unsub')}</span></button>
@@ -525,6 +527,16 @@ function mountSettings(): void {
     menu.querySelectorAll<HTMLButtonElement>('.set-lang-btn').forEach((b) =>
       b.addEventListener('click', () => { pick(b.dataset.lang as Lang); void build(); }));
     menu.querySelector('#smSound')!.addEventListener('click', () => { sfx.toggleMute(); void build(); });
+    menu.querySelector('#smTest')!.addEventListener('click', () => {
+      const on = !isTestMode();
+      setTestMode(on);
+      // Enabling test mode tops up the local play currencies so the gold/points
+      // flows (spins, draws) are exercisable too — chance wins and free entry
+      // are handled live by GameHost reading isTestMode().
+      if (on) { earn('points', 100_000); earn('gold', 1_000); }
+      void build();
+      renderAll();
+    });
     menu.querySelector('#smTerms')!.addEventListener('click', (e) => e.preventDefault());
     menu.querySelector('#smFaq')!.addEventListener('click', (e) => e.preventDefault());
     menu.querySelector('#smUnsub')!.addEventListener('click', close);
