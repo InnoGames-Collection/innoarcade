@@ -21,6 +21,9 @@ export interface GameMeta {
   accent: string;
   /** Two-stop gradient for the thumbnail background. */
   thumb: [string, string];
+  /** Optional cover image for the catalog card (path relative to the hub root,
+   *  e.g. a file in /public). When set it replaces the emoji glyph on the card. */
+  cover?: string;
   /** What the score represents, for the HUD/leaderboard ("Score", "Tiles"…). */
   scoreEn: string;
   scoreAm: string;
@@ -201,6 +204,7 @@ export const CATALOG: GameMeta[] = [
     nameEn: 'Candy Blast', nameAm: 'ካንዲ ብላስት',
     genreEn: 'Match-3 · Casual', genreAm: 'ሦስት-አዛምድ · ቀላል',
     mode: 'free', icon: '🍬', accent: '#e85b9c', thumb: ['#8c2b5c', '#2e0c1e'],
+    cover: 'candy_blast.png',
     scoreEn: 'Score', scoreAm: 'ነጥብ',
     play: { winPoints: 150, winRate: 50 },
   },

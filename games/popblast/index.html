@@ -7,23 +7,6 @@
     <title>Candy Blast — GoPlay</title>
   </head>
   <body>
-    <!-- Candy Blast splash: poster-art background with live tag / how-to / play. -->
-    <div id="cb-splash" class="cb-splash">
-      <span class="cb-tag" data-i18n="pb.tag">PUZZLE</span>
-      <button class="cb-info" id="cb-info" type="button" aria-label="How to play">ℹ️</button>
-      <button class="gp-close cb-close" type="button" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
-      <div class="cb-bottom">
-        <button class="cb-play" id="cb-play" type="button">▶ <span data-i18n="hub.play">Play</span></button>
-      </div>
-      <div class="cb-guide" id="cb-guide" hidden>
-        <div class="cb-guide-card">
-          <h3>🍬 <span data-i18n="hub.howToPlay">How to play</span></h3>
-          <p data-i18n="pb.how">Match candies.</p>
-          <button class="cb-play" id="cb-guide-close" type="button"><span data-i18n="hub.cancel">Close</span></button>
-        </div>
-      </div>
-    </div>
-
     <div id="stage">
       <header class="topbar">
         <button type="button" class="gp-close" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>

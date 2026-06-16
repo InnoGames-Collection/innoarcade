@@ -343,8 +343,10 @@ function gameCard(g: GameMeta): string {
     : `<span class="gc-tag free">${t('arc.free')}</span>`;
   return `
     <a class="game-card" href="${g.route}">
-      <div class="gc-thumb">
-        <span class="gc-glyph">${g.icon}</span>
+      <div class="gc-thumb${g.cover ? ' gc-thumb-cover' : ''}">
+        ${g.cover
+          ? `<img class="gc-cover" src="${g.cover}" alt="" loading="lazy" />`
+          : `<span class="gc-glyph">${g.icon}</span>`}
         ${modeTag}
         <button class="gc-info" data-howto="${g.id}" aria-label="${t('hub.howToPlay')}">ℹ️</button>
       </div>

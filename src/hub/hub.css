@@ -511,3 +511,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .sg-card h2 { font-size: 1.4rem; margin: 0.2rem 0 0; }
 .sg-card p { color: var(--muted); font-size: 0.92rem; line-height: 1.5; margin: 0 0 0.4rem; }
 .sg-card .btn.primary { padding: 0.8rem; font-size: 1.02rem; }
+
+/* Per-game cover image on a catalog card (replaces the emoji glyph). Fills the
+   same square slot; tag / play / how-to chrome stay on top. Other cards keep the
+   light-green glyph look — this only applies to cards with a `cover`. */
+.gc-thumb-cover { background: none; padding: 0; }
+.gc-thumb-cover .gc-cover { width: 100%; height: 100%; object-fit: cover; display: block; }

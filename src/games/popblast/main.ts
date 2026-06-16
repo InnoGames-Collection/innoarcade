@@ -247,28 +247,8 @@ function pick(lang: Lang): void {
 langEn.addEventListener('click', () => pick('en'));
 langAm.addEventListener('click', () => pick('am'));
 
-// --- Candy Blast splash: tag + how-to + Play, over the poster art -----------
-const splash = $('#cb-splash');
-// Poster art lives in /public (drop the supplied image at public/candy-blast.png).
-// Set from JS so a missing file degrades to the CSS candy gradient (no build break).
-const cover = new Image();
-cover.onload = () => { splash.style.backgroundImage = "url('../../candy-blast.png')"; };
-cover.src = '../../candy-blast.png';
-
-let started = false;
-function startGame(): void {
-  if (started) return;
-  started = true;
-  splash.classList.add('hidden');
-  void host.begin();      // free game: passes through; also opens a server round
-  createBoard();
-}
-$('#cb-play').addEventListener('click', startGame);
-const guide = $('#cb-guide');
-$('#cb-info').addEventListener('click', () => { guide.hidden = false; });
-$('#cb-guide-close').addEventListener('click', () => { guide.hidden = true; });
-
 document.documentElement.lang = getLang();
 applyTranslations();
 syncLangButtons();
 setHUD();
+createBoard();
