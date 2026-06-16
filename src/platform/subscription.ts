@@ -2,11 +2,12 @@
 // purchases. Players subscribe with airtime or TeleBirr to a Daily / Weekly /
 // Monthly plan; first-time subscribers get a 1-day free trial.
 //
-// Local-first, mirroring the coin wallet: the active subscription lives in
-// localStorage and `subscribeLocal` performs the activation a real
-// payment/webhook would. The signatures stay stable when the real
-// airtime/TeleBirr Edge Function drops in behind them.
+// 100% server-authoritative: the active subscription lives in the `subscriptions`
+// table and is created/cancelled through the `subscribe` Edge Function (which
+// computes the expiry and enforces the one-time trial). The client keeps an
+// in-memory cache (NO localStorage) hydrated by loadSubscription().
 
+import { isConfigured, supabase } from './supabase';
 import { type PayMethod } from './payments';
 
 export type SubPeriod = 'daily' | 'weekly' | 'monthly';
@@ -33,20 +34,15 @@ export interface Subscription {
   trial: boolean;
 }
 
-const KEY = 'innoarcade.subscription.v1';
-const TRIAL_USED = 'innoarcade.trial.used.v1';
+// In-memory cache only — hydrated by loadSubscription() from the server.
+let cache: Subscription | null = null;
+let trialUsed = false;
 const listeners = new Set<() => void>();
 const emit = (): void => { for (const fn of listeners) fn(); };
 
-function read(): Subscription | null {
-  try { return JSON.parse(localStorage.getItem(KEY) || 'null') as Subscription | null; }
-  catch { return null; }
-}
-
-/** The active subscription, or null if none / expired. */
+/** The active subscription from the last hydrate, or null if none / expired. */
 export function currentSub(): Subscription | null {
-  const s = read();
-  return s && s.expiresAt > Date.now() ? s : null;
+  return cache && cache.expiresAt > Date.now() ? cache : null;
 }
 
 export function isSubscribed(): boolean {
@@ -54,29 +50,65 @@ export function isSubscribed(): boolean {
 }
 
 export function trialAvailable(): boolean {
-  return localStorage.getItem(TRIAL_USED) !== '1';
+  return !trialUsed;
 }
 
 export function planByPeriod(p: SubPeriod): SubPlan {
   return SUB_PLANS.find((x) => x.period === p)!;
 }
 
-// Activate a plan. First-time subscribers get a +1 free trial day. Real
-// airtime/TeleBirr goes through the same hosted/Edge path the coin store uses.
-export function subscribeLocal(period: SubPeriod, method: PayMethod): Subscription {
-  const plan = planByPeriod(period);
-  const trial = trialAvailable();
-  const now = Date.now();
-  const days = plan.days + (trial ? 1 : 0);
-  const sub: Subscription = { period, method, startedAt: now, expiresAt: now + days * 864e5, trial };
-  localStorage.setItem(KEY, JSON.stringify(sub));
-  if (trial) localStorage.setItem(TRIAL_USED, '1');
-  emit();
-  return sub;
+function mapRow(r: Record<string, unknown>): Subscription {
+  return {
+    period: r.period as SubPeriod,
+    method: r.method as PayMethod,
+    startedAt: new Date(r.started_at as string).getTime(),
+    expiresAt: new Date(r.expires_at as string).getTime(),
+    trial: Boolean(r.trial),
+  };
 }
 
-export function cancelSub(): void {
-  localStorage.removeItem(KEY);
+// Hydrate the cache: the player's latest subscription and whether they have ever
+// used the free trial. Call on load and after auth changes.
+export async function loadSubscription(): Promise<Subscription | null> {
+  if (!isConfigured()) { cache = null; trialUsed = false; emit(); return null; }
+  try {
+    const sb = supabase();
+    const me = (await sb.auth.getUser()).data.user?.id;
+    if (!me) { cache = null; trialUsed = false; emit(); return null; }
+    const { data } = await sb
+      .from('subscriptions')
+      .select('period, method, started_at, expires_at, trial')
+      .eq('user_id', me)
+      .order('expires_at', { ascending: false })
+      .limit(1);
+    const rows = data ?? [];
+    cache = rows.length ? mapRow(rows[0]) : null;
+    // The trial is one-time: used if any past subscription claimed it.
+    const { data: trialRows } = await sb
+      .from('subscriptions').select('id').eq('user_id', me).eq('trial', true).limit(1);
+    trialUsed = (trialRows ?? []).length > 0;
+  } catch { /* keep last cache */ }
+  emit();
+  return currentSub();
+}
+
+// Activate a plan via the server (computes expiry + applies the one-time trial).
+export async function subscribe(period: SubPeriod, method: PayMethod): Promise<Subscription> {
+  const { data, error } = await supabase().functions.invoke('subscribe', {
+    body: { period, method },
+  });
+  if (error) throw error;
+  cache = mapRow(data.subscription as Record<string, unknown>);
+  if (cache.trial) trialUsed = true;
+  emit();
+  return cache;
+}
+
+// Cancel the active subscription (server marks it expired).
+export async function cancelSub(): Promise<void> {
+  const { error } = await supabase().functions.invoke('subscribe', { body: { cancel: true } });
+  if (error) throw error;
+  cache = null;
   emit();
 }
 

@@ -2,19 +2,15 @@
 //
 // Every read is a plain query; every WRITE is funnelled through the
 // `admin-action` Edge Function, which re-checks is_admin() server-side before
-// touching anything (the client never trusts its own role claim). Offline, the
-// console runs against the same local stores the player app uses, with a
-// deterministic synthesized player base + KPI baseline so the dashboards look
-// like a live operation in the demo — the same "stable simulated field" trick
-// tournaments.ts uses for leaderboards.
+// touching anything (the client never trusts its own role claim). The console is
+// 100% server-backed — there is no offline/demo data path.
 
-import { supabase } from './supabase';
-import { config, saveConfigLocal, economyBackendLive as serverMode, type AppConfig } from './config';
-import { myOrders, type Order } from './payments';
-import { currentUser } from './auth';
+import { supabase, isConfigured } from './supabase';
+import { patchConfigCache, type AppConfig } from './config';
+import { type Order } from './payments';
 import {
   activeTournaments, loadTournaments, tournamentState, prizePool,
-  saveTournamentLocal, settleLocal, type Tournament,
+  type Tournament,
 } from './tournaments';
 
 export type Role = 'player' | 'admin';
@@ -42,21 +38,8 @@ export interface Metrics {
 
 // --- Role gate --------------------------------------------------------------
 
-// A designated demo-admin phone so the offline console genuinely separates
-// admins from players (any other signed-in user gets the "not authorised" gate).
-// Sign in with 0911111111 to reach the console in the demo. Setting
-// localStorage 'innoarcade.demo.role' = 'admin' also grants it locally.
-const DEMO_ADMIN_DIGITS = '911111111';
-
 export async function isAdmin(): Promise<boolean> {
-  if (!serverMode()) {
-    try {
-      const u = await currentUser();
-      const digits = (u?.phone ?? '').replace(/\D/g, '');
-      if (digits.endsWith(DEMO_ADMIN_DIGITS)) return true;
-    } catch { /* fall through to the local grant */ }
-    return localStorage.getItem('innoarcade.demo.role') === 'admin';
-  }
+  if (!isConfigured()) return false;
   try {
     const sb = supabase();
     const me = (await sb.auth.getUser()).data.user?.id;
@@ -64,43 +47,6 @@ export async function isAdmin(): Promise<boolean> {
     const { data } = await sb.from('profiles').select('role').eq('id', me).maybeSingle();
     return data?.role === 'admin';
   } catch { return false; }
-}
-
-// --- Synthetic offline data (deterministic) ---------------------------------
-
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const NAMES = [
-  'Abeni', 'Dawit', 'Sara', 'Yonas', 'Helen', 'Bereket', 'Marta', 'Kalkidan',
-  'Nahom', 'Selam', 'Tewodros', 'Ruth', 'Eyob', 'Hanna', 'Robel', 'Mimi',
-  'Liya', 'Samuel', 'Meron', 'Henok', 'Feven', 'Biruk', 'Tigist', 'Amanuel',
-];
-
-const SYNTH_PLAYERS = 40; // the synthesized roster shown offline
-
-function syntheticPlayers(): AdminPlayer[] {
-  const rng = mulberry32(0xA17ADE);
-  const out: AdminPlayer[] = [];
-  for (let i = 0; i < SYNTH_PLAYERS; i++) {
-    const name = NAMES[i % NAMES.length] + (i >= NAMES.length ? String(i) : '');
-    out.push({
-      id: `u_${i}`,
-      name,
-      phone: '+2519' + Math.floor(10_000_000 + rng() * 89_999_999),
-      coins: Math.round(rng() * 1500),
-      role: 'player',
-      createdAt: Date.now() - Math.floor(rng() * 90) * 864e5,
-    });
-  }
-  return out;
 }
 
 // --- Metrics ----------------------------------------------------------------
@@ -111,27 +57,7 @@ export async function metrics(): Promise<Metrics> {
   const live = tours.filter((t) => tournamentState(t) === 'live').length;
   const pending = tours.filter((t) => tournamentState(t) === 'ended').length;
 
-  if (!serverMode()) {
-    const orders = await myOrders(100);
-    const paid = orders.filter((o) => o.status === 'paid');
-    // Real local activity + a believable baseline so the demo looks operational.
-    const baseRevenue = 84_500;
-    const revenueEtb = baseRevenue + paid.reduce((s, o) => s + o.amountEtb, 0);
-    const coinsSold = 168_000 + paid.reduce((s, o) => s + o.coins, 0);
-    const rng = mulberry32(0xFEED01);
-    const series = Array.from({ length: 7 }, () => Math.round(8_000 + rng() * 9_000));
-    return {
-      players: SYNTH_PLAYERS + 1,
-      coinsSold,
-      revenueEtb,
-      ggr: Math.round(revenueEtb * 0.12),
-      liveTournaments: live,
-      pendingPayouts: pending,
-      revenueSeries: series,
-    };
-  }
-
-  // Online: aggregate from the tables (best-effort; falls back to partials).
+  // Aggregate from the tables (best-effort; falls back to partials).
   const sb = supabase();
   const [{ count: players }, ordersRes] = await Promise.all([
     sb.from('profiles').select('id', { count: 'exact', head: true }),
@@ -176,12 +102,10 @@ export async function listTournaments(): Promise<AdminTournament[]> {
 }
 
 export async function saveTournament(t: Tournament): Promise<void> {
-  if (!serverMode()) { saveTournamentLocal(t); return; }
   await adminAction('saveTournament', { tournament: t });
 }
 
 export async function settleTournament(id: string): Promise<{ won: number }> {
-  if (!serverMode()) return { won: settleLocal(id) };
   const { error } = await supabase().functions.invoke('settle-tournament', { body: { tournamentId: id } });
   if (error) throw error;
   return { won: 0 };
@@ -190,10 +114,6 @@ export async function settleTournament(id: string): Promise<{ won: number }> {
 // --- Player management ------------------------------------------------------
 
 export async function listPlayers(query = ''): Promise<AdminPlayer[]> {
-  if (!serverMode()) {
-    const all = syntheticPlayers();
-    return query ? all.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) || p.phone.includes(query)) : all;
-  }
   let q = supabase().from('profiles').select('id, name, phone, coins, role, created_at').limit(200);
   if (query) q = q.or(`name.ilike.%${query}%,phone.ilike.%${query}%`);
   const { data } = await q;
@@ -205,19 +125,16 @@ export async function listPlayers(query = ''): Promise<AdminPlayer[]> {
 }
 
 export async function adjustCoins(userId: string, delta: number, reason = 'admin_adjust'): Promise<void> {
-  if (!serverMode()) return; // synthetic roster offline — no-op on others
   await adminAction('adjustCoins', { userId, delta, reason });
 }
 
 export async function setRole(userId: string, role: Role): Promise<void> {
-  if (!serverMode()) return;
   await adminAction('setRole', { userId, role });
 }
 
 // --- Payments ---------------------------------------------------------------
 
 export async function listOrders(limit = 100): Promise<Order[]> {
-  if (!serverMode()) return myOrders(limit);
   const { data } = await supabase()
     .from('payment_orders')
     .select('id, package_id, coins, amount_etb, method, status, created_at')
@@ -232,9 +149,8 @@ export async function listOrders(limit = 100): Promise<Order[]> {
 // --- Config -----------------------------------------------------------------
 
 export async function saveConfig(next: Partial<AppConfig>): Promise<AppConfig> {
-  if (!serverMode()) return saveConfigLocal(next);
   await adminAction('saveConfig', { config: next });
-  return { ...config(), ...next };
+  return patchConfigCache(next);
 }
 
 // --- Edge Function bridge ---------------------------------------------------

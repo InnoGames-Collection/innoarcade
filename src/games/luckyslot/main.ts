@@ -163,6 +163,7 @@ function syncLangButtons(): void {
   langAm.classList.toggle('active', lang === 'am');
   setHUD();
   renderTournament();
+  void host.refreshBoard().then(renderTournament); // real server standing, no simulation
 }
 function pick(lang: Lang): void {
   setLang(lang);

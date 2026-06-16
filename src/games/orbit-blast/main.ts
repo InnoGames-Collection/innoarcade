@@ -5,7 +5,7 @@ import { GameLoop } from '../../engine/loop';
 import { sfx } from '../../engine/audio';
 import { OrbitBlast, W, H, type GameState } from './game';
 import {
-  featuredTournament, submitScore, leaderboard, tournamentGame,
+  featuredTournament, tournamentGame,
   countdown, type LeaderEntry,
 } from '../../platform/tournaments';
 import { backendReady, submitPlayRemote, leaderboardRemote, startRoundRemote } from '../../platform/backend';
@@ -74,16 +74,8 @@ game.onGameOver = (score, record) => {
   $('#finalBest').textContent = String(game.best);
   $('#newBest').classList.toggle('hidden', !record);
   if (tourney) {
-    // Instant local standing for responsive UI…
-    const result = submitScore(tourney.id, score);
-    $('#rankVal').textContent = `#${result.rank}`;
-    $('#rankTotal').textContent = `/ ${result.total}`;
-    const board = leaderboard(tourney.id);
-    const meIdx = board.findIndex((e) => e.isPlayer);
-    const startN = Math.max(0, Math.min(meIdx - 2, board.length - 5));
-    renderLeaderboard(board.slice(startN, startN + 5), '#leaderList2');
     $('#overTournament').classList.remove('hidden');
-    // …then persist the authoritative score to the server (if signed in).
+    // Persist the authoritative score to the server and render the real board.
     void syncRemoteScore(tourney.id, score);
   }
 };
@@ -158,11 +150,11 @@ function pick(lang: Lang): void { setLang(lang); syncLangButtons(); }
 langEn.addEventListener('click', () => pick('en'));
 langAm.addEventListener('click', () => pick('am'));
 
-// Populate the menu's tournament strip.
+// Populate the menu's tournament strip (real server board, async).
 if (tourney && tourneyGame) {
   $('#tName').textContent = `${t('hub.monthly')} · ${getLang() === 'am' ? tourneyGame.nameAm : tourneyGame.nameEn}`;
-  renderLeaderboard(leaderboard(tourney.id, 3));
   renderTournamentBadge();
+  void leaderboardRemote(tourney.id, 3).then((rows) => renderLeaderboard(rows)).catch(() => {});
 } else {
   $('#menuTournament').classList.add('hidden');
 }

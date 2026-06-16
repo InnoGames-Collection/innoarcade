@@ -22,3 +22,8 @@ verify_jwt = false
 # and the function authorises internally.
 [functions.settle-tournament]
 verify_jwt = false
+
+# Subscriptions — called by signed-in players to activate/cancel a plan, so the
+# user JWT must be verified.
+[functions.subscribe]
+verify_jwt = true

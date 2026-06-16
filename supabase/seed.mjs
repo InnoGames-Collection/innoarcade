@@ -71,9 +71,14 @@ const APP_CONFIG = {
   maintenance: false,
 };
 
-// Tournament games (mode 'tournament' in the catalog) + window math mirroring
-// src/platform/tournaments.ts so the seeded ids match what the app derives.
-const TOURNEY_GAMES = ['orbit-blast', 'merge-2048'];
+// Tournament games — MUST mirror every catalog entry with mode: 'tournament'
+// (src/platform/catalog.ts) so each competitive game has a real backing
+// tournament row (the app uses the table exclusively once it has rows). Window
+// math below mirrors src/platform/tournaments.ts so the seeded ids match.
+const TOURNEY_GAMES = [
+  'orbit-blast', 'merge-2048', 'temple-dash', 'candy-crunch', 'memory-match',
+  'dice-roll', 'lucky-box', 'spin-wheel', 'luckyslot', 'crash-game', 'ethiopian-quiz',
+];
 const now = Date.now();
 const d = new Date(now);
 const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
@@ -166,6 +171,14 @@ async function main() {
   // tournaments
   const tours = await seedTournaments();
   console.log(`• tournaments ✓ (${tours.length})`);
+
+  // TOURNAMENTS_ONLY: refresh config + tournament rows for every competitive
+  // game (current windows) and stop — NO demo players, scores or entries. This
+  // is the production-safe way to activate all tournaments without any fake data.
+  if (process.env.TOURNAMENTS_ONLY === 'true') {
+    console.log('\nTOURNAMENTS_ONLY — skipped demo players/scores. Done.');
+    return;
+  }
 
   // players
   console.log(`• creating/loading ${COUNT} demo players…`);

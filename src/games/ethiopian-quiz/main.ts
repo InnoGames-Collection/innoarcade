@@ -150,6 +150,7 @@ function applyLang(): void {
   applyTranslations();
   setHUD();
   renderTournament();
+  void host.refreshBoard().then(renderTournament); // real server standing, no simulation
   startBtn.textContent = s('start');
 }
 

@@ -2,12 +2,12 @@
 //   • Points — earned by playing; spent on draw tickets and leaderboards.
 //   • Gold   — premium currency for spins / instant-win games.
 //   • Coins  — bought with real money (TeleBirr / airtime); lives in
-//              platform/wallet.ts (server-authoritative when the economy is on).
+//              platform/wallet.ts (server-authoritative).
 //
-// Points and Gold are local-first here, mirroring the wallet's offline mock: a
-// localStorage balance plus an `earn`/`spend` API and a change event. Phase 3's
-// server wiring will move these behind the same Edge-Function boundary the coin
-// wallet already uses, keeping these signatures intact.
+// All three are 100% server-sourced (profiles.points / profiles.gold /
+// profiles.coins). This module holds an in-memory cache only (NO localStorage):
+// setBalance() hydrates it from the server on load and after every economy call,
+// and earn()/spend() are optimistic updates the next hydrate overwrites.
 
 export type Currency = 'points' | 'gold';
 

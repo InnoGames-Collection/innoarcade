@@ -2,38 +2,21 @@
 // the coin-package catalogue (what players can buy and for how much), default
 // tournament entry fee, which payment methods are live, and a maintenance flag.
 //
-// Same dual-path philosophy as the rest of platform/: a full DEFAULT_CONFIG is
-// baked in so the store and prices render with zero backend, and when Supabase
-// is configured the `app_config` table overrides it. The admin console edits
-// this (locally in mock mode, via the admin-action Edge Function when online),
-// so prices and fees change without a redeploy.
+// The economy is 100% server-sourced: a baked-in DEFAULT_CONFIG provides sane
+// constants so prices/labels can render before the first network read, and the
+// `app_config` table (edited via the admin-action Edge Function) overrides it.
+// There is NO localStorage config — the server is the single source of truth.
 
 import { isConfigured, supabase } from './supabase';
 import { isSignedIn } from './auth';
 
-// The coin economy (wallet, purchases, paid entry) talks to the server only when
-// it is *explicitly* enabled AND the player is signed in. It defaults OFF so the
-// platform always runs as a fully-working LOCAL experience — no dependency on the
-// economy Edge Functions being deployed — which is what makes demos reliable.
-// Flip VITE_ECONOMY_ONLINE=true once those functions are deployed to go
-// server-authoritative.
-const ECONOMY_BACKEND = import.meta.env.VITE_ECONOMY_ONLINE === 'true';
+// The coin economy is server-only. Operations hit the backend whenever Supabase
+// is configured AND the player is signed in — there is no local/offline economy.
 
-/** True when coin operations should hit the server (enabled + configured + signed in). */
-export function economyOnline(): boolean {
-  return ECONOMY_BACKEND && isConfigured() && isSignedIn();
-}
-
-/** True when the server economy is enabled but the user must sign in first. */
+/** True when the backend is present but the user must sign in first. The UI uses
+ *  this to prompt sign-in before buying coins / paid tournament entry. */
 export function economyNeedsAuth(): boolean {
-  return ECONOMY_BACKEND && isConfigured() && !isSignedIn();
-}
-
-/** True when the economy/admin backend is live (enabled + configured), regardless
- *  of sign-in. The admin console uses this to pick server vs local/demo data and
- *  to decide whether to enforce the admin-role gate. Off → open demo mode. */
-export function economyBackendLive(): boolean {
-  return ECONOMY_BACKEND && isConfigured();
+  return isConfigured() && !isSignedIn();
 }
 
 export interface CoinPackage {
@@ -81,24 +64,10 @@ export const DEFAULT_CONFIG: AppConfig = {
   winRateOverride: null,
 };
 
-const LOCAL_KEY = 'innoarcade.config.v1';
-
-// In-memory cache so synchronous UI (store grid, fee labels) can read instantly;
-// loadConfig() refreshes it from the backend (or localStorage overrides offline).
-let cache: AppConfig = readLocal();
-
-function readLocal(): AppConfig {
-  try {
-    const raw = localStorage.getItem(LOCAL_KEY);
-    if (raw) return { ...DEFAULT_CONFIG, ...(JSON.parse(raw) as Partial<AppConfig>) };
-  } catch { /* ignore */ }
-  return { ...DEFAULT_CONFIG };
-}
-
-function writeLocal(c: AppConfig): void {
-  cache = c;
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(c)); } catch { /* ignore */ }
-}
+// In-memory cache (NO localStorage) so synchronous UI (store grid, fee labels)
+// can read instantly from the last server value; loadConfig() refreshes it from
+// the `app_config` table. Starts from the baked-in defaults until first load.
+let cache: AppConfig = { ...DEFAULT_CONFIG };
 
 /** Current config — synchronous, from cache. Call loadConfig() to refresh. */
 export function config(): AppConfig {
@@ -132,26 +101,24 @@ export function winRateOverride(): number | null {
 }
 
 // Pull operator overrides from `app_config` (key 'app', a single JSONB row) and
-// merge over the defaults. No-ops to the baked-in/local config when unconfigured.
+// merge over the defaults. Keeps the baked-in defaults when unconfigured or on
+// a transient read error (last-known cache stays in place).
 export async function loadConfig(): Promise<AppConfig> {
-  if (!isConfigured()) { cache = readLocal(); return cache; }
+  if (!isConfigured()) return cache;
   try {
     const { data, error } = await supabase()
       .from('app_config').select('value').eq('key', 'app').maybeSingle();
     if (error) throw error;
     const remote = (data?.value ?? {}) as Partial<AppConfig>;
     cache = { ...DEFAULT_CONFIG, ...remote };
-  } catch {
-    cache = readLocal(); // offline → last known / defaults
-  }
+  } catch { /* keep last-known cache */ }
   return cache;
 }
 
-// Persist a config change. Offline this writes localStorage so the admin mock
-// works end-to-end; online it routes through the admin-action Edge Function
-// (which re-checks is_admin server-side) — the admin module owns that call.
-export function saveConfigLocal(next: Partial<AppConfig>): AppConfig {
-  const merged = { ...cache, ...next };
-  writeLocal(merged);
-  return merged;
+/** Patch the in-memory cache after a server write so synchronous UI reflects the
+ *  change immediately. The persistent write itself goes through the admin-action
+ *  Edge Function (admin.saveConfig) — this never touches storage. */
+export function patchConfigCache(next: Partial<AppConfig>): AppConfig {
+  cache = { ...cache, ...next };
+  return cache;
 }

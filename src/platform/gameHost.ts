@@ -15,12 +15,12 @@
 
 import { getGame, type GameMode, type GameMeta } from './catalog';
 import {
-  getTournament, leaderboard, enterTournament, isEntered,
-  countdown, playerStanding, InsufficientCoinsError,
+  getTournament, enterTournament, isEntered,
+  countdown, InsufficientCoinsError,
   type Tournament, type LeaderEntry,
 } from './tournaments';
 import { SignInRequiredError } from './payments';
-import { submitPlayRemote, startRoundRemote } from './backend';
+import { submitPlayRemote, startRoundRemote, leaderboardRemote, playerStandingRemote } from './backend';
 import { setBalance } from './currency';
 import { winRateOverride } from './config';
 
@@ -53,6 +53,9 @@ export class GameHost {
   readonly tournament?: Tournament;
   /** Anti-cheat: the server-issued single-use token for the current round. */
   private roundToken = '';
+  /** Cached server leaderboard + standing (no local simulation). */
+  private cachedBoard: LeaderEntry[] = [];
+  private cachedStanding?: LeaderEntry;
 
   constructor(gameId: string) {
     const meta = getGame(gameId);
@@ -134,6 +137,10 @@ export class GameHost {
     try {
       const res = await submitPlayRemote(this.meta.id, Math.max(0, Math.floor(score)), pts, this.isTournament, this.roundToken);
       if (typeof res.points === 'number') setBalance('points', res.points);
+      // Cache the server standing so standing() reflects the latest real rank.
+      if (this.isTournament && typeof res.rank === 'number') {
+        this.cachedStanding = { rank: res.rank, name: 'You', score: res.best ?? 0, isPlayer: true };
+      }
       return { best: res.best ?? 0, isRecord: res.isRecord ?? false, rank: res.rank, total: res.total };
     } catch (e) {
       console.warn('play submit failed', e);
@@ -141,14 +148,28 @@ export class GameHost {
     }
   }
 
-  /** Leaderboard rows for the menu/result strip (tournament mode). */
-  board(limit = 5): LeaderEntry[] {
-    return this.isTournament ? leaderboard(this.tournament!.id, limit) : [];
+  /** Refresh the cached server leaderboard + standing (tournament mode). Call
+   *  before reading board()/standing() to show real data on the menu. */
+  async refreshBoard(limit = 5): Promise<void> {
+    if (!this.isTournament) return;
+    try {
+      const [board, me] = await Promise.all([
+        leaderboardRemote(this.tournament!.id, limit),
+        playerStandingRemote(this.tournament!.id),
+      ]);
+      this.cachedBoard = board;
+      if (me) this.cachedStanding = me;
+    } catch { /* keep last cache */ }
   }
 
-  /** The player's current standing row, if any (tournament mode). */
+  /** Cached server leaderboard rows (tournament mode). Empty until refreshBoard. */
+  board(limit = 5): LeaderEntry[] {
+    return this.isTournament ? this.cachedBoard.slice(0, limit) : [];
+  }
+
+  /** The player's cached server standing row, if any (tournament mode). */
   standing(): LeaderEntry | undefined {
-    return this.isTournament ? playerStanding(this.tournament!.id) : undefined;
+    return this.isTournament ? this.cachedStanding : undefined;
   }
 
   /** "3d 4h 12m"-style remaining time for the tournament window. */

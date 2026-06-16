@@ -5,8 +5,9 @@
 import { getLang } from '../i18n';
 import { balance, ledger, type LedgerEntry } from '../platform/wallet';
 import {
-  myEntries, getTournament, playerStanding, tournamentState, type TournamentEntry,
+  myEntries, getTournament, tournamentState, type TournamentEntry, type LeaderEntry,
 } from '../platform/tournaments';
+import { playerStandingRemote } from '../platform/backend';
 
 const STR = {
   en: {
@@ -45,6 +46,12 @@ export async function renderDashboard(): Promise<void> {
 
   const [bal, rows, entries] = await Promise.all([balance(), ledger(8), myEntries()]);
   const prizesWon = entries.reduce((s, e) => s + e.prizeWon, 0);
+  // Server standings (rank) for each entered tournament — fetched in parallel.
+  const standings = new Map<string, LeaderEntry>();
+  await Promise.all(entries.map(async (e) => {
+    const s = await playerStandingRemote(e.tournamentId);
+    if (s) standings.set(e.tournamentId, s);
+  }));
 
   host.innerHTML = `
     <div class="pd-grid">
@@ -60,7 +67,7 @@ export async function renderDashboard(): Promise<void> {
       </div>
       <div class="pd-card pd-tours">
         <div class="pd-card-head">${t('myTours')}</div>
-        ${entries.length ? `<ul class="pd-entries">${entries.map(entryRow).join('')}</ul>`
+        ${entries.length ? `<ul class="pd-entries">${entries.map((e) => entryRow(e, standings.get(e.tournamentId))).join('')}</ul>`
           : `<p class="pd-empty">${t('noTours')}</p>`}
       </div>
     </div>`;
@@ -74,11 +81,10 @@ function ledgerRow(e: LedgerEntry): string {
   </li>`;
 }
 
-function entryRow(e: TournamentEntry): string {
+function entryRow(e: TournamentEntry, me: LeaderEntry | undefined): string {
   const tour = getTournament(e.tournamentId);
   const title = tour ? (getLang() === 'am' ? tour.titleAm : tour.titleEn) : e.tournamentId;
   const st = tour ? tournamentState(tour) : 'ended';
-  const me = playerStanding(e.tournamentId);
   return `<li class="pd-erow">
     <div class="pd-einfo">
       <span class="pd-etitle">${esc(title)}</span>

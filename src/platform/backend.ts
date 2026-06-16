@@ -1,15 +1,13 @@
-// Server-backed scores + leaderboards. These mirror the synchronous mock in
-// tournaments.ts but talk to Supabase, so the UI can adopt them incrementally
-// (e.g. a tournament game calls submitScoreRemote() after its instant local
-// update to persist an authoritative score). Everything here no-ops gracefully
-// when Supabase isn't configured, so nothing breaks before the keys are set.
+// Server-backed scores, leaderboards, points/gold and draw tickets — the read/
+// submit layer over Supabase. The economy is server-only, so this is the single
+// authority; reads no-op gracefully (empty/null) when Supabase isn't configured.
 //
 // Score submission goes through the `submit-score` Edge Function — never a raw
 // table insert — so the server is the authority on what counts (bounds checks,
 // rate limits, best-only). That's the anti-cheat boundary for prize tournaments.
 
 import { isConfigured, supabase } from './supabase';
-import { leaderboard as localBoard, type LeaderEntry } from './tournaments';
+import { type LeaderEntry } from './tournaments';
 
 export function backendReady(): boolean {
   return isConfigured();
@@ -72,15 +70,22 @@ export async function setSkinRemote(gameId: string, skinId: string): Promise<voi
   await sb.from('profiles').update({ skins: cur }).eq('id', me);
 }
 
-// Read the signed-in player's authoritative points balance from their profile.
-export async function fetchPoints(): Promise<number | null> {
+// Read the signed-in player's authoritative points + gold balances from their
+// profile (both server-sourced; the client never writes them).
+export async function fetchWallets(): Promise<{ points: number; gold: number } | null> {
   if (!isConfigured()) return null;
   const sb = supabase();
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return null;
-  const { data, error } = await sb.from('profiles').select('points').eq('id', me).maybeSingle();
+  const { data, error } = await sb.from('profiles').select('points, gold').eq('id', me).maybeSingle();
   if (error || !data) return null;
-  return Number(data.points);
+  return { points: Number(data.points ?? 0), gold: Number(data.gold ?? 0) };
+}
+
+/** @deprecated use fetchWallets — kept for callers that only need points. */
+export async function fetchPoints(): Promise<number | null> {
+  const w = await fetchWallets();
+  return w ? w.points : null;
 }
 
 // Buy one draw ticket by spending points (server-authoritative). Returns the new
@@ -125,22 +130,12 @@ export async function leaderboardRemote(tournamentId: string, limit = 50): Promi
   }));
 }
 
-// Real scores blended in front of the simulated "seed" field, so the ladder
-// looks populated while the real player base grows and real players always
-// outrank simulated rivals at equal score. Signed-in players appear with their
-// real standing; signed-out players keep their local (anonymous) rank.
+// The real, server-only leaderboard for a tournament (the `leaderboard` view).
+// Empty until real players post scores — there is no simulated field.
 export async function mergedLeaderboard(tournamentId: string): Promise<LeaderEntry[]> {
-  const local = localBoard(tournamentId);
-  let real: LeaderEntry[] = [];
-  if (isConfigured()) {
-    try { real = await leaderboardRemote(tournamentId, 200); } catch { /* offline → seed only */ }
-  }
-  const signedIn = real.some((e) => e.isPlayer);
-  const sim = local.filter((e) => !e.isPlayer); // simulated rivals
-  const localYou = signedIn ? [] : local.filter((e) => e.isPlayer); // anon local rank
-  const combined = [...real, ...localYou, ...sim];
-  combined.sort((a, b) => b.score - a.score);
-  return combined.map((e, i) => ({ rank: i + 1, name: e.name, score: e.score, isPlayer: e.isPlayer }));
+  if (!isConfigured()) return [];
+  try { return await leaderboardRemote(tournamentId, 200); }
+  catch { return []; }
 }
 
 // The signed-in player's own row (even outside the visible top-N).

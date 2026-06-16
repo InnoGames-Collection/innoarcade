@@ -7,13 +7,13 @@ import { mountWallet, openStore, needsSignInToBuy } from './wallet';
 import { onAuthChange, currentUser, signOut, authAvailable } from '../platform/auth';
 import { sfx } from '../engine/audio';
 import { renderDashboard, injectDashboardStyles } from './dashboard';
-import { mergedLeaderboard, fetchPoints } from '../platform/backend';
+import { mergedLeaderboard, fetchWallets } from '../platform/backend';
 import { CATALOG, orderedCatalog, getGame, type GameMeta } from '../platform/catalog';
 import {
-  activeTournaments, featuredTournament, tournamentGame, leaderboard,
-  playerStanding, countdown, loadTournaments, loadMyEntries,
+  activeTournaments, featuredTournament, tournamentGame,
+  countdown, loadTournaments, loadMyEntries,
   tournamentState, isPaid, isEntered, enterTournament, prizePool,
-  InsufficientCoinsError, type Tournament,
+  InsufficientCoinsError, type Tournament, type LeaderEntry,
 } from '../platform/tournaments';
 import { balanceSync, onWalletChange } from '../platform/wallet';
 import { SignInRequiredError } from '../platform/payments';
@@ -193,8 +193,10 @@ function renderFeatured(): void {
   const tour = featuredTournament();
   const game = tour ? tournamentGame(tour) : undefined;
   if (!tour || !game) { host.innerHTML = ''; return; }
-  const top3 = leaderboard(tour.id, 3);
-  const me = playerStanding(tour.id);
+  // The board + your-rank start empty and are filled by refreshFeatured() from
+  // the server (no local simulation).
+  const top3: LeaderEntry[] = [];
+  const me = undefined as LeaderEntry | undefined;
 
   host.innerHTML = `
     <article class="featured-card" style="${thumbStyle(game)}">
@@ -662,11 +664,23 @@ function setupBrowse(): void {
   });
 }
 
-// One-time economy reset — wipe stale cached balances so everyone starts fresh.
-if (localStorage.getItem('innoarcade.reset.v3') !== '1') {
-  ['innoarcade.points.v1', 'innoarcade.gold.v1', 'innoarcade.wallet.balance.v1',
-   'innoarcade.wallet.ledger.v1', 'innoarcade.draw.tickets.v1'].forEach((k) => localStorage.removeItem(k));
-  localStorage.setItem('innoarcade.reset.v3', '1');
+// One-time cleanup — the economy is now 100% server-sourced, so wipe every
+// legacy localStorage key the old local/offline economy used to write.
+if (localStorage.getItem('innoarcade.reset.v4') !== '1') {
+  [
+    'innoarcade.points.v1', 'innoarcade.gold.v1', 'innoarcade.wallet.balance.v1',
+    'innoarcade.wallet.ledger.v1', 'innoarcade.draw.tickets.v1', 'innoarcade.orders.v1',
+    'innoarcade.config.v1', 'innoarcade.subscription.v1', 'innoarcade.trial.used.v1',
+    'innoarcade.tournament.scores.v1', 'innoarcade.tournament.entries.v1',
+    'innoarcade.tournaments.overrides.v1', 'innoarcade.tournaments.custom.v1',
+    'innoarcade.tournaments.settled.v1', 'innoarcade.player.name', 'innoarcade.demo.role',
+  ].forEach((k) => localStorage.removeItem(k));
+  // Per-game local high scores (innoarcade.<game>.best) — scoring is server-only now.
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('innoarcade.') && k.endsWith('.best')) localStorage.removeItem(k);
+  }
+  localStorage.setItem('innoarcade.reset.v4', '1');
 }
 
 document.documentElement.lang = getLang();
@@ -685,7 +699,9 @@ void refreshData();
 // Hydrate the points balance from the server (the authority); refresh on load
 // and whenever auth changes, then re-render the top balance strip.
 function hydratePoints(): void {
-  void fetchPoints().then((p) => { if (typeof p === 'number') { setBalance('points', p); renderMyStats(); } });
+  void fetchWallets().then((w) => {
+    if (w) { setBalance('points', w.points); setBalance('gold', w.gold); renderMyStats(); }
+  });
   void hydrateTickets().then(() => renderDraws());
 }
 hydratePoints();

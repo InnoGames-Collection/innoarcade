@@ -1,18 +1,14 @@
 // The coin wallet: a balance and an immutable ledger (one row per coin movement).
 //
-// Integrity boundary — the same one `scores` already draws: when Supabase is
-// configured the client NEVER writes coins. Credits (coin purchases, prize
-// payouts) and debits (tournament entry fees) all happen inside Edge Functions
-// running with the service role, which write `profiles.coins` and append a
-// `wallet_ledger` row atomically. This module only READS those server-side.
-//
-// Offline (no Supabase) the platform still has to be fully playable, so a local
-// mock wallet lives in localStorage and `mockApply()` performs the movement the
-// Edge Function would. `mockApply()` throws when Supabase IS configured, so the
-// boundary can never be crossed by accident in a real deployment.
+// 100% server-authoritative. Coins live in `profiles.coins`; the client NEVER
+// writes them. Credits (coin purchases, prize payouts) and debits (tournament
+// entry fees) all happen inside Edge Functions running with the service role,
+// which write `profiles.coins` and append a `wallet_ledger` row atomically. This
+// module only READS those. There is no localStorage and no offline wallet — an
+// in-memory cache holds the last server value for instant synchronous rendering.
 
 import { supabase } from './supabase';
-import { economyOnline as online } from './config';
+import { isConfigured } from './supabase';
 
 export interface LedgerEntry {
   id: string;
@@ -26,24 +22,10 @@ export interface LedgerEntry {
   createdAt: number;
 }
 
-const BAL_KEY = 'innoarcade.wallet.balance.v1';
-const LEDGER_KEY = 'innoarcade.wallet.ledger.v1';
-const STARTING_COINS = 100; // a small welcome balance so new local players can try paid entry
-
-let cached = readLocalBalance();
+// In-memory cache only — NO localStorage. `balance()` hydrates it from the server
+// (profiles.coins); synchronous reads return the last hydrated value.
+let cached = 0;
 const listeners = new Set<(balance: number) => void>();
-
-function readLocalBalance(): number {
-  const raw = localStorage.getItem(BAL_KEY);
-  if (raw == null) return STARTING_COINS;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : STARTING_COINS;
-}
-
-function readLocalLedger(): LedgerEntry[] {
-  try { return JSON.parse(localStorage.getItem(LEDGER_KEY) || '[]') as LedgerEntry[]; }
-  catch { return []; }
-}
 
 function emit(): void {
   for (const fn of listeners) fn(cached);
@@ -54,9 +36,9 @@ export function balanceSync(): number {
   return cached;
 }
 
-/** Authoritative balance. Reads `profiles.coins` online, localStorage offline. */
+/** Authoritative balance, read from `profiles.coins` for the signed-in player. */
 export async function balance(): Promise<number> {
-  if (!online()) { cached = readLocalBalance(); emit(); return cached; }
+  if (!isConfigured()) { cached = 0; emit(); return 0; }
   try {
     const sb = supabase();
     const me = (await sb.auth.getUser()).data.user?.id;
@@ -68,11 +50,9 @@ export async function balance(): Promise<number> {
   return cached;
 }
 
-/** Recent ledger rows, newest first. */
+/** Recent ledger rows, newest first (server `wallet_ledger`). */
 export async function ledger(limit = 20): Promise<LedgerEntry[]> {
-  if (!online()) {
-    return readLocalLedger().sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
-  }
+  if (!isConfigured()) return [];
   try {
     const sb = supabase();
     const me = (await sb.auth.getUser()).data.user?.id;
@@ -100,29 +80,7 @@ export function onWalletChange(fn: (balance: number) => void): () => void {
   return () => listeners.delete(fn);
 }
 
-// --- Mock-only mutation -----------------------------------------------------
-// Applies a coin movement to the LOCAL wallet (offline mode only). The mock
-// payment / tournament-entry / admin paths call this; online those operations
-// are server-authoritative and this throws to enforce the integrity boundary.
-export function mockApply(delta: number, reason: string, ref = ''): LedgerEntry {
-  if (online()) {
-    throw new Error('wallet.mockApply is guest-only; signed-in coins move via Edge Functions');
-  }
-  const next = Math.max(0, cached + delta);
-  cached = next;
-  localStorage.setItem(BAL_KEY, String(next));
-  const entry: LedgerEntry = {
-    id: `l_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    delta, reason, ref, balanceAfter: next, createdAt: Date.now(),
-  };
-  const all = readLocalLedger();
-  all.push(entry);
-  localStorage.setItem(LEDGER_KEY, JSON.stringify(all.slice(-200)));
-  emit();
-  return entry;
-}
-
-/** True if the local wallet can cover a debit (offline affordability check). */
+/** True if the last-known balance can cover a debit (the server re-checks). */
 export function canAfford(cost: number): boolean {
-  return balanceSync() >= cost;
+  return cached >= cost;
 }

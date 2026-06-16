@@ -8,7 +8,7 @@ import { getLang } from '../i18n';
 import { currentUser, signOut, type AuthUser } from '../platform/auth';
 import { openSignIn } from './signin';
 import {
-  SUB_PLANS, currentSub, trialAvailable, subscribeLocal, cancelSub,
+  SUB_PLANS, currentSub, trialAvailable, subscribe, cancelSub, loadSubscription,
   type SubPeriod, type Subscription,
 } from '../platform/subscription';
 import { paymentMethodsEnabled } from '../platform/config';
@@ -25,7 +25,7 @@ const STR = {
     payVia: 'Pay with', confirm: 'Confirm', subbed: "You're subscribed!", general: 'General info',
     terms: 'Terms & conditions', faq: 'FAQ', feedback: 'Write your feedback', rateQ: 'How would you rate your experience?',
     submit: 'Submit', thanks: 'Thanks for your feedback!', close: 'Close', active: 'Active plan',
-    myEntries: 'My draw entries', tickets: 'tickets',
+    myEntries: 'My draw entries', tickets: 'tickets', failed: "Couldn't complete. Try again.",
   },
   am: {
     account: 'መለያ', back: 'ዝጋ', signedOut: 'አልገቡም', signIn: 'ግባ', signOut: 'ውጣ',
@@ -36,7 +36,7 @@ const STR = {
     payVia: 'ይክፈሉ በ', confirm: 'አረጋግጥ', subbed: 'ተመዝግበዋል!', general: 'አጠቃላይ መረጃ',
     terms: 'ውሎች እና ሁኔታዎች', faq: 'ተደጋጋሚ ጥያቄዎች', feedback: 'አስተያየትዎን ይጻፉ', rateQ: 'ተሞክሮዎን እንዴት ይገመግሙታል?',
     submit: 'አስገባ', thanks: 'ስለ አስተያየትዎ እናመሰግናለን!', close: 'ዝጋ', active: 'ንቁ ዕቅድ',
-    myEntries: 'የእኔ ዕጣ ግቤቶች', tickets: 'ቲኬቶች',
+    myEntries: 'የእኔ ዕጣ ግቤቶች', tickets: 'ቲኬቶች', failed: 'አልተጠናቀቀም። እንደገና ይሞክሩ።',
   },
 };
 
@@ -95,6 +95,7 @@ function shell(inner: string): HTMLElement {
 export async function openAccount(): Promise<void> {
   injectStyles();
   const user = await currentUser();
+  await loadSubscription();
   const sub = currentSub();
   shell(`
     <h2 class="acct-title">${t('account')}</h2>
@@ -141,7 +142,7 @@ function wireAccount(user: AuthUser | null): void {
   document.querySelector('#aSignIn')?.addEventListener('click', () => openSignIn());
   document.querySelector('#aSignOut')?.addEventListener('click', async () => { await signOut(); void openAccount(); });
   document.querySelector('#aSubscribe')?.addEventListener('click', () => openPlans());
-  document.querySelector('#aCancel')?.addEventListener('click', () => { cancelSub(); void openAccount(); });
+  document.querySelector('#aCancel')?.addEventListener('click', () => { void cancelSub().then(() => openAccount()); });
   document.querySelector('#aFeedback')?.addEventListener('click', () => openFeedback());
   document.querySelector('#aTerms')?.addEventListener('click', () => openInfo('terms'));
   document.querySelector('#aFaq')?.addEventListener('click', () => openInfo('faq'));
@@ -199,8 +200,15 @@ function openSubPay(period: SubPeriod): void {
       payBtn.textContent = `${t('subWith')} ${getLang() === 'am' ? PAY_METHOD_LABEL[chosen].am : PAY_METHOD_LABEL[chosen].en}`;
     });
   });
-  payBtn.addEventListener('click', () => {
-    subscribeLocal(period, chosen);
+  payBtn.addEventListener('click', async () => {
+    payBtn.disabled = true;
+    try {
+      await subscribe(period, chosen);
+    } catch {
+      payBtn.disabled = false;
+      payBtn.textContent = t('failed');
+      return;
+    }
     m.querySelector('.acct-stack')!.innerHTML = `
       <div class="acct-success"><div class="as-burst">🎉</div><h2 class="acct-title">${t('subbed')}</h2>
       <button class="acct-primary" id="subDone">${t('close')}</button></div>`;

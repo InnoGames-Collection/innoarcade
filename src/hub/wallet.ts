@@ -11,8 +11,7 @@ import { points, gold, onCurrencyChange } from '../platform/currency';
 import { loadConfig, coinPackages, paymentMethodsEnabled, isMaintenance, economyNeedsAuth, type CoinPackage } from '../platform/config';
 import { startCheckout, pollOrder, PAY_METHOD_LABEL, SignInRequiredError, type PayMethod } from '../platform/payments';
 
-// When the server economy is enabled, buying requires sign-in. In local/demo
-// mode (economy backend off) it's an open guest experience so the demo flows.
+// Coins are account-bound (server-only economy), so buying requires sign-in.
 export function needsSignInToBuy(): boolean {
   return economyNeedsAuth();
 }
@@ -162,10 +161,10 @@ function openCheckout(pkg: CoinPackage): void {
     pay.textContent = t('processing');
     try {
       const { order } = await startCheckout(pkg.id, chosen);
-      // Online (real TeleBirr or the demo checkout page) hands off via a hosted
-      // page; we leave the app and resume on return (see resumePendingCheckout).
+      // Checkout (real TeleBirr or the sandbox page) hands off via a hosted page;
+      // we leave the app and resume on return (see resumePendingCheckout).
       if (order.redirectUrl) { window.location.href = order.redirectUrl; return; }
-      // Offline/local: no hosted page — pollOrder settles the local mock wallet.
+      // No redirect URL (unexpected) — fall back to polling the order row.
       await pollOrder(order.id);
       await balance();
       showSuccess(m, total);
