@@ -51,6 +51,27 @@ export async function startRoundRemote(gameId: string): Promise<string> {
   } catch { return ''; }
 }
 
+// Per-game cosmetic skin selection, persisted on the player's profile (the only
+// client-writable profile columns are name + skins; coins/points are locked to
+// service-role functions). Read map of gameId -> skinId.
+export async function fetchSkins(): Promise<Record<string, string>> {
+  if (!isConfigured()) return {};
+  const sb = supabase();
+  const me = (await sb.auth.getUser()).data.user?.id;
+  if (!me) return {};
+  const { data } = await sb.from('profiles').select('skins').eq('id', me).maybeSingle();
+  return (data?.skins as Record<string, string>) ?? {};
+}
+
+export async function setSkinRemote(gameId: string, skinId: string): Promise<void> {
+  const sb = supabase();
+  const me = (await sb.auth.getUser()).data.user?.id;
+  if (!me) return;
+  const cur = await fetchSkins();
+  cur[gameId] = skinId;
+  await sb.from('profiles').update({ skins: cur }).eq('id', me);
+}
+
 // Read the signed-in player's authoritative points balance from their profile.
 export async function fetchPoints(): Promise<number | null> {
   if (!isConfigured()) return null;

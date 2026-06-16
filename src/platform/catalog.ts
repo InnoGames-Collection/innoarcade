@@ -29,7 +29,7 @@ export interface GameMeta {
   scoreAm: string;
   /** Marks the flagship builds we polished for the partner demo. */
   featured?: boolean;
-  /** Operator-tunable play economy for the ported awetar games. Drives the
+  /** Operator-tunable play economy (built-in GoPlay games). Drives the
    *  shared game host (see platform/gameHost.ts): `winPoints` is the score a win
    *  awards, `winRate` the base win chance (0–100) for chance games. Skill games
    *  ignore winRate. Absent for the engine-native games, which score by play. */
@@ -40,8 +40,8 @@ export const CATALOG: GameMeta[] = [
   {
     id: 'orbit-blast',
     route: 'games/orbit-blast/',
-    nameEn: 'Orbit Blast',
-    nameAm: 'ኦርቢት ብላስት',
+    nameEn: 'Ball Shooter',
+    nameAm: 'ቦል ሹተር',
     genreEn: 'Arcade · Skill',
     genreAm: 'አርኬድ · ክህሎት',
     mode: 'tournament',
@@ -87,7 +87,7 @@ export const CATALOG: GameMeta[] = [
   {
     id: 'candy-crunch',
     route: 'games/candy-crunch/',
-    nameEn: 'Candy Crunch', nameAm: 'ካንዲ ክራንች',
+    nameEn: 'Candy Saga', nameAm: 'ካንዲ ሳጋ',
     genreEn: 'Match-3', genreAm: 'ሦስት-አዛምድ',
     mode: 'tournament', icon: '🍬', accent: '#e85b9c', thumb: ['#8c2b5c', '#2e0c1e'],
     scoreEn: 'Score', scoreAm: 'ነጥብ',
@@ -133,8 +133,7 @@ export const CATALOG: GameMeta[] = [
     scoreEn: 'Score', scoreAm: 'ነጥብ',
   },
 
-  // --- Ported awetar titles -------------------------------------------------
-  // `mode` is the casual↔tournament switch; `play` tunes the win reward/odds.
+  // --- Chance + casual games (built-in) --------------------------------------
   {
     id: 'memory-match',
     route: 'games/memory-match/',

@@ -1,4 +1,4 @@
-/* Pop Blast — ported from awetar; match-3 board/art kept, chrome adapted to the
+/* Pop Blast — ported from GoPlay; match-3 board/art kept, chrome adapted to the
    InnoArcade shell. External mixkit audio dropped in favour of engine SFX. */
 
 #stage {
@@ -27,7 +27,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar popblast (scoped) --------------------------------------------- */
+/* --- GoPlay popblast (scoped) --------------------------------------------- */
 #popblast-game-wrapper {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: clamp(12px, 3vw, 20px);

@@ -1,4 +1,4 @@
-/* Lucky Boxes — ported from awetar; reveal + double-or-nothing gamble kept,
+/* Lucky Boxes — ported from GoPlay; reveal + double-or-nothing gamble kept,
    chrome adapted to the InnoArcade shell with a compact tournament strip. */
 
 #stage {
@@ -27,7 +27,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar lucky-box (scoped) -------------------------------------------- */
+/* --- GoPlay lucky-box (scoped) -------------------------------------------- */
 #lucky-box-wrapper {
   --purple: #c77dff;
   --magenta: #ff48d0;

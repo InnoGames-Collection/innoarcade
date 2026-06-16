@@ -11,7 +11,6 @@ import { ScreenFx } from '../../engine/fx';
 import { Tweens, Ease } from '../../engine/tween';
 import { sfx } from '../../engine/audio';
 import { settings } from '../../engine/settings';
-import { profile } from '../../engine/profile';
 import { recordEnginePlay } from '../../platform/gameHost';
 
 export const W = 480;
@@ -63,7 +62,7 @@ function cellY(r: number): number { return PAD + r * (CELL + GAP); }
 export class Merge2048 {
   state: GameState = 'menu';
   score = 0;
-  best = profile.stats(GAME_ID).best;
+  best = 0; // session best (server leaderboard is the authority)
 
   onStateChange: (s: GameState) => void = () => {};
   onGameOver: (score: number, record: boolean) => void = () => {};
@@ -246,9 +245,9 @@ export class Merge2048 {
   }
 
   private gameOver(): void {
-    const record = profile.recordRun(GAME_ID, this.score);
+    const record = this.score > this.best;
+    if (record) this.best = this.score;
     void recordEnginePlay(GAME_ID, this.score);
-    this.best = profile.stats(GAME_ID).best;
     this.fx.shake(8, 0.3);
     this.setState('over');
     this.onGameOver(this.score, record);

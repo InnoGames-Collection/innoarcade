@@ -1,4 +1,4 @@
-// Scratch Card — a chance game ported from the awetar build (free mode).
+// Scratch Card — a chance game a built-in GoPlay game (free mode).
 // Outcome is decided locally with a CSPRNG at the configured win rate (the old
 // build trusted a forgeable server flag). The host records the result.
 

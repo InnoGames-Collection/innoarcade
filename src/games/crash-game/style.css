@@ -1,4 +1,4 @@
-/* Crash Game — ported from awetar; full canvas rocket flight kept, chrome
+/* Crash Game — ported from GoPlay; full canvas rocket flight kept, chrome
    adapted to the InnoArcade shell with a compact tournament strip. */
 
 #stage {
@@ -27,7 +27,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar crash-game (scoped) ------------------------------------------- */
+/* --- GoPlay crash-game (scoped) ------------------------------------------- */
 #crash-game-wrapper {
   --accent: #d18a04;
   --hud-bg: rgba(255, 255, 255, 0.12);

@@ -1,4 +1,4 @@
-// Memory Match — a skill game ported from the awetar build.
+// Memory Match — a skill game a built-in GoPlay game.
 //
 // The original used page-global hooks (window.currentGameWin, currentCoinsCost,
 // currentPointsWin, playSound). Those are replaced by the shared GameHost: it
@@ -11,13 +11,12 @@ import './style.css';
 import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
-import { profile } from '../../engine/profile';
 
 const host = createHost('memory-match');
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
-// Map the awetar sound names onto the engine's synthesised SFX.
+// Map the GoPlay sound names onto the engine's synthesised SFX.
 function play(type: 'flip' | 'match' | 'nomatch' | 'win' | 'lose' | 'click'): void {
   switch (type) {
     case 'flip': case 'click': sfx.click(); break;
@@ -214,5 +213,3 @@ syncLangButtons();
 setHUD();
 initGame();
 
-// touch the profile import so the welcome balance is initialised on first load
-void profile.coins;

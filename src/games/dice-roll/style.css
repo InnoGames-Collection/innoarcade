@@ -1,4 +1,4 @@
-/* Dice Roll — ported from awetar; 3D plastic-dice art kept verbatim, chrome
+/* Dice Roll — ported from GoPlay; 3D plastic-dice art kept verbatim, chrome
    adapted to the InnoArcade shell with a compact tournament strip. */
 
 #stage {
@@ -27,7 +27,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar dice-roll (scoped) -------------------------------------------- */
+/* --- GoPlay dice-roll (scoped) -------------------------------------------- */
 #dice-roll-wrapper {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: clamp(14px, 3vw, 20px);

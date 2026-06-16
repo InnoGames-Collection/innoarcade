@@ -1,4 +1,4 @@
-/* Lucky Slot — ported from awetar; 3-reel machine kept, chrome adapted to the
+/* Lucky Slot — ported from GoPlay; 3-reel machine kept, chrome adapted to the
    InnoArcade shell with a compact tournament strip. */
 
 #stage {
@@ -27,7 +27,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar luckyslot (scoped) -------------------------------------------- */
+/* --- GoPlay luckyslot (scoped) -------------------------------------------- */
 #slot-game-wrapper {
   --gold: #d18a04;
   --dark-gold: #a11fab;

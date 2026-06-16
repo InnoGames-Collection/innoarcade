@@ -1,4 +1,4 @@
-// Pop Blast — a match-3 ported from the awetar build (free mode).
+// Pop Blast — a match-3 a built-in GoPlay game (free mode).
 // The board/match logic is faithful to the original; the external mixkit audio
 // is replaced with the engine's synthesised SFX, and the run score is recorded
 // through the host (win threshold mirrors the original: score > 20).

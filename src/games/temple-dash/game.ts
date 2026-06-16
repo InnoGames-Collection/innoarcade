@@ -5,7 +5,6 @@
 // shared engine: AssetStore, Particles, ScreenFx, profile, settings.
 
 import { sfx } from '../../engine/audio';
-import { profile } from '../../engine/profile';
 import { recordEnginePlay } from '../../platform/gameHost';
 import { achievements } from '../../engine/achievements';
 import { settings } from '../../engine/settings';
@@ -76,7 +75,7 @@ export class TempleDash {
   state: GameState = 'menu';
   score = 0;
   coins = 0;
-  best = profile.stats(GAME_ID).best;
+  best = 0; // session best; server leaderboard is the authority
 
   // HUD-visible power-up state.
   magnetT = 0;
@@ -109,18 +108,16 @@ export class TempleDash {
   private skinId: string;
 
   constructor(private assets: AssetStore) {
-    this.skinId = profile.selectedSkin(GAME_ID, 'boy');
+    this.skinId = 'boy'; // overridden from the server profile by main.ts
     this.fx.reducedMotion = settings.data.reducedMotion;
     settings.onChange((s) => { this.fx.reducedMotion = s.reducedMotion; });
   }
 
   setSkin(id: string): void {
     this.skinId = id;
-    profile.selectSkin(GAME_ID, id);
   }
 
   start(): void {
-    this.skinId = profile.selectedSkin(GAME_ID, 'boy');
     this.score = 0; this.coins = 0;
     this.elapsed = 0; this.dist = 0; this.speed = BASE_SPEED;
     this.lane = 0; this.laneF = 0;
@@ -130,7 +127,6 @@ export class TempleDash {
     this.spawnCursor = 25;
     this.particles.clear(); this.fx.reset();
     this.walkPhase = 0;
-    profile.stats(GAME_ID); // ensure record exists
     this.setState('playing');
     sfx.startMusic([262, 0, 330, 392, 0, 330, 294, 0], 104);
   }
@@ -271,8 +267,8 @@ export class TempleDash {
     this.fx.shake(16, 0.5); this.fx.flash('#c8281e', 0.5); this.fx.hitStop(0.08);
     this.particles.burst(this.sx(this.laneF, PLAYER_Z), this.sy(PLAYER_Z) - 50, 26, ['#e0533a', '#ffce54', '#fff'], { speed: 300, gravity: 700, glow: true });
     this.overAt = this.time;
-    profile.addCoins(this.coins);
-    const record = profile.recordRun(GAME_ID, this.score);
+    const record = this.score > this.best;
+    if (record) this.best = this.score;
     void recordEnginePlay(GAME_ID, this.score);
     if (record) this.best = this.score;
     this.setState('over');

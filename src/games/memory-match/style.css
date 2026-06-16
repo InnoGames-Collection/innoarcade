@@ -1,4 +1,4 @@
-/* Memory Match — ported from the awetar build; markup/art kept, chrome adapted
+/* Memory Match — a built-in GoPlay game; markup/art kept, chrome adapted
    to the InnoArcade page shell (topbar + language switch). */
 
 #stage {
@@ -43,7 +43,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar memory-match (scoped) ----------------------------------------- */
+/* --- GoPlay memory-match (scoped) ----------------------------------------- */
 #memory-match-wrapper {
   --pink: #ff6b9d;
   --teal: #00d4aa;

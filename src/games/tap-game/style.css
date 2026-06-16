@@ -1,4 +1,4 @@
-/* Tap Game — ported from awetar; markup/art kept, chrome adapted to the
+/* Tap Game — ported from GoPlay; markup/art kept, chrome adapted to the
    InnoArcade page shell. Shared topbar/lang styles match the other ports. */
 
 #stage {
@@ -28,7 +28,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar tap-game (scoped) --------------------------------------------- */
+/* --- GoPlay tap-game (scoped) --------------------------------------------- */
 #tap-game-wrapper {
   --orange: #ff6b35;
   --fire: #ff4444;

@@ -12,12 +12,10 @@ import { Particles } from '../../engine/particles';
 import { ScreenFx } from '../../engine/fx';
 import { sfx } from '../../engine/audio';
 import { settings } from '../../engine/settings';
-import { profile } from '../../engine/profile';
 
 export const W = 480;
 export const H = 640;
 
-const GAME_ID = 'orbit-blast';
 const COLS = 7;
 const GAP = 8;
 const BLOCK = (W - GAP * (COLS + 1)) / COLS;
@@ -49,7 +47,7 @@ function blockColor(max: number): string {
 export class OrbitBlast {
   state: GameState = 'menu';
   score = 0;
-  best = profile.stats(GAME_ID).best;
+  best = 0; // session best (server leaderboard is the authority)
   ballCount = 1;
   level = 0;
 
@@ -316,8 +314,8 @@ export class OrbitBlast {
   }
 
   private gameOver(): void {
-    const record = profile.recordRun(GAME_ID, this.score);
-    this.best = profile.stats(GAME_ID).best;
+    const record = this.score > this.best;
+    if (record) this.best = this.score;
     this.fx.shake(10, 0.4);
     this.setState('over');
     this.onGameOver(this.score, record);

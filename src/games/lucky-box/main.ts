@@ -1,4 +1,4 @@
-// Lucky Boxes — a chance game ported from the awetar build (tournament mode).
+// Lucky Boxes — a chance game a built-in GoPlay game (tournament mode).
 // Pick a box; a win opens a double-or-nothing chest stage (take the win, or
 // gamble for double / lose it). Outcomes use a CSPRNG; the entry fee is charged
 // once per tournament window and points accumulate to the leaderboard.

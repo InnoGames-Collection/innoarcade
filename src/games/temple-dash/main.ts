@@ -8,7 +8,7 @@ import { AssetStore } from '../../engine/assets';
 import { Preloader } from '../../ui/preloader';
 import { SettingsPanel } from '../../ui/settingsPanel';
 import { registerPwa } from '../../engine/pwa';
-import { profile } from '../../engine/profile';
+import { fetchSkins, setSkinRemote } from '../../platform/backend';
 import { achievements } from '../../engine/achievements';
 import { sfx } from '../../engine/audio';
 import { TempleDash, W, H, GAME_ID, SKINS, TD_ACHIEVEMENTS, type GameState } from './game';
@@ -38,10 +38,8 @@ function run(assets: AssetStore): void {
   const settingsPanel = new SettingsPanel();
 
   achievements.onUnlock = (def) => {
-    profile.addCoins(def.reward);
     const title = getLang() === 'am' ? def.titleAm : def.titleEn;
-    showToast(`🏆 ${title}  +${def.reward}🪙`);
-    updateWallet();
+    showToast(`🏆 ${title}`);
   };
 
   // --- HUD ---
@@ -62,7 +60,7 @@ function run(assets: AssetStore): void {
 
   game.onStateChange = (s) => {
     showOverlay(s);
-    if (s === 'over' || s === 'menu') { updateWallet(); buildShop(); }
+    if (s === 'over' || s === 'menu') buildShop();
   };
   game.onGameOver = (score, coins, record) => {
     $('#finalScore').textContent = String(score);
@@ -83,17 +81,14 @@ function run(assets: AssetStore): void {
   });
 
   // --- buttons ---
-  const FTUE_KEY = 'innoarcade.td.ftue';
+  let ftueSeen = false; // session-only (no local storage)
   function beginPlay(): void {
-    if (!localStorage.getItem(FTUE_KEY)) {
-      $('#ftue').classList.remove('hidden');
-      return;
-    }
+    if (!ftueSeen) { $('#ftue').classList.remove('hidden'); return; }
     game.start();
   }
   $('#startBtn').addEventListener('click', beginPlay);
   $('#ftueBtn').addEventListener('click', () => {
-    localStorage.setItem(FTUE_KEY, '1');
+    ftueSeen = true;
     $('#ftue').classList.add('hidden');
     game.start();
   });
@@ -122,15 +117,16 @@ function run(assets: AssetStore): void {
     assets.draw(tctx, `${id}_stand`, 0, (72 - w) / 2, 2, w, 68);
     return c;
   }
+  // Runners are all free; the selection persists on the server profile (skins
+  // column). No local coins/unlocks — the economy is server-only.
+  let selectedSkin = 'boy';
   function buildShop(): void {
     const row = $('#skinRow');
     row.innerHTML = '';
-    const selected = profile.selectedSkin(GAME_ID, 'scout');
     for (const skin of SKINS) {
-      const owned = skin.cost === 0 || profile.isUnlocked(GAME_ID, skin.id);
-      const isSel = selected === skin.id;
+      const isSel = selectedSkin === skin.id;
       const chip = document.createElement('div');
-      chip.className = `skin-chip${isSel ? ' is-selected' : ''}${owned ? '' : ' is-locked'}`;
+      chip.className = `skin-chip${isSel ? ' is-selected' : ''}`;
       chip.appendChild(thumbFor(skin.id));
       const name = document.createElement('div');
       name.className = 'skin-name';
@@ -138,24 +134,25 @@ function run(assets: AssetStore): void {
       chip.appendChild(name);
       const action = document.createElement('div');
       action.className = 'skin-action';
-      action.textContent = isSel ? t('td.selected') : owned ? t('td.select') : `🪙 ${skin.cost}`;
+      action.textContent = isSel ? t('td.selected') : t('td.select');
       chip.appendChild(action);
       chip.addEventListener('click', () => {
         if (isSel) return;
-        if (owned) { game.setSkin(skin.id); sfx.click(); buildShop(); }
-        else if (profile.spendCoins(skin.cost)) {
-          profile.unlock(GAME_ID, skin.id); game.setSkin(skin.id);
-          sfx.coin(); updateWallet(); buildShop();
-        } else {
-          chip.classList.add('shake');
-          showToast(t('td.need'));
-          setTimeout(() => chip.classList.remove('shake'), 400);
-        }
+        selectedSkin = skin.id;
+        game.setSkin(skin.id);
+        void setSkinRemote(GAME_ID, skin.id);
+        sfx.click();
+        buildShop();
       });
       row.appendChild(chip);
     }
   }
-  function updateWallet(): void { $('#walletVal').textContent = String(profile.coins); }
+  // Apply the player's saved runner from their server profile.
+  void fetchSkins().then((sk) => {
+    selectedSkin = sk[GAME_ID] ?? 'boy';
+    game.setSkin(selectedSkin);
+    buildShop();
+  });
 
   // --- toast ---
   let toastT = 0;
@@ -183,7 +180,6 @@ function run(assets: AssetStore): void {
 
   applyTranslations();
   buildShop();
-  updateWallet();
   showOverlay('menu');
 
   const loop = new GameLoop(
@@ -194,7 +190,7 @@ function run(assets: AssetStore): void {
 
   // QA hook: ?auto starts a run immediately (used for headless screenshots).
   if (location.search.includes('auto')) {
-    localStorage.setItem(FTUE_KEY, '1');
+    ftueSeen = true;
     game.start();
   }
 }

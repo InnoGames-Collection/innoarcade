@@ -1,4 +1,4 @@
-// Tap Game — a reflex game ported from the awetar build.
+// Tap Game — a reflex game a built-in GoPlay game.
 // The run score is the natural leaderboard metric, so it is what the host
 // records / submits. winRate tunes the target needed to count as a "win".
 
@@ -7,7 +7,6 @@ import './style.css';
 import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
-import { profile } from '../../engine/profile';
 
 const host = createHost('tap-game');
 
@@ -157,4 +156,3 @@ document.documentElement.lang = getLang();
 applyTranslations();
 syncLangButtons();
 setHUD();
-void profile.coins;

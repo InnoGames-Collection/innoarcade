@@ -1,4 +1,4 @@
-/* Spin Wheel — ported from awetar; 3D canvas wheel kept, chrome adapted to the
+/* Spin Wheel — ported from GoPlay; 3D canvas wheel kept, chrome adapted to the
    InnoArcade shell with a compact tournament strip. */
 
 #stage {
@@ -27,7 +27,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar spin-wheel (scoped) ------------------------------------------- */
+/* --- GoPlay spin-wheel (scoped) ------------------------------------------- */
 #spin-wheel-wrapper {
   --primary: #2f0999;
   --accent: #d18a04;

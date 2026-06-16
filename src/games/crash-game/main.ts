@@ -1,4 +1,4 @@
-// Crash Game — ported from the awetar build (tournament mode).
+// Crash Game — a built-in GoPlay game (tournament mode).
 //
 // A rocket climbs a rising multiplier; cash out before it crashes. The crash
 // point is decided up-front by a CSPRNG at the configured win rate (the old

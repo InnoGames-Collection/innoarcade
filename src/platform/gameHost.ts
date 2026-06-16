@@ -1,21 +1,17 @@
-// Shared game host for the ported awetar titles.
+// Shared game host for every built-in game — one uniform economy/competition
+// path, sourced entirely from the Supabase backend (no local storage/scoring).
+// A game's catalog `mode` is the single switch:
 //
-// Every ported game keeps its own DOM/art (the original awetar markup), but the
-// economy and competition wiring is identical, so it lives here once. A game's
-// catalog `mode` is the single switch:
-//
-//   free        → no entry fee. A finished round records a local best score
-//                 (engine profile) and, on a win, mints the configured points
-//                 into the player's in-game coin balance.
+//   free        → no entry fee. A finished round awards server-side points
+//                 (submit-score) — no leaderboard.
 //   tournament  → the game's monthly tournament is auto-derived from the catalog
-//                 (see tournaments.ts). begin() enters it — debiting the entry
-//                 fee through the real-money wallet (TeleBirr top-ups) when the
-//                 server economy is on, or the local mock wallet offline. A
-//                 finished round submits the score to the leaderboard.
+//                 (see tournaments.ts). begin() enters it (entry fee debited via
+//                 the server wallet) and opens an anti-cheat round token; a
+//                 finished round awards points AND writes the leaderboard score,
+//                 all server-authoritative.
 //
-// Flipping a game between casual and competitive is therefore a one-line catalog
-// change (`mode: 'free' | 'tournament'`) with no edit to the game itself — the
-// "configurable slot" the product asked for.
+// Flipping a game between casual and competitive is a one-line catalog change
+// (`mode: 'free' | 'tournament'`) with no edit to the game itself.
 
 import { getGame, type GameMode, type GameMeta } from './catalog';
 import {
@@ -26,7 +22,6 @@ import {
 import { SignInRequiredError } from './payments';
 import { submitPlayRemote, startRoundRemote } from './backend';
 import { setBalance } from './currency';
-import { isTestMode } from './testMode';
 import { winRateOverride } from './config';
 
 export type BeginBlock = 'coins' | 'auth';
@@ -71,10 +66,9 @@ export class GameHost {
     }
   }
 
-  /** Effective base win chance 0–100 for chance games. Precedence:
-   *  local Test mode (100) → admin win-rate override → the catalog rate. */
+  /** Effective base win chance 0–100 for chance games:
+   *  the admin win-rate override (server config) or the catalog rate. */
   get winRate(): number {
-    if (isTestMode()) return 100;
     const override = winRateOverride();
     return override ?? this.baseWinRate;
   }
@@ -106,8 +100,6 @@ export class GameHost {
   async begin(): Promise<BeginResult> {
     await this.startRound();
     if (!this.isTournament) return { ok: true };
-    // Test mode waives the entry fee so every paid game stays reachable for QA.
-    if (isTestMode()) return { ok: true };
     const t = this.tournament!;
     if (isEntered(t.id)) return { ok: true };
     // Paid entry: join the tournament so the round counts toward the prize. A

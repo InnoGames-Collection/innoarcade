@@ -1,4 +1,4 @@
-// Lucky Slot — a 3-reel slot ported from the awetar build (tournament mode).
+// Lucky Slot — a 3-reel slot a built-in GoPlay game (tournament mode).
 // The outcome is decided by a CSPRNG at the configured win rate, and the reels
 // are filled to land on a matching/non-matching result accordingly. Entry fee
 // is charged once per window; wins accumulate to the leaderboard.

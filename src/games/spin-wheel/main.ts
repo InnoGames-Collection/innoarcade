@@ -1,4 +1,4 @@
-// Spin Wheel — a chance game ported from the awetar build (tournament mode).
+// Spin Wheel — a chance game a built-in GoPlay game (tournament mode).
 // Hold to charge spin speed, release to spin. The landing segment is decided by
 // a CSPRNG at the configured win rate; the wheel animation is steered to match.
 // Entry fee is charged once per window; wins accumulate to the leaderboard.

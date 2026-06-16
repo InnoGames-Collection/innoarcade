@@ -1,4 +1,4 @@
-// Dice Roll — a chance game ported from the awetar build (tournament mode).
+// Dice Roll — a chance game a built-in GoPlay game (tournament mode).
 //
 // Two integrity changes vs the original:
 //   1. The outcome is decided LOCALLY with a CSPRNG (crypto.getRandomValues) at

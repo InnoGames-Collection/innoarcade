@@ -1,4 +1,4 @@
-/* Scratch Card — ported from awetar; scratch-canvas mechanic kept, chrome
+/* Scratch Card — ported from GoPlay; scratch-canvas mechanic kept, chrome
    adapted to the InnoArcade shell. */
 
 #stage {
@@ -27,7 +27,7 @@
 }
 .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 
-/* --- awetar scratch-card (scoped) ----------------------------------------- */
+/* --- GoPlay scratch-card (scoped) ----------------------------------------- */
 #scratch-card-wrapper {
   --gold: #f4d03f;
   --bg-solid: #111b24;
