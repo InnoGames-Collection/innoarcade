@@ -5,20 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔢</text></svg>" />
     <title>Merge 2048 — GoPlay</title>
-    <script type="module" crossorigin src="../../assets/merge2048-BdxX_CJw.js"></script>
-    <link rel="modulepreload" crossorigin href="../../assets/index-DRsvV4S3.js">
-    <link rel="modulepreload" crossorigin href="../../assets/audio-B72F-rOv.js">
+    <script type="module" crossorigin src="../../assets/merge2048-Dfz1u32y.js"></script>
+    <link rel="modulepreload" crossorigin href="../../assets/index-BPxXsFKu.js">
+    <link rel="modulepreload" crossorigin href="../../assets/tournaments-Yhk6655A.js">
+    <link rel="modulepreload" crossorigin href="../../assets/audio-D9WETWQf.js">
     <link rel="modulepreload" crossorigin href="../../assets/loop-BDek7L7e.js">
     <link rel="modulepreload" crossorigin href="../../assets/input-CKS5NiBw.js">
     <link rel="modulepreload" crossorigin href="../../assets/fx-ccUjo7Ds.js">
     <link rel="modulepreload" crossorigin href="../../assets/profile-DNDDxq-U.js">
-    <link rel="stylesheet" crossorigin href="../../assets/audio-HPgZI6Yo.css">
+    <link rel="modulepreload" crossorigin href="../../assets/testMode-qyh1-s76.js">
+    <link rel="modulepreload" crossorigin href="../../assets/gameHost-CkrgMayI.js">
+    <link rel="stylesheet" crossorigin href="../../assets/audio-DngoG11r.css">
     <link rel="stylesheet" crossorigin href="../../assets/merge2048-DIGfFOex.css">
   </head>
   <body>
     <div id="stage">
       <header id="hud">
-        <a class="back-link" href="../../" data-i18n="m2.back">All games</a>
+        <button type="button" class="gp-close" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         <div class="scores">
           <div class="score-box">
             <span data-i18n="m2.score">Score</span>
@@ -46,7 +49,7 @@
             <button id="langEn" class="lang-btn">EN</button>
             <button id="langAm" class="lang-btn">አማ</button>
           </div>
-          <a class="back" href="../../" data-i18n="m2.back">All games</a>
+          <button type="button" class="gp-close gp-close-block" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         </div>
       </div>
 
@@ -65,7 +68,7 @@
             </div>
           </div>
           <button id="againBtn" class="btn primary" data-i18n="m2.restart">Play again</button>
-          <a class="back" href="../../" data-i18n="m2.back">All games</a>
+          <button type="button" class="gp-close gp-close-block" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         </div>
       </div>
     </div>

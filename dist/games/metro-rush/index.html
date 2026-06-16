@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚇</text></svg>" />
     <title>Metro Rush — GoPlay</title>
-    <script type="module" crossorigin src="../../assets/metroRush-C-WHu6W-.js"></script>
-    <link rel="modulepreload" crossorigin href="../../assets/index-DRsvV4S3.js">
-    <link rel="modulepreload" crossorigin href="../../assets/audio-B72F-rOv.js">
+    <script type="module" crossorigin src="../../assets/metroRush-DCk33QRM.js"></script>
+    <link rel="modulepreload" crossorigin href="../../assets/index-BPxXsFKu.js">
+    <link rel="modulepreload" crossorigin href="../../assets/tournaments-Yhk6655A.js">
+    <link rel="modulepreload" crossorigin href="../../assets/audio-D9WETWQf.js">
+    <link rel="modulepreload" crossorigin href="../../assets/testMode-qyh1-s76.js">
+    <link rel="modulepreload" crossorigin href="../../assets/gameHost-CkrgMayI.js">
     <link rel="modulepreload" crossorigin href="../../assets/loop-BDek7L7e.js">
     <link rel="modulepreload" crossorigin href="../../assets/input-CKS5NiBw.js">
     <link rel="modulepreload" crossorigin href="../../assets/storage-LDLkW2mu.js">
-    <link rel="stylesheet" crossorigin href="../../assets/audio-HPgZI6Yo.css">
+    <link rel="stylesheet" crossorigin href="../../assets/audio-DngoG11r.css">
     <link rel="stylesheet" crossorigin href="../../assets/metroRush-Dpm5ajHc.css">
   </head>
   <body>
@@ -19,6 +22,7 @@
       <canvas id="game" width="480" height="720"></canvas>
 
       <div id="hud">
+        <button id="closeBtn" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         <div class="hud-stats">
           <div class="stat"><span data-i18n="td.score">Score</span><strong id="scoreVal">0</strong></div>
           <div class="stat"><span data-i18n="mr.tokens">Tokens</span><strong id="tokensVal">0</strong></div>
@@ -40,7 +44,7 @@
             <button id="langEn" class="lang-btn">EN</button>
             <button id="langAm" class="lang-btn">አማ</button>
           </div>
-          <a class="back" href="../../" data-i18n="td.back">All games</a>
+          <button type="button" class="gp-close gp-close-block" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         </div>
       </div>
 
@@ -49,7 +53,7 @@
           <h2 data-i18n="td.paused">Paused</h2>
           <button id="resumeBtn" class="btn primary" data-i18n="td.resume">Resume</button>
           <button id="restartBtn" class="btn" data-i18n="td.restart">Play again</button>
-          <a class="back" href="../../" data-i18n="td.back">All games</a>
+          <button type="button" class="gp-close gp-close-block" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         </div>
       </div>
 
@@ -63,7 +67,7 @@
             <div class="stat"><span data-i18n="td.best">Best</span><strong id="finalBest">0</strong></div>
           </div>
           <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
-          <a class="back" href="../../" data-i18n="td.back">All games</a>
+          <button type="button" class="gp-close gp-close-block" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         </div>
       </div>
     </div>
