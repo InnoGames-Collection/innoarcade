@@ -10,11 +10,17 @@
 import { isConfigured, supabase } from './supabase';
 import { isSignedIn } from './auth';
 
-// Uniform play reward: every game awards exactly this many points on a win, 0 on
-// a loss — the single, flat, server-authoritative rule shared by ALL games so no
-// game is a better "points farm". Mirrored in the submit-score Edge Function;
-// keep the two in sync.
-export const WIN_POINTS = 100;
+// Base of the uniform scoring matrix: a "perfect" round (performance 1.0, no
+// difficulty/time bonus) earns this many points. The server computes the actual
+// award (BASE × performance × difficulty × time) — this constant is only for HUD
+// hints. Mirrored in the submit-score Edge Function; keep in sync.
+export const BASE_POINTS = 100;
+
+// Player level derived from lifetime points (only grows). Gentle sqrt curve:
+// L2 at 100, L3 at 400, L4 at 900, L5 at 1600 … Used for status + game unlocks.
+export function levelFor(lifetimePoints: number): number {
+  return 1 + Math.floor(Math.sqrt(Math.max(0, lifetimePoints) / 100));
+}
 
 // The coin economy is server-only. Operations hit the backend whenever Supabase
 // is configured AND the player is signed in — there is no local/offline economy.
@@ -64,7 +70,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     { id: 'whale', coins: 2000, bonus: 600, priceEtb: 500 },
   ],
   paymentMethods: { telebirr: true, topup: true },
-  defaultEntryFeeCoins: 50,
+  defaultEntryFeeCoins: 1,
   houseRakePct: 10,
   maintenance: false,
   winRateOverride: null,

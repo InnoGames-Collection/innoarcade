@@ -18,7 +18,8 @@ import {
 import { balanceSync, onWalletChange } from '../platform/wallet';
 import { SignInRequiredError } from '../platform/payments';
 import { activeDraws, myTickets, enterDraw, recentWinners, NotEnoughPointsError, hydrateTickets, type DrawPeriod, type Winner } from '../platform/draws';
-import { points as pointsBal, onCurrencyChange, setBalance } from '../platform/currency';
+import { points as pointsBal, onCurrencyChange, setBalance, setLifetime, pointsLifetime } from '../platform/currency';
+import { levelFor } from '../platform/config';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const lang = (): Lang => getLang();
@@ -92,9 +93,9 @@ function renderMyStats(): void {
   if (!host) return;
   const chip = (icon: string, val: string, cls: string): string =>
     `<span class="bal-chip ${cls}">${icon} <strong>${val}</strong></span>`;
-  // Top bar shows Points + Coins, then a Buy button (gold is bonus/reward only,
-  // so it is no longer surfaced here — it lives in the dashboard).
+  // Top bar shows Level + Points + Coins, then a Buy button.
   host.innerHTML =
+    chip('🎖️', `L${levelFor(pointsLifetime())}`, 'bal-level') +
     chip('⭐', pointsBal().toLocaleString(), 'bal-points') +
     chip('🪙', balanceSync().toLocaleString(), 'bal-coins') +
     `<button class="bal-buy" id="buyCoinsBtn">🪙＋ ${t('hub.buyCoins')}</button>`;
@@ -735,7 +736,7 @@ void refreshData();
 // and whenever auth changes, then re-render the top balance strip.
 function hydratePoints(): void {
   void fetchWallets().then((w) => {
-    if (w) { setBalance('points', w.points); setBalance('gold', w.gold); renderMyStats(); }
+    if (w) { setBalance('points', w.points); setLifetime(w.lifetime); renderMyStats(); }
   });
   void hydrateTickets().then(() => renderDraws());
 }

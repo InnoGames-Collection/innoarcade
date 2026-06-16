@@ -32,6 +32,29 @@ const MAX_SCORE: Record<string, number> = {
   'merge-2048': 5_000_000,
   _default: 2_000_000,
 };
+
+// Per-game scoring config for the uniform matrix (target-based normalization).
+//   par       = a "great round" raw score → performance 1.0
+//   timeWeight/parTime = speed bonus for time-relevant games (others: no time)
+//   difficulty = tier multiplier (default 1)
+// Tunable; the server is the single source of truth.
+interface ScoreCfg { par: number; timeWeight?: number; parTime?: number; difficulty?: number }
+const GAME_SCORING: Record<string, ScoreCfg> = {
+  'orbit-blast': { par: 3000 }, 'merge-2048': { par: 5000 }, 'temple-dash': { par: 1500 },
+  'metro-rush': { par: 1500 }, 'candy-crunch': { par: 300 }, 'dot-link': { par: 200 },
+  'brick-blitz': { par: 300 }, 'fruit-slice': { par: 60 }, 'sky-hopper': { par: 100 },
+  'bubble-pop': { par: 300 }, 'memory-match': { par: 100 }, 'tap-game': { par: 50 },
+  'dice-roll': { par: 300 }, 'scratch-card': { par: 100 }, 'lucky-box': { par: 300 },
+  'spin-wheel': { par: 300 }, 'luckyslot': { par: 300 }, 'popblast': { par: 200 },
+  'crash-game': { par: 300 },
+  'ethiopian-quiz': { par: 100, timeWeight: 0.5, parTime: 60000 },
+  'sudoku': { par: 30 }, 'crosssum': { par: 10 }, 'logic': { par: 5 }, 'rhyme': { par: 10 },
+  'spell': { par: 100, timeWeight: 0.3, parTime: 60000 },
+  'vocab': { par: 100, timeWeight: 0.3, parTime: 60000 },
+  'target24': { par: 6, timeWeight: 0.4, parTime: 90000 },
+  'sequence': { par: 8, timeWeight: 0.4, parTime: 90000 },
+  _default: { par: 100 },
+};
 const MIN_SECONDS_BETWEEN = 3; // basic flood protection per (user, tournament)
 
 const cors = {
@@ -91,7 +114,7 @@ Deno.serve(async (req: Request) => {
   const user = userData.user;
   if (!user) return json({ error: 'not signed in' }, 401);
 
-  let body: { gameId?: string; tournamentId?: string; score?: number; win?: boolean; leaderboard?: boolean; token?: string };
+  let body: { gameId?: string; tournamentId?: string; score?: number; win?: boolean; timeMs?: number; leaderboard?: boolean; token?: string };
   try {
     body = await req.json();
   } catch {
@@ -119,24 +142,37 @@ Deno.serve(async (req: Request) => {
   // Service-role client for the privileged read/write.
   const admin = createClient(url, serviceKey);
 
-  // UNIFORM ECONOMY: the SERVER decides the points — a flat WIN_POINTS on a win,
-  // 0 on a loss — identical for every game. The client cannot propose an amount.
-  // Applied only AFTER all validation / anti-cheat gates pass. (Mirror of
-  // WIN_POINTS in src/platform/config.ts — keep in sync.)
-  const WIN_POINTS = 100;
-  const award = win ? WIN_POINTS : 0;
+  // UNIFORM SCORING MATRIX — server-authoritative. Every game maps its raw round
+  // result to points on one common scale (BASE), so points are comparable on the
+  // global leaderboard regardless of the game's nature:
+  //   points = round(BASE × performance × difficulty × time)
+  //     performance = clamp(score / par, 0, 1)         (per-game `par` target)
+  //     time        = 1 + timeWeight·clamp((parTime-timeMs)/parTime, 0, 1)  (timed games)
+  //     difficulty  = per-game tier (default 1)
+  // The client cannot propose an amount; applied only after all gates pass.
+  const BASE = 100;
+  const cfg = GAME_SCORING[gameId] ?? GAME_SCORING._default;
+  const timeMs = Number(body.timeMs ?? 0);
+  const performance = Math.max(0, Math.min(1, score / cfg.par));
+  const timeFactor = (cfg.timeWeight && cfg.parTime && timeMs > 0)
+    ? 1 + cfg.timeWeight * Math.max(0, Math.min(1, (cfg.parTime - timeMs) / cfg.parTime))
+    : 1;
+  const award = Math.round(BASE * performance * (cfg.difficulty ?? 1) * timeFactor);
   let points = 0;
+  let lifetime = 0;
   const grantPoints = async (): Promise<void> => {
     try {
-      const { data: pbal } = await admin.rpc('apply_points', { p_user: user.id, p_delta: award });
-      points = Number(pbal ?? 0);
+      await admin.rpc('apply_points', { p_user: user.id, p_delta: award });
+      const { data: prof } = await admin.from('profiles').select('points, points_lifetime').eq('id', user.id).maybeSingle();
+      points = Number(prof?.points ?? 0);
+      lifetime = Number(prof?.points_lifetime ?? 0);
     } catch { /* best-effort; never blocks the response */ }
   };
 
   // Free games: points only, no leaderboard, no token required.
   if (!wantsLeaderboard) {
     await grantPoints();
-    return json({ points });
+    return json({ points, lifetime });
   }
 
   // --- anti-cheat: leaderboard scores require a valid single-use round token ---
@@ -208,5 +244,5 @@ Deno.serve(async (req: Request) => {
   const total = board?.length ?? 1;
   const rank = board?.find((r: { user_id: string; rank: number }) => r.user_id === user.id)?.rank ?? total;
 
-  return json({ best, isRecord, rank, total, points });
+  return json({ best, isRecord, rank, total, points, lifetime });
 });

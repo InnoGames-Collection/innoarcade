@@ -21,8 +21,8 @@ import {
 } from './tournaments';
 import { SignInRequiredError } from './payments';
 import { submitPlayRemote, startRoundRemote, leaderboardRemote, playerStandingRemote } from './backend';
-import { setBalance } from './currency';
-import { winRateOverride, WIN_POINTS } from './config';
+import { setBalance, setLifetime } from './currency';
+import { winRateOverride, BASE_POINTS } from './config';
 import { currentUser } from './auth';
 
 export type BeginBlock = 'coins' | 'auth';
@@ -67,8 +67,8 @@ export class GameHost {
     }
   }
 
-  /** Flat, uniform points a win awards on ANY game (for HUD display). */
-  get winPoints(): number { return WIN_POINTS; }
+  /** Max points a great round can earn (for HUD hints; server computes actual). */
+  get winPoints(): number { return BASE_POINTS; }
 
   /** Win threshold for skill/engine games (score ≥ this counts as a win). */
   get winScore(): number { return this.meta.play?.winScore ?? 1; }
@@ -130,13 +130,14 @@ export class GameHost {
   }
 
   // Record a finished round on the SERVER (the only economy authority). The
-  // server awards the uniform flat points (WIN_POINTS on a win, 0 otherwise) —
-  // the client only reports {score, win}. Tournament games also get their
-  // authoritative leaderboard score written. No local storage.
-  async finish(score: number, isWin: boolean): Promise<FinishResult> {
+  // server computes points from the uniform scoring matrix (performance × time ×
+  // difficulty); the client only reports {score, win, timeMs}. Tournament games
+  // also get their authoritative leaderboard score written. No local storage.
+  async finish(score: number, isWin: boolean, timeMs = 0): Promise<FinishResult> {
     try {
-      const res = await submitPlayRemote(this.meta.id, Math.max(0, Math.floor(score)), isWin, this.isTournament, this.roundToken);
+      const res = await submitPlayRemote(this.meta.id, Math.max(0, Math.floor(score)), isWin, this.isTournament, this.roundToken, timeMs);
       if (typeof res.points === 'number') setBalance('points', res.points);
+      if (typeof res.lifetime === 'number') setLifetime(res.lifetime);
       // Cache the server standing so standing() reflects the latest real rank.
       if (this.isTournament && typeof res.rank === 'number') {
         this.cachedStanding = { rank: res.rank, name: 'You', score: res.best ?? 0, isPlayer: true };

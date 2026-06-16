@@ -13,10 +13,11 @@ export function backendReady(): boolean {
   return isConfigured();
 }
 
-// Result of a finished round: server-awarded points balance, plus leaderboard
-// standing when the game is a tournament (free games return points only).
+// Result of a finished round: server-awarded points balance + lifetime total,
+// plus leaderboard standing when the game is a tournament.
 export interface PlayResult {
   points: number;
+  lifetime?: number;
   best?: number;
   isRecord?: boolean;
   rank?: number;
@@ -24,15 +25,15 @@ export interface PlayResult {
 }
 
 // Submit a finished round to the server (the ONLY economy authority). The server
-// decides the points (flat WIN_POINTS on a win, 0 otherwise) — the client only
-// reports {score, win}; it cannot propose an amount. Tournament games also get
-// their authoritative leaderboard score written. Requires a session.
+// computes the points via the uniform scoring matrix from {score, win, timeMs} —
+// the client cannot propose an amount. Tournament games also get their
+// authoritative leaderboard score written. Requires a session.
 export async function submitPlayRemote(
-  gameId: string, score: number, win: boolean, leaderboard: boolean, token = '',
+  gameId: string, score: number, win: boolean, leaderboard: boolean, token = '', timeMs = 0,
 ): Promise<PlayResult> {
   const sb = supabase();
   const { data, error } = await sb.functions.invoke('submit-score', {
-    body: { gameId, score, win, leaderboard, token },
+    body: { gameId, score, win, timeMs, leaderboard, token },
   });
   if (error) throw error;
   return data as PlayResult;
@@ -71,16 +72,16 @@ export async function setSkinRemote(gameId: string, skinId: string): Promise<voi
   await sb.from('profiles').update({ skins: cur }).eq('id', me);
 }
 
-// Read the signed-in player's authoritative points + gold balances from their
-// profile (both server-sourced; the client never writes them).
-export async function fetchWallets(): Promise<{ points: number; gold: number } | null> {
+// Read the signed-in player's authoritative points balance + lifetime total from
+// their profile (server-sourced; the client never writes them).
+export async function fetchWallets(): Promise<{ points: number; lifetime: number } | null> {
   if (!isConfigured()) return null;
   const sb = supabase();
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return null;
-  const { data, error } = await sb.from('profiles').select('points, gold').eq('id', me).maybeSingle();
+  const { data, error } = await sb.from('profiles').select('points, points_lifetime').eq('id', me).maybeSingle();
   if (error || !data) return null;
-  return { points: Number(data.points ?? 0), gold: Number(data.gold ?? 0) };
+  return { points: Number(data.points ?? 0), lifetime: Number(data.points_lifetime ?? 0) };
 }
 
 /** @deprecated use fetchWallets — kept for callers that only need points. */

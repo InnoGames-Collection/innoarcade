@@ -16,6 +16,9 @@ export type Currency = 'points' | 'gold';
 // load and after every server economy call. Reads are synchronous so the UI can
 // render instantly from the last hydrated value.
 const cache: Record<Currency, number> = { points: 0, gold: 0 };
+// Lifetime points (only grows) — drives level + the global leaderboard. Separate
+// from the spendable `points` balance.
+let cacheLifetime = 0;
 
 const listeners = new Set<() => void>();
 function emit(): void { for (const fn of listeners) fn(); }
@@ -23,10 +26,17 @@ function emit(): void { for (const fn of listeners) fn(); }
 export function points(): number { return cache.points; }
 export function gold(): number { return cache.gold; }
 export function balanceOf(c: Currency): number { return cache[c]; }
+export function pointsLifetime(): number { return cacheLifetime; }
 
 /** Hydrate the cache from an authoritative (server) balance. */
 export function setBalance(c: Currency, v: number): void {
   cache[c] = Math.max(0, Math.floor(v));
+  emit();
+}
+
+/** Hydrate the lifetime points total (server-authoritative). */
+export function setLifetime(v: number): void {
+  cacheLifetime = Math.max(0, Math.floor(v));
   emit();
 }
 
