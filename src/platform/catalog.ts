@@ -267,6 +267,22 @@ const COVERS: Record<string, string> = {
   'metro-rush': 'metro_rush.webp',
   'ethiopian-quiz': 'ethiopian_quiz.webp',
   'sudoku': 'sudoku.webp',
+  'candy-crunch': 'candy_saga.webp',
+  'dot-link': 'dot_link.webp',
+  'brick-blitz': 'brick_blitz.webp',
+  'fruit-slice': 'fruit_slice.webp',
+  'sky-hopper': 'sky_hopper.webp',
+  'bubble-pop': 'bubble_pop.webp',
+  'tap-game': 'tap_game.webp',
+  'scratch-card': 'scratch_card.webp',
+  'crash-game': 'crash_game.webp',
+  'spell': 'spell_quiz.webp',
+  'vocab': 'vocabulary_trivia.webp',
+  'rhyme': 'rhyme_time.webp',
+  'target24': 'target_24.webp',
+  'crosssum': 'cross_sum.webp',
+  'logic': 'logic_grid.webp',
+  'sequence': 'sequence.webp',
 };
 for (const g of CATALOG) { if (COVERS[g.id]) g.cover = COVERS[g.id]; }
 
