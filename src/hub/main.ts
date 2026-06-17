@@ -7,7 +7,7 @@ import { mountWallet, openStore, needsSignInToBuy } from './wallet';
 import { onAuthChange, currentUser, signOut, authAvailable } from '../platform/auth';
 import { sfx } from '../engine/audio';
 import { renderDashboard, injectDashboardStyles } from './dashboard';
-import { mergedLeaderboard, fetchWallets } from '../platform/backend';
+import { mergedLeaderboard, fetchWallets, fetchGlobalLeaderboard } from '../platform/backend';
 import { CATALOG, orderedCatalog, getGame, type GameMeta } from '../platform/catalog';
 import {
   activeTournaments, featuredTournament, tournamentGame,
@@ -85,6 +85,23 @@ function setupPromo(): void {
     track.addEventListener('pointercancel', () => { active = false; });
     track.style.touchAction = 'pan-y'; // allow vertical scroll, capture horizontal swipe
   }
+}
+
+// --- Global leaderboard (top players by lifetime points) --------------------
+function renderGlobalBoard(): void {
+  const host = document.querySelector('#globalBoard');
+  if (!host) return;
+  void fetchGlobalLeaderboard(5).then((rows) => {
+    if (!rows.length) { host.innerHTML = `<p class="pd-empty">${t('hub.unranked')}</p>`; return; }
+    const medal = ['🥇', '🥈', '🥉'];
+    host.innerHTML = rows.map((r) => `
+      <div class="gb-row${r.isPlayer ? ' me' : ''}">
+        <span class="gb-rank">${medal[r.rank - 1] ?? '#' + r.rank}</span>
+        <span class="gb-name">${escapeHtml(r.name)}</span>
+        <span class="gb-lvl">L${levelFor(r.lifetime)}</span>
+        <span class="gb-pts">${r.lifetime.toLocaleString()} ⭐</span>
+      </div>`).join('');
+  });
 }
 
 // --- Compact balance pill strip (in the topbar) ------------------------------
@@ -543,6 +560,7 @@ function renderAll(): void {
   renderGames();
   renderDraws();
   renderWinners();
+  renderGlobalBoard();
   applyTranslations();
   const search = document.querySelector<HTMLInputElement>('#gameSearch');
   if (search) search.placeholder = t('hub.searchGames');

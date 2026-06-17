@@ -247,7 +247,7 @@ const en = {
   'cg.prevCrashes': 'Previous crashes',
   // Portal shell (bottom nav, draws/winners, browse)
   'nav.home': 'Home', 'nav.games': 'Games', 'nav.draws': 'Draws', 'nav.winners': 'Winners', 'nav.account': 'Account',
-  'hub.draws': 'Draws', 'hub.winners': 'Winners',
+  'hub.draws': 'Draws', 'hub.winners': 'Winners', 'hub.topPlayers': 'Top players',
   'hub.comingSoon': 'Coming soon — daily, weekly & monthly prize draws.',
   'hub.comingSoonW': 'Coming soon — the latest lucky winners.',
   'hub.searchGames': 'Search games…',
@@ -508,7 +508,7 @@ const am: Dict = {
   'cg.prevCrashes': 'ያለፉ ውድቀቶች',
   // Portal shell (bottom nav, draws/winners, browse)
   'nav.home': 'መነሻ', 'nav.games': 'ጨዋታዎች', 'nav.draws': 'ዕጣዎች', 'nav.winners': 'አሸናፊዎች', 'nav.account': 'መለያ',
-  'hub.draws': 'ዕጣዎች', 'hub.winners': 'አሸናፊዎች',
+  'hub.draws': 'ዕጣዎች', 'hub.winners': 'አሸናፊዎች', 'hub.topPlayers': 'ከፍተኛ ተጫዋቾች',
   'hub.comingSoon': 'በቅርቡ — ዕለታዊ፣ ሳምንታዊ እና ወርሃዊ ዕጣዎች።',
   'hub.comingSoonW': 'በቅርቡ — የቅርብ ጊዜ አሸናፊዎች።',
   'hub.searchGames': 'ጨዋታ ይፈልጉ…',

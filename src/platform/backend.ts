@@ -84,6 +84,24 @@ export async function fetchWallets(): Promise<{ points: number; lifetime: number
   return { points: Number(data.points ?? 0), lifetime: Number(data.points_lifetime ?? 0) };
 }
 
+// Global leaderboard (top players by lifetime points). Powers the landing widget.
+export interface GlobalRow { rank: number; name: string; lifetime: number; isPlayer: boolean }
+export async function fetchGlobalLeaderboard(limit = 5): Promise<GlobalRow[]> {
+  if (!isConfigured()) return [];
+  const sb = supabase();
+  const me = (await sb.auth.getUser()).data.user?.id;
+  const { data, error } = await sb
+    .from('global_leaderboard')
+    .select('rank, name, points_lifetime, user_id')
+    .order('rank', { ascending: true })
+    .limit(limit);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    rank: Number(r.rank), name: (r.name as string) ?? 'Player',
+    lifetime: Number(r.points_lifetime), isPlayer: r.user_id === me,
+  }));
+}
+
 /** @deprecated use fetchWallets — kept for callers that only need points. */
 export async function fetchPoints(): Promise<number | null> {
   const w = await fetchWallets();

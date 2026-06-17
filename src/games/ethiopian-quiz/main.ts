@@ -45,19 +45,23 @@ const BANK: Q[] = [
 const STR = {
   en: { title: 'Ethiopian Quiz', start: 'Start', next: 'Next', again: 'Play again',
     correct: 'Correct! 🎉', wrong: 'Not quite.', q: 'Question', result: 'You scored',
-    of: 'of', needCoins: 'Not enough coins — tap “All games” to top up.', signIn: 'Sign in from “All games” to compete.' },
+    of: 'of', timeup: '⏱ Time up!', needCoins: 'Not enough coins — tap “All games” to top up.', signIn: 'Sign in from “All games” to compete.' },
   am: { title: 'የኢትዮጵያ ጥያቄ', start: 'ጀምር', next: 'ቀጣይ', again: 'እንደገና ይጫወቱ',
     correct: 'ትክክል! 🎉', wrong: 'አልተሳካም።', q: 'ጥያቄ', result: 'ያስመዘገቡት',
-    of: 'ከ', needCoins: 'በቂ ሳንቲም የለም — ለመሙላት “ሁሉም ጨዋታዎች” ይጫኑ።', signIn: 'ለመወዳደር ከ“ሁሉም ጨዋታዎች” ይግቡ።' },
+    of: 'ከ', timeup: '⏱ ጊዜው አለቀ!', needCoins: 'በቂ ሳንቲም የለም — ለመሙላት “ሁሉም ጨዋታዎች” ይጫኑ።', signIn: 'ለመወዳደር ከ“ሁሉም ጨዋታዎች” ይግቡ።' },
 };
 const lang = (): 'en' | 'am' => (getLang() === 'am' ? 'am' : 'en');
 const s = (k: keyof typeof STR.en): string => STR[lang()][k];
 
 const ROUND = 5;
+const PER_Q_SECONDS = 10; // per-question time limit (anti-cheat / anti-share)
 let round: Q[] = [];
 let idx = 0;
 let correct = 0;
 let locked = false;
+let roundStart = 0;            // for the server time-bonus
+let qTimer: ReturnType<typeof setInterval> | undefined;
+let qLeft = 0;
 
 const elQ = $('#eq-question');
 const elOpts = $('#eq-options');
@@ -94,16 +98,32 @@ async function startRound(): Promise<void> {
   }
   setHUD();
   round = shuffle(BANK).slice(0, ROUND);
-  idx = 0; correct = 0; locked = false;
+  idx = 0; correct = 0; locked = false; roundStart = Date.now();
   startBtn.style.display = 'none';
   showQuestion();
+}
+
+function clearQTimer(): void { if (qTimer) { clearInterval(qTimer); qTimer = undefined; } }
+function startQTimer(): void {
+  qLeft = PER_Q_SECONDS;
+  renderProg();
+  qTimer = setInterval(() => { qLeft--; renderProg(); if (qLeft <= 0) timeUp(); }, 1000);
+}
+function renderProg(): void {
+  elProg.textContent = `${s('q')} ${idx + 1} / ${round.length}  ·  ⏱ ${Math.max(0, qLeft)}s`;
+}
+function timeUp(): void {
+  if (locked) return;
+  locked = true;
+  clearQTimer();
+  elMsg.textContent = s('timeup'); // no answer reveal — anti-cheat
+  setTimeout(() => { idx++; if (idx < round.length) showQuestion(); else finishRound(); }, 900);
 }
 
 function showQuestion(): void {
   locked = false;
   elMsg.textContent = '';
   const q = round[idx];
-  elProg.textContent = `${s('q')} ${idx + 1} / ${round.length}`;
   elQ.textContent = lang() === 'am' ? q.am : q.en;
   // present options in shuffled order, remembering which is correct
   const order = shuffle(q.opts.map((_, i) => i));
@@ -111,18 +131,23 @@ function showQuestion(): void {
     `<button class="eq-opt" data-i="${oi}">${lang() === 'am' ? q.opts[oi][1] : q.opts[oi][0]}</button>`).join('');
   elOpts.querySelectorAll<HTMLButtonElement>('.eq-opt').forEach((b) =>
     b.addEventListener('click', () => answer(Number(b.dataset.i), b)));
+  startQTimer();
 }
 
 function answer(choice: number, btn: HTMLButtonElement): void {
   if (locked) return;
   locked = true;
+  clearQTimer();
   const q = round[idx];
   const right = choice === q.answer;
   if (right) { correct++; btn.classList.add('ok'); sfx.coin(); }
   else {
     btn.classList.add('bad'); sfx.click();
-    const correctBtn = elOpts.querySelector<HTMLButtonElement>(`.eq-opt[data-i="${q.answer}"]`);
-    correctBtn?.classList.add('ok');
+    // Tournament integrity: do NOT reveal the correct answer (replay/share-proof).
+    if (!host.isTournament) {
+      const correctBtn = elOpts.querySelector<HTMLButtonElement>(`.eq-opt[data-i="${q.answer}"]`);
+      correctBtn?.classList.add('ok');
+    }
   }
   elMsg.textContent = right ? s('correct') : s('wrong');
   setTimeout(() => {
@@ -141,7 +166,8 @@ function finishRound(): void {
   elMsg.textContent = isWin ? `🎉 +${host.winPoints} ⭐` : '';
   startBtn.textContent = s('again');
   startBtn.style.display = '';
-  void host.finish(score, isWin).then((res) => {
+  const timeMs = Date.now() - roundStart;
+  void host.finish(score, isWin, timeMs).then((res) => {
       if (host.isTournament && res.rank) $('#eq-rank').textContent = `#${res.rank}`;
     });
 }

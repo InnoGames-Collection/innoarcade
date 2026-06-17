@@ -50,15 +50,9 @@ Deno.serve(async (req: Request) => {
   const ended = tour.state === 'settled' || tour.state === 'settling' || new Date(tour.ends_at).getTime() <= now;
   if (ended) return json({ error: 'tournament closed' }, 409);
 
-  // Already entered? Return the existing entry (idempotent — no double charge).
-  const { data: existing } = await admin
-    .from('tournament_entries')
-    .select('tournament_id, fee_paid, prize_won, entered_at')
-    .eq('user_id', user.id).eq('tournament_id', tournamentId).maybeSingle();
-  if (existing) {
-    return json({ tournamentId, feePaid: existing.fee_paid, prizeWon: existing.prize_won, enteredAt: new Date(existing.entered_at).getTime() });
-  }
-
+  // PER-ATTEMPT entry: debit the fee on EVERY play (not once per window). The
+  // entry row marks eligibility for the score gate; we keep one row per player
+  // per tournament and accumulate the total fees paid.
   const fee = tour.type === 'paid' ? Number(tour.entry_fee_coins) : 0;
   if (fee > 0) {
     const { error } = await admin.rpc('apply_coins', {
@@ -67,9 +61,16 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ error: 'insufficient coins' }, 402);
   }
 
-  await admin.from('tournament_entries').insert({
-    user_id: user.id, tournament_id: tournamentId, fee_paid: fee,
-  });
+  const { data: existing } = await admin
+    .from('tournament_entries')
+    .select('fee_paid').eq('user_id', user.id).eq('tournament_id', tournamentId).maybeSingle();
+  if (existing) {
+    await admin.from('tournament_entries')
+      .update({ fee_paid: Number(existing.fee_paid) + fee })
+      .eq('user_id', user.id).eq('tournament_id', tournamentId);
+  } else {
+    await admin.from('tournament_entries').insert({ user_id: user.id, tournament_id: tournamentId, fee_paid: fee });
+  }
 
   return json({ tournamentId, feePaid: fee, prizeWon: 0, enteredAt: now });
 });

@@ -112,11 +112,9 @@ export class GameHost {
     await this.startRound();
     if (!this.isTournament) return { ok: true };
     const t = this.tournament!;
-    if (isEntered(t.id)) return { ok: true };
-    // Paid entry: join the tournament so the round counts toward the prize. A
-    // missing account or an empty wallet is a real, recoverable state — report
-    // it (`reason`) so the game can prompt the player to sign in / top up rather
-    // than silently dropping them out of the competition.
+    // Per-attempt entry: charge the 1-coin fee on EVERY play. An empty wallet or
+    // missing account is a real, recoverable state — report it (`reason`) so the
+    // game can prompt the player to top up / sign in.
     try {
       await enterTournament(t.id);
       return { ok: true };

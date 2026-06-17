@@ -520,3 +520,13 @@ html, body { max-width: 100%; overflow-x: hidden; }
    light-green glyph look — this only applies to cards with a `cover`. */
 .gc-thumb-cover { background: none; padding: 0; }
 .gc-thumb-cover .gc-cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ---- global leaderboard (top players) ---- */
+.global-board { display: flex; flex-direction: column; gap: 0.4rem; }
+.gb-row { display: grid; grid-template-columns: 2rem 1fr auto auto; align-items: center; gap: 0.6rem;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.5rem 0.8rem; }
+.gb-row.me { border-color: var(--accent); background: #f3fbe9; }
+.gb-rank { font-size: 1.1rem; font-weight: 800; text-align: center; }
+.gb-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gb-lvl { font-size: 0.72rem; font-weight: 800; color: #7a4bd0; background: #efe7fb; border-radius: 999px; padding: 0.1rem 0.5rem; }
+.gb-pts { font-weight: 800; color: var(--accent); font-size: 0.85rem; white-space: nowrap; }
