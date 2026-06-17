@@ -188,6 +188,11 @@ body {
 .tc-game { color: var(--muted); font-size: 0.82rem; }
 .tc-count { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
 .tc-count strong { color: var(--accent); }
+.tc-top { font-size: 0.78rem; color: var(--muted); margin-top: 0.25rem; }
+.tc-top strong { color: var(--ink, #1a1f33); }
+.tc-top-lbl { font-weight: 700; }
+.tc-top-none { font-style: italic; }
+.tc-top:empty { display: none; }
 /* Full-width CTA on its own row so long localized labels never overlap the body. */
 .tc-cta { flex: 1 1 100%; padding: 0.5rem 1.1rem; font-size: 0.88rem; text-align: center; }
 
@@ -348,6 +353,19 @@ body {
 .wr-ico { font-size: 1.05rem; }
 .wr-phone { font-weight: 700; font-variant-numeric: tabular-nums; }
 .wr-prize { font-weight: 900; color: var(--accent); }
+.winner-row.top { border-color: rgba(214, 158, 0, 0.5); background:
+  linear-gradient(90deg, rgba(255, 214, 110, 0.16), var(--card) 60%); }
+
+/* Coming-award banner: season prize pool + live countdown to settlement. */
+.coming-award { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 0.9rem;
+  padding: 0.8rem 1rem; border-radius: 14px; color: #fff;
+  background: linear-gradient(110deg, #1f4e0c, #2f7c0e); box-shadow: 0 10px 24px rgba(31, 78, 12, 0.3); }
+.coming-award:empty { display: none; }
+.ca-glow { font-size: 1.8rem; filter: drop-shadow(0 2px 6px rgba(255, 214, 110, 0.6)); }
+.ca-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ca-title { font-weight: 800; font-size: 0.95rem; }
+.ca-sub { font-size: 0.8rem; opacity: 0.92; }
+.ca-pot { font-weight: 900; font-size: 1.15rem; white-space: nowrap; }
 
 /* games toolbar — segmented filter + search */
 .games-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
@@ -505,6 +523,23 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .howto-body { font-size: 0.95rem; line-height: 1.5; color: var(--text); margin: 0 0 0.4rem; }
 .howto-play { text-align: center; text-decoration: none; }
 .howto-close { margin-top: 0.1rem; }
+/* Intro extras: cover banner, mode tag, economy chips, your-best-vs-top. */
+.howto-card { gap: 0.5rem; padding-top: 0; overflow: hidden; }
+.howto-cover { position: relative; margin: 0 -1.3rem 0.4rem; height: 130px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #2f7c0e, #1f4e0c); }
+.howto-cover img { width: 100%; height: 100%; object-fit: cover; }
+.howto-mode { position: absolute; top: 0.6rem; left: 0.8rem; background: rgba(17,24,48,0.65); color: #fff;
+  font-size: 0.68rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 999px; }
+.howto-mode.free { background: rgba(31,116,224,0.85); }
+.howto-name { font-size: 1.25rem; margin: 0; }
+.howto-cat { color: var(--muted); font-size: 0.78rem; font-weight: 600; margin: 0; }
+.howto-econ { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.howto-chip { background: var(--soft, #f1f5ea); font-size: 0.78rem; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 999px; }
+.howto-chip.reward { color: var(--accent); }
+.howto-scores { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.hs-cell { background: var(--soft, #f1f5ea); border-radius: 12px; padding: 0.5rem 0.7rem; display: flex; flex-direction: column; gap: 0.1rem; }
+.hs-lbl { font-size: 0.7rem; color: var(--muted); font-weight: 700; }
+.hs-cell strong { font-size: 1.1rem; }
 
 /* ---- winners grouped by period ---- */
 .winner-group { margin-bottom: 1.1rem; }

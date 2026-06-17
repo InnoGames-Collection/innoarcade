@@ -14,6 +14,8 @@ import {
 import { paymentMethodsEnabled } from '../platform/config';
 import { PAY_METHOD_LABEL, type PayMethod } from '../platform/payments';
 import { activeDraws, myTickets } from '../platform/draws';
+import { fetchReferral, redeemReferralRemote } from '../platform/backend';
+import { balance } from '../platform/wallet';
 
 const STR = {
   en: {
@@ -26,6 +28,10 @@ const STR = {
     terms: 'Terms & conditions', faq: 'FAQ', feedback: 'Write your feedback', rateQ: 'How would you rate your experience?',
     submit: 'Submit', thanks: 'Thanks for your feedback!', close: 'Close', active: 'Active plan',
     myEntries: 'My draw entries', tickets: 'tickets', failed: "Couldn't complete. Try again.",
+    invite: 'Invite friends', inviteSub: 'Share your code — you both get coins!', yourCode: 'Your code',
+    copy: 'Copy', copied: 'Copied!', share: 'Share', haveCode: 'Have a friend’s code?',
+    enterCode: 'Enter code', redeem: 'Redeem', refOk: '🎉 +10 coins! Your friend got 20.',
+    refAlready: 'You’ve already redeemed a code.', refInvalid: 'That code isn’t valid.', refSelf: 'You can’t use your own code.',
   },
   am: {
     account: 'መለያ', back: 'ዝጋ', signedOut: 'አልገቡም', signIn: 'ግባ', signOut: 'ውጣ',
@@ -37,6 +43,10 @@ const STR = {
     terms: 'ውሎች እና ሁኔታዎች', faq: 'ተደጋጋሚ ጥያቄዎች', feedback: 'አስተያየትዎን ይጻፉ', rateQ: 'ተሞክሮዎን እንዴት ይገመግሙታል?',
     submit: 'አስገባ', thanks: 'ስለ አስተያየትዎ እናመሰግናለን!', close: 'ዝጋ', active: 'ንቁ ዕቅድ',
     myEntries: 'የእኔ ዕጣ ግቤቶች', tickets: 'ቲኬቶች', failed: 'አልተጠናቀቀም። እንደገና ይሞክሩ።',
+    invite: 'ጓደኞችን ይጋብዙ', inviteSub: 'ኮድዎን ያጋሩ — ሁለታችሁም ሳንቲም ታገኛላችሁ!', yourCode: 'የእርስዎ ኮድ',
+    copy: 'ቅዳ', copied: 'ተቀድቷል!', share: 'አጋራ', haveCode: 'የጓደኛ ኮድ አለዎት?',
+    enterCode: 'ኮድ ያስገቡ', redeem: 'ይቤዡ', refOk: '🎉 +10 ሳንቲም! ጓደኛዎ 20 አግኝቷል።',
+    refAlready: 'ኮድ አስቀድመው ተቀብለዋል።', refInvalid: 'ይህ ኮድ ትክክል አይደለም።', refSelf: 'የራስዎን ኮድ መጠቀም አይችሉም።',
   },
 };
 
@@ -97,9 +107,11 @@ export async function openAccount(): Promise<void> {
   const user = await currentUser();
   await loadSubscription();
   const sub = currentSub();
+  const ref = user ? await fetchReferral() : null;
   shell(`
     <h2 class="acct-title">${t('account')}</h2>
     ${accountCardHtml(user)}
+    ${referralHtml(ref)}
     ${subscriptionCardHtml(sub)}
     ${entriesHtml()}
     <div class="acct-sec">${t('general')}</div>
@@ -120,6 +132,68 @@ function accountCardHtml(user: AuthUser | null): string {
   return `<div class="acct-card">
     <div class="acct-row"><span class="acct-user">👤 ${esc(user.name || user.phone)}</span>
     <button class="acct-btn ghost" id="aSignOut">${t('signOut')}</button></div></div>`;
+}
+
+// Invite-friends card: the player's own shareable code + (if not yet redeemed)
+// a field to enter a friend's code. Hidden entirely when signed out.
+function referralHtml(ref: { code: string; redeemed: boolean } | null): string {
+  if (!ref || !ref.code) return '';
+  const redeemBox = ref.redeemed ? '' : `
+    <div class="ref-redeem">
+      <span class="acct-muted">${t('haveCode')}</span>
+      <div class="ref-redeem-row">
+        <input id="refInput" class="ref-input" placeholder="${t('enterCode')}" maxlength="6" autocomplete="off" />
+        <button class="acct-btn" id="refRedeem">${t('redeem')}</button>
+      </div>
+      <p class="ref-msg" id="refMsg"></p>
+    </div>`;
+  return `<div class="acct-card ref-card">
+    <div class="ref-head"><span class="ref-gift">🎁</span>
+      <div><strong>${t('invite')}</strong><div class="acct-muted">${t('inviteSub')}</div></div></div>
+    <div class="ref-code-row">
+      <span class="acct-muted">${t('yourCode')}</span>
+      <code class="ref-code" id="refCode">${esc(ref.code)}</code>
+      <button class="acct-btn ghost" id="refCopy">${t('copy')}</button>
+      <button class="acct-btn" id="refShare">${t('share')}</button>
+    </div>
+    ${redeemBox}
+  </div>`;
+}
+
+function wireReferral(): void {
+  const codeEl = document.querySelector('#refCode');
+  const code = codeEl?.textContent ?? '';
+  const link = `${location.origin}${location.pathname}?ref=${encodeURIComponent(code)}`;
+  document.querySelector('#refCopy')?.addEventListener('click', () => {
+    void navigator.clipboard?.writeText(code);
+    const b = document.querySelector('#refCopy')!; const o = b.textContent; b.textContent = t('copied');
+    setTimeout(() => { b.textContent = o; }, 1400);
+  });
+  document.querySelector('#refShare')?.addEventListener('click', () => {
+    const msg = `${t('inviteSub')} ${code}\n${link}`;
+    if (navigator.share) void navigator.share({ title: 'GoPlay', text: msg, url: link }).catch(() => {});
+    else void navigator.clipboard?.writeText(msg);
+  });
+  // Prefill the redeem box from a ?ref=CODE invite link.
+  const incoming = new URLSearchParams(location.search).get('ref');
+  const input0 = document.querySelector<HTMLInputElement>('#refInput');
+  if (incoming && input0 && !input0.value) input0.value = incoming.trim().toUpperCase().slice(0, 6);
+  const btn = document.querySelector<HTMLButtonElement>('#refRedeem');
+  btn?.addEventListener('click', async () => {
+    const input = document.querySelector<HTMLInputElement>('#refInput')!;
+    const msg = document.querySelector('#refMsg')!;
+    const val = input.value.trim().toUpperCase();
+    if (!val) return;
+    btn.disabled = true;
+    try {
+      const res = await redeemReferralRemote(val);
+      const key = ({ ok: 'refOk', already: 'refAlready', invalid: 'refInvalid', self: 'refSelf' } as const)[res.status] ?? 'failed';
+      msg.textContent = t(key);
+      msg.className = `ref-msg ${res.status === 'ok' ? 'ok' : 'err'}`;
+      if (res.status === 'ok') { void balance(); setTimeout(() => void openAccount(), 1200); }
+      else btn.disabled = false;
+    } catch { msg.textContent = t('failed'); msg.className = 'ref-msg err'; btn.disabled = false; }
+  });
 }
 
 function subscriptionCardHtml(sub: Subscription | null): string {
@@ -146,6 +220,7 @@ function wireAccount(user: AuthUser | null): void {
   document.querySelector('#aFeedback')?.addEventListener('click', () => openFeedback());
   document.querySelector('#aTerms')?.addEventListener('click', () => openInfo('terms'));
   document.querySelector('#aFaq')?.addEventListener('click', () => openInfo('faq'));
+  wireReferral();
   void user;
 }
 
@@ -309,6 +384,20 @@ function injectStyles(): void {
     .info-body { display: flex; flex-direction: column; gap: 10px; }
     .info-body p { font-size: .9rem; color: var(--text); line-height: 1.55; margin: 0; }
     .entry-rows { display: flex; flex-direction: column; gap: 8px; }
-    .entry-rows .acct-row span { font-size: .88rem; }`;
+    .entry-rows .acct-row span { font-size: .88rem; }
+    .ref-card { display: flex; flex-direction: column; gap: 12px; }
+    .ref-head { display: flex; align-items: center; gap: 10px; }
+    .ref-gift { font-size: 1.7rem; }
+    .ref-code-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ref-code { font-family: ui-monospace, monospace; font-weight: 900; font-size: 1.15rem; letter-spacing: .15em;
+      background: var(--soft, #f1f5ea); color: var(--accent); padding: .35rem .7rem; border-radius: 10px; flex: 1; text-align: center; }
+    .ref-redeem { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .ref-redeem-row { display: flex; gap: 8px; }
+    .ref-input { flex: 1; border: 2px solid var(--line); border-radius: 10px; padding: .55rem .7rem; font: inherit;
+      font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+    .ref-input:focus { outline: none; border-color: var(--accent); }
+    .ref-msg { margin: 0; font-size: .85rem; font-weight: 700; }
+    .ref-msg.ok { color: var(--accent); }
+    .ref-msg.err { color: #c0392b; }`;
   document.head.appendChild(s);
 }

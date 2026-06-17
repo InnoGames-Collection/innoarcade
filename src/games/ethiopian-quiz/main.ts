@@ -16,30 +16,49 @@ import { createHost } from '../../platform/gameHost';
 const host = createHost('ethiopian-quiz');
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
-interface Q { en: string; am: string; opts: [string, string][]; answer: number }
+// `d` = difficulty tier: 1 easy, 2 medium, 3 hard. Tournament rounds draw from
+// the harder tiers; free play stays gentle. `answer` is the correct option index.
+interface Q { en: string; am: string; opts: [string, string][]; answer: number; d: 1 | 2 | 3 }
 
-// [English, Amharic] option pairs; `answer` is the correct option index.
+// [English, Amharic] option pairs.
 const BANK: Q[] = [
+  // --- Tier 1 (easy) ---
   { en: 'What is the capital city of Ethiopia?', am: 'የኢትዮጵያ ዋና ከተማ ማን ናት?',
-    opts: [['Addis Ababa', 'አዲስ አበባ'], ['Adama', 'አዳማ'], ['Bahir Dar', 'ባህር ዳር'], ['Mekelle', 'መቀለ']], answer: 0 },
+    opts: [['Addis Ababa', 'አዲስ አበባ'], ['Adama', 'አዳማ'], ['Bahir Dar', 'ባህር ዳር'], ['Mekelle', 'መቀለ']], answer: 0, d: 1 },
   { en: 'Which river is known as the source of the Blue Nile?', am: 'የጥቁር ዓባይ ምንጭ የሚባለው የትኛው ነው?',
-    opts: [['Lake Tana', 'ጣና ሐይቅ'], ['Lake Abaya', 'አባያ ሐይቅ'], ['Awash', 'አዋሽ'], ['Omo', 'ኦሞ']], answer: 0 },
+    opts: [['Lake Tana', 'ጣና ሐይቅ'], ['Lake Abaya', 'አባያ ሐይቅ'], ['Awash', 'አዋሽ'], ['Omo', 'ኦሞ']], answer: 0, d: 1 },
   { en: 'How many days are in the Ethiopian month of Pagumē?', am: 'ጳጉሜ ስንት ቀናት አሉት?',
-    opts: [['5 or 6', '5 ወይም 6'], ['7', '7'], ['10', '10'], ['30', '30']], answer: 0 },
+    opts: [['5 or 6', '5 ወይም 6'], ['7', '7'], ['10', '10'], ['30', '30']], answer: 0, d: 1 },
   { en: 'Which Ethiopian runner is famous for winning a marathon barefoot?', am: 'ባዶ እግሩን ማራቶን በማሸነፍ የሚታወቀው ኢትዮጵያዊ ሯጭ ማን ነው?',
-    opts: [['Abebe Bikila', 'አበበ ቢቂላ'], ['Haile Gebrselassie', 'ኃይሌ ገብረሥላሴ'], ['Kenenisa Bekele', 'ቀነኒሳ በቀለ'], ['Derartu Tulu', 'ደራርቱ ቱሉ']], answer: 0 },
+    opts: [['Abebe Bikila', 'አበበ ቢቂላ'], ['Haile Gebrselassie', 'ኃይሌ ገብረሥላሴ'], ['Kenenisa Bekele', 'ቀነኒሳ በቀለ'], ['Derartu Tulu', 'ደራርቱ ቱሉ']], answer: 0, d: 1 },
   { en: 'What is the staple flatbread of Ethiopian cuisine?', am: 'የኢትዮጵያ ምግብ ዋና ዳቦ ምንድን ነው?',
-    opts: [['Injera', 'እንጀራ'], ['Dabo', 'ዳቦ'], ['Kita', 'ቂጣ'], ['Ambasha', 'አምባሻ']], answer: 0 },
-  { en: 'How many official working languages of the federal government does Ethiopia use as primary?', am: 'የኢትዮጵያ ፌዴራል መንግሥት ዋና የሥራ ቋንቋ የትኛው ነው?',
-    opts: [['Amharic', 'አማርኛ'], ['Oromiffa', 'ኦሮሚኛ'], ['Tigrinya', 'ትግርኛ'], ['English', 'እንግሊዝኛ']], answer: 0 },
-  { en: 'Which ancient city is home to the famous rock-hewn churches?', am: 'ታዋቂዎቹ ከአለት የተፈለፈሉ አብያተ ክርስቲያናት የት ይገኛሉ?',
-    opts: [['Lalibela', 'ላሊበላ'], ['Axum', 'አክሱም'], ['Gondar', 'ጎንደር'], ['Harar', 'ሐረር']], answer: 0 },
+    opts: [['Injera', 'እንጀራ'], ['Dabo', 'ዳቦ'], ['Kita', 'ቂጣ'], ['Ambasha', 'አምባሻ']], answer: 0, d: 1 },
   { en: 'What is the name of Ethiopia’s currency?', am: 'የኢትዮጵያ ገንዘብ ስም ምንድን ነው?',
-    opts: [['Birr', 'ብር'], ['Shilling', 'ሺሊንግ'], ['Nakfa', 'ናቕፋ'], ['Dinar', 'ዲናር']], answer: 0 },
+    opts: [['Birr', 'ብር'], ['Shilling', 'ሺሊንግ'], ['Nakfa', 'ናቕፋ'], ['Dinar', 'ዲናር']], answer: 0, d: 1 },
+  // --- Tier 2 (medium) ---
+  { en: 'Which ancient city is home to the famous rock-hewn churches?', am: 'ታዋቂዎቹ ከአለት የተፈለፈሉ አብያተ ክርስቲያናት የት ይገኛሉ?',
+    opts: [['Lalibela', 'ላሊበላ'], ['Axum', 'አክሱም'], ['Gondar', 'ጎንደር'], ['Harar', 'ሐረር']], answer: 0, d: 2 },
   { en: 'Coffee is believed to have originated in which Ethiopian region?', am: 'ቡና የመነጨው ከየትኛው የኢትዮጵያ አካባቢ ነው ተብሎ ይታመናል?',
-    opts: [['Kaffa', 'ካፋ'], ['Wollo', 'ወሎ'], ['Sidama', 'ሲዳማ'], ['Gojjam', 'ጎጃም']], answer: 0 },
+    opts: [['Kaffa', 'ካፋ'], ['Wollo', 'ወሎ'], ['Sidama', 'ሲዳማ'], ['Gojjam', 'ጎጃም']], answer: 0, d: 2 },
   { en: 'Which empire/queen is linked to Ethiopia in ancient tradition?', am: 'በጥንታዊ ወግ ከኢትዮጵያ ጋር የሚገናኘው ንግሥት ማን ናት?',
-    opts: [['Queen of Sheba', 'ንግሥተ ሳባ'], ['Cleopatra', 'ክሊዮፓትራ'], ['Nefertiti', 'ኔፈርቲቲ'], ['Boudica', 'ቡዲካ']], answer: 0 },
+    opts: [['Queen of Sheba', 'ንግሥተ ሳባ'], ['Cleopatra', 'ክሊዮፓትራ'], ['Nefertiti', 'ኔፈርቲቲ'], ['Boudica', 'ቡዲካ']], answer: 0, d: 2 },
+  { en: 'Which mountain is the highest peak in Ethiopia?', am: 'በኢትዮጵያ ከፍተኛው ተራራ የትኛው ነው?',
+    opts: [['Ras Dashen', 'ራስ ዳሸን'], ['Mount Bale', 'ባሌ ተራራ'], ['Mount Choke', 'ጮቄ ተራራ'], ['Mount Guna', 'ጉና ተራራ']], answer: 0, d: 2 },
+  { en: 'In which year (Gregorian) did the Battle of Adwa take place?', am: 'የዓድዋ ጦርነት በየትኛው ዓመት (እ.አ.አ.) ተካሄደ?',
+    opts: [['1896', '1896'], ['1886', '1886'], ['1900', '1900'], ['1935', '1935']], answer: 0, d: 2 },
+  { en: 'What is the largest lake in Ethiopia?', am: 'በኢትዮጵያ ትልቁ ሐይቅ የትኛው ነው?',
+    opts: [['Lake Tana', 'ጣና ሐይቅ'], ['Lake Abaya', 'አባያ ሐይቅ'], ['Lake Ziway', 'ዝዋይ ሐይቅ'], ['Lake Langano', 'ላንጋኖ ሐይቅ']], answer: 0, d: 2 },
+  // --- Tier 3 (hard) ---
+  { en: 'Which script is used to write Amharic?', am: 'አማርኛ የሚጻፍበት ፊደል የትኛው ነው?',
+    opts: [['Ge’ez (Fidäl)', 'ግዕዝ (ፊደል)'], ['Latin', 'ላቲን'], ['Arabic', 'ዓረብኛ'], ['Coptic', 'ቅብጢ']], answer: 0, d: 3 },
+  { en: 'The Danakil Depression, one of Earth’s hottest places, lies in which region?', am: 'ከምድር ሙቅ ቦታዎች አንዱ የሆነው የዳናክል ቆላ የት ይገኛል?',
+    opts: [['Afar', 'አፋር'], ['Tigray', 'ትግራይ'], ['Somali', 'ሶማሌ'], ['Oromia', 'ኦሮሚያ']], answer: 0, d: 3 },
+  { en: 'Which Ethiopian emperor moved the capital to Addis Ababa in the 1880s?', am: 'በ1880ዎቹ ዋና ከተማን ወደ አዲስ አበባ ያዛወረው ንጉሠ ነገሥት ማን ነው?',
+    opts: [['Menelik II', 'ዳግማዊ ምኒልክ'], ['Haile Selassie I', 'ቀዳማዊ ኃይለ ሥላሴ'], ['Tewodros II', 'ዳግማዊ ቴዎድሮስ'], ['Yohannes IV', 'ራብዓዊ ዮሐንስ']], answer: 0, d: 3 },
+  { en: '“Lucy” (Dinkinesh), the famous hominid fossil, belongs to which species?', am: '“ሉሲ” (ድንቅነሽ) የተባለው ታዋቂ ቅሪተ አካል የየትኛው ዝርያ ነው?',
+    opts: [['Australopithecus afarensis', 'አውስትራሎፒተከስ አፋረንሲስ'], ['Homo erectus', 'ሆሞ ኤሬክተስ'], ['Homo habilis', 'ሆሞ ሃቢሊስ'], ['Paranthropus', 'ፓራንትሮፐስ']], answer: 0, d: 3 },
+  { en: 'How many years behind the Gregorian calendar is the Ethiopian calendar (roughly)?', am: 'የኢትዮጵያ ዘመን አቆጣጠር ከግሪጎሪያን በግምት ስንት ዓመት ወደ ኋላ ነው?',
+    opts: [['7–8 years', '7–8 ዓመት'], ['5 years', '5 ዓመት'], ['10 years', '10 ዓመት'], ['3 years', '3 ዓመት']], answer: 0, d: 3 },
 ];
 
 const STR = {
@@ -69,6 +88,25 @@ const elMsg = $('#eq-message');
 const elProg = $('#eq-progress');
 const startBtn = $('#eq-start') as HTMLButtonElement;
 
+// Build a round, then ramp it easy→hard. Tournaments lean on the harder tiers
+// (mostly d2/d3) for integrity; free play stays mostly easy/medium.
+function pickRound(): Q[] {
+  const byTier = (d: 1 | 2 | 3): Q[] => shuffle(BANK.filter((q) => q.d === d));
+  const want: (1 | 2 | 3)[] = host.isTournament
+    ? [2, 2, 3, 3, 3]   // tournament: harder
+    : [1, 1, 2, 2, 3];  // free: gentle ramp
+  const pool = { 1: byTier(1), 2: byTier(2), 3: byTier(3) };
+  const picked: Q[] = [];
+  for (const d of want) {
+    // Fall back to an adjacent tier if a tier runs dry.
+    const q = pool[d].pop() ?? pool[3].pop() ?? pool[2].pop() ?? pool[1].pop();
+    if (q && !picked.includes(q)) picked.push(q);
+  }
+  // Top up to ROUND if anything was short, then order easy → hard.
+  for (const q of shuffle(BANK)) { if (picked.length >= ROUND) break; if (!picked.includes(q)) picked.push(q); }
+  return picked.slice(0, ROUND).sort((a, b) => a.d - b.d);
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
@@ -97,7 +135,7 @@ async function startRound(): Promise<void> {
     return;
   }
   setHUD();
-  round = shuffle(BANK).slice(0, ROUND);
+  round = pickRound();
   idx = 0; correct = 0; locked = false; roundStart = Date.now();
   startBtn.style.display = 'none';
   showQuestion();

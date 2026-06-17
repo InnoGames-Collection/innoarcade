@@ -103,7 +103,7 @@ export async function unlockGameRemote(gameId: string): Promise<{ coins: number;
 }
 
 // Global leaderboard (top players by lifetime points). Powers the landing widget.
-export interface GlobalRow { rank: number; name: string; lifetime: number; isPlayer: boolean }
+export interface GlobalRow { rank: number; name: string; lifetime: number; season?: number; isPlayer: boolean }
 export async function fetchGlobalLeaderboard(limit = 5): Promise<GlobalRow[]> {
   if (!isConfigured()) return [];
   const sb = supabase();
@@ -117,6 +117,56 @@ export async function fetchGlobalLeaderboard(limit = 5): Promise<GlobalRow[]> {
   return data.map((r) => ({
     rank: Number(r.rank), name: (r.name as string) ?? 'Player',
     lifetime: Number(r.points_lifetime), isPlayer: r.user_id === me,
+  }));
+}
+
+// The signed-in player's referral state: their own shareable code + whether
+// they've already redeemed someone else's (one-time).
+export async function fetchReferral(): Promise<{ code: string; redeemed: boolean } | null> {
+  if (!isConfigured()) return null;
+  const sb = supabase();
+  const me = (await sb.auth.getUser()).data.user?.id;
+  if (!me) return null;
+  const { data } = await sb.from('profiles').select('ref_code, referred_by').eq('id', me).maybeSingle();
+  if (!data) return null;
+  return { code: String(data.ref_code ?? ''), redeemed: data.referred_by != null };
+}
+
+// Redeem a friend's referral code (pays both sides in coins, server-validated).
+// Returns a status: 'ok' | 'already' | 'invalid' | 'self'.
+export async function redeemReferralRemote(code: string): Promise<{ status: string; coins: number }> {
+  const { data, error } = await supabase().functions.invoke('redeem-referral', { body: { code } });
+  if (error) throw error;
+  return data as { status: string; coins: number };
+}
+
+// The current open season (name + end time) for the competition header.
+export interface Season { id: number; name: string; endsAt: number }
+export async function fetchActiveSeason(): Promise<Season | null> {
+  if (!isConfigured()) return null;
+  const { data } = await supabase()
+    .from('seasons').select('id, name, ends_at').eq('status', 'active')
+    .order('ends_at', { ascending: true }).limit(1).maybeSingle();
+  if (!data) return null;
+  return { id: Number(data.id), name: String(data.name), endsAt: new Date(data.ends_at as string).getTime() };
+}
+
+// Seasonal competition leaderboard (ranked by season points). Drives the global
+// board widget; level is still derived from lifetime points.
+export async function fetchSeasonLeaderboard(limit = 5): Promise<GlobalRow[]> {
+  if (!isConfigured()) return [];
+  const sb = supabase();
+  const me = (await sb.auth.getUser()).data.user?.id;
+  const { data, error } = await sb
+    .from('season_leaderboard')
+    .select('rank, name, points_season, points_lifetime, user_id')
+    .order('rank', { ascending: true })
+    .limit(limit);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    rank: Number(r.rank), name: (r.name as string) ?? 'Player',
+    lifetime: Number(r.points_lifetime), season: Number(r.points_season),
+    isPlayer: r.user_id === me,
   }));
 }
 

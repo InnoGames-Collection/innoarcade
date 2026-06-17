@@ -7,7 +7,7 @@ import { mountWallet, openStore, needsSignInToBuy } from './wallet';
 import { onAuthChange, currentUser, signOut, authAvailable } from '../platform/auth';
 import { sfx } from '../engine/audio';
 import { renderDashboard, injectDashboardStyles } from './dashboard';
-import { mergedLeaderboard, fetchWallets, fetchGlobalLeaderboard, fetchUnlocks, unlockGameRemote } from '../platform/backend';
+import { mergedLeaderboard, fetchWallets, fetchUnlocks, unlockGameRemote, fetchActiveSeason, fetchSeasonLeaderboard } from '../platform/backend';
 import { CATALOG, orderedCatalog, getGame, type GameMeta } from '../platform/catalog';
 import {
   activeTournaments, featuredTournament, tournamentGame,
@@ -87,11 +87,18 @@ function setupPromo(): void {
   }
 }
 
-// --- Global leaderboard (top players by lifetime points) --------------------
+// --- Seasonal competition leaderboard (top players by season points) --------
 function renderGlobalBoard(): void {
   const host = document.querySelector('#globalBoard');
   if (!host) return;
-  void fetchGlobalLeaderboard(5).then((rows) => {
+  // Season header: name + time remaining (the competition window).
+  void fetchActiveSeason().then((s) => {
+    const info = document.querySelector('#seasonInfo');
+    if (info) info.innerHTML = s
+      ? `🗓️ ${t('hub.seasonName')} <strong>${escapeHtml(s.name)}</strong> · ${t('hub.endsIn')} <strong data-ends="${s.endsAt}">${fmt(s.endsAt)}</strong>`
+      : '';
+  });
+  void fetchSeasonLeaderboard(5).then((rows) => {
     if (!rows.length) { host.innerHTML = `<p class="pd-empty">${t('hub.unranked')}</p>`; return; }
     const medal = ['🥇', '🥈', '🥉'];
     host.innerHTML = rows.map((r) => `
@@ -99,7 +106,7 @@ function renderGlobalBoard(): void {
         <span class="gb-rank">${medal[r.rank - 1] ?? '#' + r.rank}</span>
         <span class="gb-name">${escapeHtml(r.name)}</span>
         <span class="gb-lvl">L${levelFor(r.lifetime)}</span>
-        <span class="gb-pts">${r.lifetime.toLocaleString()} ⭐</span>
+        <span class="gb-pts">${(r.season ?? 0).toLocaleString()} ⭐</span>
       </div>`).join('');
   });
 }
@@ -346,12 +353,30 @@ function renderTournaments(): void {
           <h4>${escapeHtml(tTitle(tour))}</h4>
           <p class="tc-game">${escapeHtml(name(game))}</p>
           <div class="tc-econ">${economyBadges(tour)}</div>
+          <div class="tc-top" data-tour="${tour.id}"></div>
           <div class="tc-count" data-ends="${tour.endsAt}"></div>
         </div>
         ${entryCta(tour, game, 'tc-cta')}
       </article>`;
   }).join('');
   wireEntryCtas();
+  void refreshTourTops();
+}
+
+// Pull the current #1 score for each visible tournament card and show it live.
+// The server leaderboard is the authority; this is a read-only display refresh
+// (no economy effect). Called on render and on a slow interval.
+async function refreshTourTops(): Promise<void> {
+  const els = document.querySelectorAll<HTMLElement>('.tc-top[data-tour]');
+  await Promise.all(Array.from(els).map(async (el) => {
+    try {
+      const board = await mergedLeaderboard(el.dataset.tour!);
+      const top = board[0];
+      el.innerHTML = top
+        ? `<span class="tc-top-lbl">🏆 ${t('hub.topScore')}</span> <strong>${top.score.toLocaleString()}</strong> · ${escapeHtml(top.name)}`
+        : `<span class="tc-top-lbl">🏆 ${t('hub.topScore')}</span> <span class="tc-top-none">${t('hub.beFirst')}</span>`;
+    } catch { /* leave last value */ }
+  }));
 }
 
 // --- Games library (flat, ordered) ------------------------------------------
@@ -441,22 +466,52 @@ function gameCard(g: GameMeta): string {
 
 // "How to play" modal, opened by the ℹ️ button on a card. The button lives inside
 // the card's <a>, so we stop the click from navigating.
+// The live tournament whose game is `g`, if any (reverse of tournamentGame).
+function tournamentForGame(g: GameMeta): ReturnType<typeof activeTournaments>[number] | undefined {
+  return activeTournaments().find((tr) => tournamentGame(tr)?.id === g.id);
+}
+
+// Game/tournament intro: cover, description, rules, entry cost + reward, and —
+// for tournament games — the live top score and the player's best, before they
+// play. The Play button carries the entry economy through the game host as usual.
 function openHowTo(g: GameMeta): void {
   document.querySelector('.howto-modal')?.remove();
+  const tour = tournamentForGame(g);
+  const fee = tour ? tour.entryFeeCoins : 0;
   const m = document.createElement('div');
   m.className = 'howto-modal';
   m.innerHTML = `<div class="howto-scrim"></div>
     <div class="howto-card">
-      <div class="howto-head"><span class="howto-icon">${g.icon}</span><h3>${escapeHtml(name(g))}</h3></div>
-      <p class="howto-sub">${t('hub.howToPlay')}</p>
+      <div class="howto-cover">${g.cover ? `<img src="${g.cover}" alt="" />` : `<span class="howto-icon">${g.icon}</span>`}
+        <span class="howto-mode ${g.mode}">${g.mode === 'tournament' ? `🏆 ${t('hub.tournament')}` : t('arc.free')}</span></div>
+      <h3 class="howto-name">${escapeHtml(name(g))}</h3>
+      <p class="howto-cat">${escapeHtml(category(g))}</p>
+      <div class="howto-econ">
+        <span class="howto-chip">${fee > 0 ? `${t('hub.entry')}: ${fee} 🪙` : '🆓'}</span>
+        <span class="howto-chip reward">${t('hub.reward')}: ⭐</span>
+      </div>
+      ${tour ? `<div class="howto-scores" id="howtoScores"><span class="hs-load">…</span></div>` : ''}
+      <p class="howto-sub">📖 ${t('hub.rules')}</p>
       <p class="howto-body">${escapeHtml(howTo(g))}</p>
-      <a class="btn primary howto-play" href="${g.route}">▶ ${t('hub.play')}</a>
+      <a class="btn primary howto-play" href="${g.route}">▶ ${tour ? t('hub.register') + (fee > 0 ? ` · ${fee} 🪙` : '') : t('hub.play')}</a>
       <button class="btn ghost howto-close">${t('hub.cancel')}</button>
     </div>`;
   document.body.appendChild(m);
   const close = (): void => m.remove();
   m.querySelector('.howto-scrim')!.addEventListener('click', close);
   m.querySelector('.howto-close')!.addEventListener('click', close);
+  // Fill the your-best-vs-top row from the authoritative server leaderboard.
+  if (tour) {
+    void mergedLeaderboard(tour.id).then((board) => {
+      const el = m.querySelector('#howtoScores');
+      if (!el) return;
+      const top = board[0];
+      const mine = board.find((r) => r.isPlayer);
+      el.innerHTML = `
+        <div class="hs-cell"><span class="hs-lbl">🏆 ${t('hub.topScore')}</span><strong>${top ? top.score.toLocaleString() : '—'}</strong></div>
+        <div class="hs-cell"><span class="hs-lbl">👤 ${t('hub.yourBest')}</span><strong>${mine ? mine.score.toLocaleString() : '—'}</strong></div>`;
+    });
+  }
 }
 
 // Browse state: the top segmented menu filters by tag (all / tournament / free).
@@ -523,13 +578,34 @@ const periodLabel = (p: DrawPeriod): string => (lang() === 'am' ? PERIOD_LABEL[p
 // Winners view is tabbed: All | Daily | Weekly | Monthly.
 let winnerFilter: 'all' | DrawPeriod = 'all';
 
+// Total coin pot paid out each season (mirror of season_prize tiers in SQL).
+const SEASON_POT = 500 + 300 + 200 + 100 + 100 + 50 * 5; // top-10 prize table
+
+// "Coming award" banner: the live season's total coin pot + time to settlement.
+function renderComingAward(): void {
+  const el = document.querySelector('#comingAward');
+  if (!el) return;
+  void fetchActiveSeason().then((s) => {
+    if (!s) { el.innerHTML = ''; return; }
+    el.innerHTML = `
+      <span class="ca-glow">🏅</span>
+      <div class="ca-body">
+        <span class="ca-title">${t('hub.comingAward')}</span>
+        <span class="ca-sub">${t('hub.seasonName')} ${escapeHtml(s.name)} · ${t('hub.endsIn')} <strong data-ends="${s.endsAt}">${fmt(s.endsAt)}</strong></span>
+      </div>
+      <span class="ca-pot">${SEASON_POT.toLocaleString()} 🪙</span>`;
+  });
+}
+
 function renderWinners(): void {
   const host = document.querySelector('#winnerList');
   if (!host) return;
+  renderComingAward();
   const all = recentWinners(Date.now(), 12);
-  const row = (w: Winner): string => `
-    <div class="winner-row">
-      <span class="wr-ico">🎉</span>
+  const medal = (i: number): string => ['🥇', '🥈', '🥉'][i] ?? '🎉';
+  const row = (w: Winner, i: number): string => `
+    <div class="winner-row${i < 3 ? ' top' : ''}">
+      <span class="wr-ico">${medal(i)}</span>
       <span class="wr-phone">${escapeHtml(w.phone)}</span>
       <span class="wr-prize">${w.prizeEtb.toLocaleString()} ETB</span>
     </div>`;
@@ -574,6 +650,10 @@ function tickCountdowns(): void {
   document.querySelectorAll<HTMLElement>('.tc-count, .dc-count').forEach((el) => {
     const end = Number(el.dataset.ends);
     el.innerHTML = `<span class="cd-label">${t('hub.endsIn')}</span> <strong>${fmt(end)}</strong>`;
+  });
+  // Value-only countdowns (season header + coming-award banner).
+  document.querySelectorAll<HTMLElement>('strong[data-ends]').forEach((el) => {
+    el.textContent = fmt(Number(el.dataset.ends));
   });
 }
 
@@ -847,5 +927,7 @@ hydratePoints();
 // Re-pull wallet/entries/standing when the player signs in or out.
 onAuthChange(() => { void refreshData(); hydratePoints(); });
 setInterval(tickCountdowns, 1000);
+// Refresh the live top-score on tournament cards every 20s (display-only).
+setInterval(() => { void refreshTourTops(); }, 20_000);
 setupPromo();
 restartPromoTimer();
