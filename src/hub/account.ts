@@ -50,41 +50,228 @@ const STR = {
   },
 };
 
-// Short original Terms / FAQ copy (EN/AM) shown from the account tiles.
-const INFO: Record<'terms' | 'faq', { en: string[]; am: string[] }> = {
-  terms: {
-    en: [
-      'By using GoPlay you agree to play responsibly and to follow the operator’s service terms.',
-      'Coins and Gold are bought with real money. Points are earned by playing and have no cash value.',
-      'Prize draws run on a fixed daily, weekly and monthly schedule. Tickets are bought with Points and entries are final.',
-      'Subscriptions renew automatically until cancelled. The one-day free trial applies to first-time subscribers only.',
-      'You must be 18 or older to enter prize draws.',
-    ],
-    am: [
-      'GoPlayን በመጠቀም በኃላፊነት ለመጫወት ይስማማሉ።',
-      'ሳንቲም እና ወርቅ በገንዘብ ይገዛሉ። ነጥብ በመጫወት ይገኛል፣ የገንዘብ ዋጋ የለውም።',
-      'ዕጣዎች በየቀኑ፣ በየሳምንቱ እና በየወሩ ይካሄዳሉ። ቲኬቶች በነጥብ ይገዛሉ።',
-      'ምዝገባ እስኪሰረዝ ድረስ ይታደሳል። የነጻ ሙከራ ለመጀመሪያ ተመዝጋቢዎች ብቻ ነው።',
-      'ዕጣ ለመግባት 18 ዓመት ወይም በላይ መሆን አለብዎት።',
-    ],
+// Full GoPlay Terms & Conditions. Legal copy is authoritative in English, so it
+// renders the same in both UI languages. Authored HTML (no user input) — safe to
+// inject. Per-game rules live under section 5; ⚠️ marks chance/high-risk games.
+const G = (title: string, body: string): string =>
+  `<h4 class="tc-game">${title}</h4>${body}`;
+const UL = (items: string[]): string => `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>`;
+
+const TERMS_HTML = `
+  <h3>GoPlay Terms &amp; Conditions</h3>
+
+  <h4>1. Acceptance of Terms</h4>
+  <p>By accessing or using the GoPlay platform, including all games, features, and services, the user agrees to be bound by these Terms &amp; Conditions. If the user does not agree, they must stop using the platform immediately.</p>
+
+  <h4>2. Eligibility</h4>
+  ${UL([
+    'Users must meet the minimum legal age required in their jurisdiction (or have guardian consent where applicable).',
+    'The platform may restrict access to certain games based on age, region, or compliance requirements.',
+    'Users are responsible for ensuring their use is legally permitted in their location.',
+  ])}
+
+  <h4>3. Account Registration &amp; Security</h4>
+  ${UL([
+    'Users must provide accurate and complete information during registration.',
+    'Each user is responsible for maintaining confidentiality of account credentials.',
+    'Any activity under an account is considered the responsibility of the account holder.',
+    'GoPlay is not liable for losses due to unauthorized account access caused by user negligence.',
+  ])}
+
+  <h4>4. License to Use Platform</h4>
+  <p>GoPlay grants users a limited, non-transferable, non-exclusive license to access and use the platform for personal entertainment purposes only. Users are prohibited from:</p>
+  ${UL([
+    'Copying, modifying, or reverse engineering any part of the platform',
+    'Using bots, scripts, or automation tools',
+    'Exploiting bugs or vulnerabilities for advantage',
+  ])}
+
+  <h4>5. Games and Gameplay Rules</h4>
+  ${UL([
+    'Each game has its own mechanics, scoring system, and rules which must be followed.',
+    'GoPlay reserves the right to modify game rules, features, or availability at any time.',
+    'Abuse of gameplay systems (including exploitation of glitches) may result in penalties or account suspension.',
+  ])}
+
+  ${G('5.1 Candy Blast', `
+    <p>Users shall require five (5) Coins to initiate a single Candy Blast game session. Upon successful deduction of Coins, the user shall participate in a match-3 puzzle gameplay session. The objective is to strategically match three or more identical candies, form combinations, and achieve the highest possible score within the limited number of moves.</p>
+    <p><strong>5.1.1 Scoring Mechanism.</strong> The final score is automatically computed based on: (a) number of candies matched; (b) special candy combinations created; (c) cascading chain reactions; (d) remaining moves; (e) bonus multipliers and in-game achievements. The computed score is final and system authoritative.</p>
+    <p><strong>5.1.2 Rewards.</strong> Rewards may be granted based on performance tiers, including bonus Coins, airtime packages, and data bundles. Reward allocation is system-controlled and may be adjusted.</p>
+    <p><strong>5.1.3 Tournament Mode.</strong> Periodic tournaments may be conducted (daily/weekly/monthly). Rankings are determined by highest valid score per user during the tournament period.</p>
+    <p><strong>5.1.4 Prize Distribution.</strong> Tournament rewards may include telecom rewards and physical prizes. Winners are selected based on ranking or randomized draw mechanisms defined per campaign.</p>`)}
+
+  ${G('5.2 Temple Run', `<p>An endless runner survival game; avoid obstacles by jumping, sliding, and lane switching. The objective is to survive as long as possible while accumulating distance-based score. Scoring is based on distance traveled, obstacles avoided, coin collection, and a survival-time multiplier. No guaranteed rewards are issued; rewards (if enabled) are performance-based and subject to campaign rules.</p>`)}
+
+  ${G('5.3 Ball Shooter', `<p>Fire projectiles at rotating or moving targets by timing shots accurately. Scoring depends on targets hit, accuracy percentage, combo streaks, and a level-completion bonus. Rewards, if enabled, follow predefined performance tiers and may include bonus coins or promotional prizes.</p>`)}
+
+  ${G('5.4 Lucky Slot <span class="tc-risk">⚠️ HIGH RISK</span>', `
+    <p>Users initiate a spin session by consuming Coins. The slot machine generates outcomes based on a predefined probability model, determined by a Random Number Generator (RNG) system.</p>
+    <p><strong>5.4.1 Outcome Types:</strong> no win; coin win; bonus reward; jackpot event (rare, probability-controlled).</p>
+    <p><strong>5.4.2 Compliance Note.</strong> All probabilities must be pre-defined, auditable, and non-modifiable per session. Failure to enforce this constitutes a gambling-classification risk.</p>`)}
+
+  ${G('5.5 2048', `<p>Slide numbered tiles on a grid; matching tiles merge into higher values. The objective is to reach the target tile (e.g., 2048 or higher). Scoring depends on highest tile achieved, total merges, and move efficiency.</p>`)}
+
+  ${G('5.6 Metro Rush', `<p>Control a character running through a track filled with obstacles and trains. Scoring is based on distance covered, obstacles avoided, and coin collection.</p>`)}
+
+  ${G('5.7 Memory Match', `<p>Flip cards to find matching pairs within limited moves. Scoring depends on the number of moves used, completion time, and accuracy efficiency.</p>`)}
+
+  ${G('5.8 Dice Roll', `<p>Roll virtual dice to generate outcomes. Scoring depends on matching pairs (doubles, triples), total roll outcomes, and bonus combinations. <span class="tc-risk">⚠️</span> If rewards are attached, this becomes a chance-based system and must be carefully controlled.</p>`)}
+
+  ${G('5.9 Lucky Box <span class="tc-risk">⚠️ HIGH RISK</span>', `<p>Select a closed box to reveal a hidden outcome. Outcomes are pre-defined reward tiers controlled by system probability distribution.</p>`)}
+
+  ${G('5.10 Spin Wheel <span class="tc-risk">⚠️ HIGH RISK</span>', `<p>Spin a wheel to determine outcomes. Wheel segments correspond to predefined reward probabilities. The system must ensure fixed probability mapping and no dynamic manipulation per user behavior.</p>`)}
+
+  ${G('5.11 Ethiopian Quiz', `<p>Answer multiple-choice questions related to general knowledge. Scoring: correct answers; optional speed bonus; difficulty multiplier.</p>`)}
+
+  ${G('5.12 Sudoku', `<p>Classic number-placement puzzle ensuring no repetition across rows, columns, and subgrids. Scoring based on completion time, hint usage, and error rate.</p>`)}
+
+  ${G('5.13 Fruit Slice', `<p>Swipe to slice objects while avoiding bombs. Scoring based on objects sliced, combo streaks, and bomb-avoidance accuracy.</p>`)}
+
+  ${G('5.14 Target 24', `<p>Combine numbers using arithmetic operators to reach the value 24. Scoring based on correct solutions, time efficiency, and attempt count.</p>`)}
+
+  ${G('5.15 Candy Saga', `<p>Match-3 puzzle similar to Candy Blast but with level-based objectives.</p>`)}
+
+  ${G('5.16 Dot Link', `<p>Connect same-colored dots without crossing paths. Scoring based on completion efficiency and move optimization.</p>`)}
+
+  ${G('5.17 Brick Blitz', `<p>Classic paddle-and-ball brick breaker. Scoring based on bricks destroyed, combo rebounds, and survival time.</p>`)}
+
+  ${G('5.18 Sky Hopper', `<p>Vertical platform-jumping survival game. Scoring: height reached, platforms landed, survival duration.</p>`)}
+
+  ${G('5.19 Tap Game', `<p>Tap rapidly within a time limit. Scoring: tap count, accuracy rate, speed consistency.</p>`)}
+
+  ${G('5.20 Spell Quiz', `<p>Spell words correctly from clues. Scoring: accuracy and time efficiency.</p>`)}
+
+  ${G('5.21 Vocabulary Trivia', `<p>Select correct word meanings. Scoring: correct answers and difficulty multiplier.</p>`)}
+
+  ${G('5.22 Rhyme Time', `<p>Identify rhyming words.</p>`)}
+
+  ${G('5.23 Cross Sum', `<p>Fill the grid so rows and columns match target sums.</p>`)}
+
+  ${G('5.24 Logic Grid', `<p>Deductive-reasoning puzzle using clues to solve grid relationships.</p>`)}
+
+  ${G('5.25 Sequence', `<p>Identify the next item in a pattern sequence.</p>`)}
+
+  ${G('5.26 Scratch Card <span class="tc-risk">⚠️ HIGH RISK</span>', `<p>Scratch a virtual card to reveal hidden outcomes. The outcome must be pre-generated, probability-controlled, and not dynamically influenced.</p>`)}
+
+  ${G('5.27 Bubble Pop', `<p>Bubble-shooter mechanics requiring grouping of same colors.</p>`)}
+
+  ${G('5.28 Crash Game <span class="tc-risk">⚠️ VERY HIGH RISK</span>', `
+    <p>Users cash out before the multiplier crashes.</p>
+    <p><strong>5.28.1 Mechanics.</strong> The multiplier increases over time until a random crash point is triggered.</p>
+    <p><strong>5.28.2 Risk Classification.</strong> This is structurally a gambling-like mechanic with high regulatory sensitivity.</p>`)}
+
+  <h4>6. Virtual Currency &amp; Rewards</h4>
+  ${UL([
+    'The platform may include virtual currency, points, or rewards.',
+    'Virtual items have no real-world monetary value unless explicitly stated.',
+    'GoPlay may adjust, reset, or remove virtual balances in cases of fraud, abuse, or system errors.',
+    'Rewards are non-transferable unless explicitly allowed.',
+  ])}
+
+  <h4>7. Payments &amp; Purchases (if applicable)</h4>
+  ${UL([
+    'All purchases are final unless otherwise required by law.',
+    'Pricing may change without prior notice.',
+    'Refunds are not guaranteed and are subject to review in cases of technical errors or unauthorized transactions.',
+    'Third-party payment processors may apply their own terms.',
+  ])}
+
+  <h4>8. Fair Use &amp; Prohibited Behavior</h4>
+  <p>Users must not:</p>
+  ${UL([
+    'Engage in cheating, hacking, or manipulation of game outcomes',
+    'Use multiple accounts to exploit rewards or promotions',
+    'Participate in fraud, collusion, or coordinated abuse',
+    'Interfere with system integrity or other users’ experience',
+  ])}
+  <p>Violation may lead to suspension or permanent account termination.</p>
+
+  <h4>9. Fraud Prevention &amp; Monitoring</h4>
+  <p>GoPlay may monitor user activity to detect fraud, abuse, or suspicious behavior; prevent system manipulation; and ensure fair gameplay across all users. Automated and manual review systems may be used. Decisions may include temporary restriction or permanent banning of accounts.</p>
+
+  <h4>10. Suspension &amp; Termination</h4>
+  <p>GoPlay reserves the right to:</p>
+  ${UL([
+    'Suspend or terminate accounts without prior notice in cases of abuse, fraud, or violation',
+    'Restrict access to specific games or features',
+    'Remove rewards obtained through illegitimate means',
+  ])}
+  <p>Users may lose access to all associated data and rewards upon termination.</p>
+
+  <h4>11. Intellectual Property</h4>
+  ${UL([
+    'All content, including games, graphics, logos, and code, belongs to GoPlay or its licensors.',
+    'Users may not reproduce or distribute platform content without permission.',
+  ])}
+
+  <h4>12. Limitation of Liability</h4>
+  <p>GoPlay is not responsible for loss of data, rewards, or virtual items due to technical failures; service interruptions or downtime; or indirect or consequential damages arising from platform use. Use of the platform is at the user’s own risk.</p>
+
+  <h4>13. Privacy</h4>
+  <p>User data is collected and processed in accordance with GoPlay’s Privacy Policy. By using the platform, users consent to such data handling.</p>
+
+  <h4>14. Changes to Terms</h4>
+  <p>GoPlay may update these Terms &amp; Conditions at any time. Continued use of the platform after changes means acceptance of the updated terms.</p>
+
+  <h4>15. Governing Law</h4>
+  <p>These Terms shall be governed by the applicable laws of the jurisdiction in which GoPlay operates, unless otherwise specified.</p>
+
+  <h4>16. Contact</h4>
+  <p>For support or disputes, users may contact the GoPlay support team via the official communication channels provided in the platform.</p>`;
+
+// FAQ entries (EN/AM). Rendered as question/answer blocks.
+const FAQ: Array<{ q: { en: string; am: string }; a: { en: string; am: string } }> = [
+  {
+    q: { en: 'What are Coins and what are Points?', am: 'ሳንቲም እና ነጥብ ምንድን ናቸው?' },
+    a: { en: 'Coins are the entry currency — you spend them to play and can buy more or earn free ones. Points are earned by playing well; they raise your level and your global leaderboard rank and have no cash value.',
+      am: 'ሳንቲም የመግቢያ ገንዘብ ነው — ለመጫወት ያውሉታል፣ መግዛት ወይም በነጻ ማግኘት ይችላሉ። ነጥብ በጥሩ አጨዋወት ይገኛል፤ ደረጃዎንና በዓለም አቀፍ ሰንጠረዥ ያለዎትን ቦታ ያሳድጋል፣ የገንዘብ ዋጋ የለውም።' },
   },
-  faq: {
-    en: [
-      'How do I earn Points? Win games — every win adds Points you can spend on draw tickets.',
-      'What is Gold for? Gold unlocks premium spins and instant-win games.',
-      'How do draws work? Buy tickets with Points; winners are drawn when the daily, weekly or monthly window closes.',
-      'How do I subscribe? Open Account → Subscribe now, choose a plan and pay with airtime or TeleBirr.',
-      'Need help? Use “Write your feedback” in your Account.',
-    ],
-    am: [
-      'ነጥብ እንዴት አገኛለሁ? ጨዋታ ያሸንፉ — እያንዳንዱ ድል ነጥብ ይጨምራል።',
-      'ወርቅ ለምንድነው? ወርቅ ልዩ ስፒኖችን እና ፈጣን ጨዋታዎችን ይከፍታል።',
-      'ዕጣዎች እንዴት ይሰራሉ? ቲኬቶችን በነጥብ ይግዙ፤ አሸናፊዎች በወቅቱ መጨረሻ ይመረጣሉ።',
-      'እንዴት እመዘገባለሁ? መለያ → አሁን ይመዝገቡ፣ ዕቅድ ይምረጡ እና በአየር ሰዓት ወይም በTeleBirr ይክፈሉ።',
-      'እገዛ ይፈልጋሉ? በመለያዎ “አስተያየትዎን ይጻፉ” ይጠቀሙ።',
-    ],
+  {
+    q: { en: 'How much does it cost to play?', am: 'ለመጫወት ስንት ያስከፍላል?' },
+    a: { en: 'Each attempt costs a small number of Coins (shown on every game and on its intro screen). New players receive free starter Coins, and you can top up any time from the Buy Coins button.',
+      am: 'እያንዳንዱ ሙከራ ጥቂት ሳንቲም ያስከፍላል (በእያንዳንዱ ጨዋታና በመግቢያ ገጹ ይታያል)። አዲስ ተጫዋቾች ነጻ ሳንቲም ያገኛሉ፣ በማንኛውም ጊዜ “ሳንቲም ይግዙ” ቁልፍ መሙላት ይችላሉ።' },
   },
-};
+  {
+    q: { en: 'How is my score turned into Points?', am: 'ውጤቴ እንዴት ወደ ነጥብ ይቀየራል?' },
+    a: { en: 'The server computes Points from your performance, the game’s difficulty, and (for timed games) your speed. Scoring is uniform across games and calculated server-side, so it can’t be tampered with.',
+      am: 'አገልጋዩ ነጥብን ከአፈጻጸምዎ፣ ከጨዋታው አስቸጋሪነት እና (ለጊዜ-ተኮር ጨዋታዎች) ከፍጥነትዎ ያሰላል። ስሌቱ ለሁሉም ጨዋታዎች ተመሳሳይ ሆኖ በአገልጋዩ በኩል ስለሚሰራ ሊጭበረበር አይችልም።' },
+  },
+  {
+    q: { en: 'How do tournaments and the seasonal competition work?', am: 'ውድድሮችና የወቅት ውድድር እንዴት ይሰራሉ?' },
+    a: { en: 'Tournament games rank players by their best valid score during the tournament window. Separately, a seasonal competition ranks everyone by Points earned that season; top finishers receive Coin prizes when the season closes, then season Points reset.',
+      am: 'የውድድር ጨዋታዎች ተጫዋቾችን በውድድሩ ጊዜ ባስመዘገቡት ምርጥ ትክክለኛ ውጤት ይደረድራሉ። በተጨማሪም የወቅት ውድድር ሁሉንም በወቅቱ ባገኙት ነጥብ ይደረድራል፤ ወቅቱ ሲዘጋ ከፍተኛ ያስመዘገቡ የሳንቲም ሽልማት ያገኛሉ፣ ከዚያም የወቅቱ ነጥብ ይታደሳል።' },
+  },
+  {
+    q: { en: 'What is my level and how do I level up?', am: 'ደረጃዬ ምንድን ነው፣ እንዴት እጨምራለሁ?' },
+    a: { en: 'Your level is based on your lifetime Points, which only ever go up. Keep playing and winning to raise it — higher levels unlock more games.',
+      am: 'ደረጃዎ በጠቅላላ ዕድሜ ነጥብዎ ላይ የተመሰረተ ሲሆን ሁልጊዜ ይጨምራል እንጂ አይቀንስም። እየተጫወቱና እያሸነፉ ያሳድጉት — ከፍ ያሉ ደረጃዎች ተጨማሪ ጨዋታዎችን ይከፍታሉ።' },
+  },
+  {
+    q: { en: 'Some games are locked. How do I unlock them?', am: 'አንዳንድ ጨዋታዎች ተቆልፈዋል። እንዴት እከፍታለሁ?' },
+    a: { en: 'Reach the required level to unlock a gated game for free, or unlock it early by spending Coins from the game’s unlock dialog.',
+      am: 'የተፈለገውን ደረጃ ሲደርሱ የተቆለፈ ጨዋታ በነጻ ይከፈታል፣ ወይም ከጨዋታው የመክፈቻ መስኮት ሳንቲም በማውጣት ቀድመው ይክፈቱት።' },
+  },
+  {
+    q: { en: 'How do referral rewards work?', am: 'የግብዣ ሽልማት እንዴት ይሰራል?' },
+    a: { en: 'Share your referral code from Account → Invite friends. When a friend redeems it, you both get bonus Coins. A code can be redeemed once per new player.',
+      am: 'ከመለያ → ጓደኞችን ይጋብዙ ላይ የግብዣ ኮድዎን ያጋሩ። ጓደኛዎ ሲጠቀምበት ሁለታችሁም ተጨማሪ ሳንቲም ታገኛላችሁ። አንድ ኮድ ለእያንዳንዱ አዲስ ተጫዋች አንዴ ብቻ ይሰራል።' },
+  },
+  {
+    q: { en: 'Do my Coins or rewards have real-world value?', am: 'ሳንቲሞቼ ወይም ሽልማቶቼ የገንዘብ ዋጋ አላቸው?' },
+    a: { en: 'Virtual items have no real-world monetary value unless explicitly stated. Rewards are non-transferable unless allowed, and balances may be adjusted in cases of fraud, abuse, or system errors.',
+      am: 'ቨርቹዋል እቃዎች በግልጽ ካልተገለጸ በስተቀር የገንዘብ ዋጋ የላቸውም። ሽልማቶች ካልተፈቀደ በስተቀር አይተላለፉም፣ በማጭበርበር ወይም በስርዓት ስህተት ጊዜ ሒሳቦች ሊስተካከሉ ይችላሉ።' },
+  },
+  {
+    q: { en: 'Why was my account restricted?', am: 'መለያዬ ለምን ተገደበ?' },
+    a: { en: 'Cheating, using bots or multiple accounts, exploiting glitches, or other abuse can lead to restriction or a permanent ban, and rewards gained illegitimately may be removed. See the Terms & Conditions for details.',
+      am: 'ማጭበርበር፣ ቦቶችን ወይም ብዙ መለያዎችን መጠቀም፣ ስህተቶችን መበዝበዝ ወይም ሌላ አላግባብ መጠቀም ወደ ገደብ ወይም ቋሚ እገዳ ሊያመራ ይችላል፣ ባልተገባ መንገድ የተገኙ ሽልማቶችም ሊወገዱ ይችላሉ። ዝርዝሩን በውሎችና ሁኔታዎች ይመልከቱ።' },
+  },
+  {
+    q: { en: 'I need help or want to report a problem.', am: 'እገዛ እፈልጋለሁ ወይም ችግር ማሳወቅ እፈልጋለሁ።' },
+    a: { en: 'Use “Write your feedback” in your Account, or contact the GoPlay support team via the official channels listed in the platform.',
+      am: 'በመለያዎ “አስተያየትዎን ይጻፉ” ይጠቀሙ፣ ወይም በመድረኩ ውስጥ በተዘረዘሩ ይፋዊ መንገዶች የGoPlay ድጋፍ ቡድንን ያግኙ።' },
+  },
+];
 const t = (k: keyof typeof STR.en): string => (STR[getLang()] ?? STR.en)[k];
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const periodLabel = (p: SubPeriod): string => t(p);
@@ -315,9 +502,12 @@ function openFeedback(): void {
 
 function openInfo(kind: 'terms' | 'faq'): void {
   const title = kind === 'terms' ? t('terms') : t('faq');
-  const lines = INFO[kind][getLang() === 'am' ? 'am' : 'en'];
+  const am = getLang() === 'am';
+  const body = kind === 'terms'
+    ? TERMS_HTML
+    : FAQ.map((f) => `<div class="faq-item"><p class="faq-q">${esc(am ? f.q.am : f.q.en)}</p><p class="faq-a">${esc(am ? f.a.am : f.a.en)}</p></div>`).join('');
   const m = shell(`<h2 class="acct-title">${esc(title)}</h2>
-    <div class="acct-card info-body">${lines.map((l) => `<p>${esc(l)}</p>`).join('')}</div>
+    <div class="acct-card info-body ${kind === 'terms' ? 'tc-body' : 'faq-body'}">${body}</div>
     <button class="acct-primary" id="infoDone">${t('close')}</button>`);
   m.querySelector('#infoDone')!.addEventListener('click', () => m.remove());
 }
@@ -381,8 +571,20 @@ function injectStyles(): void {
     .rate-row { display: flex; gap: 8px; justify-content: center; }
     .rate-star { background: none; border: none; font-size: 2.2rem; color: #d8e0cf; cursor: pointer; line-height: 1; }
     .rate-star.on { color: var(--gold); }
-    .info-body { display: flex; flex-direction: column; gap: 10px; }
+    .info-body { display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; }
     .info-body p { font-size: .9rem; color: var(--text); line-height: 1.55; margin: 0; }
+    .tc-body h3 { font-size: 1.1rem; margin: .2rem 0 .4rem; }
+    .tc-body h4 { font-size: .96rem; margin: .7rem 0 .2rem; color: var(--text); }
+    .tc-body h4.tc-game { margin-top: 1rem; padding-top: .7rem; border-top: 1px solid var(--line); color: var(--accent); }
+    .tc-body ul { margin: .2rem 0 .2rem 1.1rem; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+    .tc-body li { font-size: .88rem; line-height: 1.5; color: var(--text); }
+    .tc-body p strong { font-weight: 800; }
+    .tc-risk { display: inline-block; font-size: .72rem; font-weight: 800; color: #b3261e;
+      background: rgba(179,38,30,.1); padding: .04rem .4rem; border-radius: 6px; margin-left: .3rem; white-space: nowrap; }
+    .faq-body { gap: 14px; }
+    .faq-item { display: flex; flex-direction: column; gap: 3px; }
+    .faq-q { font-weight: 800; font-size: .92rem; }
+    .faq-a { color: var(--muted); }
     .entry-rows { display: flex; flex-direction: column; gap: 8px; }
     .entry-rows .acct-row span { font-size: .88rem; }
     .ref-card { display: flex; flex-direction: column; gap: 12px; }
