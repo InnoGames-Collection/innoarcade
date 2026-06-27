@@ -93,18 +93,25 @@ function run(assets: AssetStore): void {
 
   // --- buttons ---
   let ftueSeen = false; // session-only (no local storage)
+  // Bind the run to the currently-selected tournament + capture whether it's a
+  // ranked attempt (entered, attempts left). Done at START so a mid-run tab switch
+  // can't change where the score lands.
+  function startRun(): void {
+    activePeriod = selectedPeriod;
+    game.start();
+  }
   function beginPlay(): void {
     if (!ftueSeen) { $('#ftue').classList.remove('hidden'); return; }
-    game.start();
+    startRun();
   }
   $('#startBtn').addEventListener('click', beginPlay);
   $('#ftueBtn').addEventListener('click', () => {
     ftueSeen = true;
     $('#ftue').classList.add('hidden');
-    game.start();
+    startRun();
   });
-  $('#againBtn').addEventListener('click', () => game.start());
-  $('#restartBtn').addEventListener('click', () => game.start());
+  $('#againBtn').addEventListener('click', startRun);
+  $('#restartBtn').addEventListener('click', startRun);
   $('#resumeBtn').addEventListener('click', () => game.resume());
   $('#pauseBtn').addEventListener('click', () => {
     if (game.state === 'playing') game.pause();
@@ -197,7 +204,12 @@ function run(assets: AssetStore): void {
   let myEntry: RunnerEntry | null = null;
   let walletCoins = 0;
   // Daily / Weekly / Monthly tournaments (doc §4.1) — each scored independently.
-  let selectedPeriod: RunnerPeriod = 'monthly';
+  // Default to Daily: the entry-tier window (unlocks at L3) every player can reach,
+  // per the §3.2 funnel (Monthly is L10-gated, a poor default).
+  let selectedPeriod: RunnerPeriod = 'daily';
+  // The tournament a started run counts toward — captured at run START so switching
+  // tabs mid-run can't misfile the score.
+  let activePeriod: RunnerPeriod = 'daily';
   const PERIODS: { id: RunnerPeriod; label: string }[] = [
     { id: 'daily', label: t('td.daily') }, { id: 'weekly', label: t('td.weekly') }, { id: 'monthly', label: t('td.monthly') },
   ];
@@ -205,6 +217,25 @@ function run(assets: AssetStore): void {
   const escHtml = (s: string): string =>
     s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const medal = (rank: number): string => ['🥇', '🥈', '🥉'][rank - 1] ?? `${rank}`;
+
+  // "ends in 3h 12m" / "2d 4h" for the tournament window.
+  function endsIn(endsAt: number): string {
+    const ms = Math.max(0, endsAt - Date.now());
+    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+    return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  // The big menu Play button reflects whether the next run is a ranked tournament
+  // attempt (entered, attempts left) or a free XP-only run — so the player always
+  // knows what pressing Play does, and why coins were/weren't spent.
+  function updatePlayButton(): void {
+    const btn = document.querySelector('#startBtn');
+    if (!btn) return;
+    const left = myEntry?.attemptsLeft ?? 0;
+    btn.textContent = left > 0
+      ? `▶ ${t('td.playTournament')} · 🎟️ ${left}`
+      : `▶ ${t('td.playFree')}`;
+  }
 
   function boardHtml(rows: RunnerLeaderRow[]): string {
     if (!rows.length) return `<p class="rb-empty">${t('td.noBoard')}</p>`;
@@ -240,14 +271,16 @@ function run(assets: AssetStore): void {
     const needLevel = REQUIRED_LEVEL[selectedPeriod];
     const locked = myLevel < needLevel;
     const left = myEntry?.attemptsLeft ?? 0;
+    const used = myEntry?.attemptsUsed ?? 0;
+    const purchased = myEntry?.attemptsPurchased ?? 0;
     const status = locked
       ? `<span class="rt-fee">🔒 ${t('td.reachLevel')} ${needLevel}</span>`
       : left > 0
-        ? `<span class="rt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${left}</strong></span>`
+        ? `<span class="rt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${left}</strong> <small>(${used}/${purchased})</small></span>`
         : `<span class="rt-fee">${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</span>`;
     const btn = locked
       ? `<button class="btn rt-enter" disabled>🔒 L${needLevel}</button>`
-      : `<button id="enterBtn" class="btn rt-enter">${t('td.enterFor')} · ${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</button>`;
+      : `<button id="enterBtn" class="btn rt-enter">${left > 0 ? t('td.enterAgain') : t('td.enterFor')} · ${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</button>`;
     const tabs = PERIODS.map((p) =>
       `<button class="rt-tab${p.id === selectedPeriod ? ' is-active' : ''}" data-period="${p.id}">${p.label}</button>`).join('');
 
@@ -257,9 +290,11 @@ function run(assets: AssetStore): void {
         <span class="rt-title">🏆 ${escHtml(getLang() === 'am' ? tourney.titleAm : tourney.titleEn)}</span>
         <span class="rt-coins">${walletCoins.toLocaleString()} 🪙</span>
       </div>
+      <div class="rt-meta">⏳ ${t('td.endsIn')} ${endsIn(tourney.endsAt)} · 🏅 ${t('td.bestRanks')}</div>
       <div class="rt-status">${status}${btn}</div>
       <div class="runner-board">${boardHtml(board)}</div>`;
 
+    updatePlayButton();
     document.querySelector('#enterBtn')?.addEventListener('click', onEnter);
     document.querySelectorAll<HTMLButtonElement>('#runnerTourney .rt-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
@@ -272,10 +307,11 @@ function run(assets: AssetStore): void {
   async function onEnter(): Promise<void> {
     const b = document.querySelector<HTMLButtonElement>('#enterBtn');
     if (b) b.disabled = true;
+    const fee = tourney?.entryFeeCoins ?? 0;
     try {
       myEntry = await enterRunnerTournament(selectedPeriod);
       await refreshTourney();
-      showToast(`🎟️ ${t('td.attemptsLeft')}: ${myEntry.attemptsLeft}`);
+      showToast(`−${fee} 🪙 · 🎟️ ${myEntry.attemptsLeft} ${t('td.attempts')}`);
     } catch (e) {
       if (e instanceof InsufficientCoinsError) showToast(`🪙 ${t('td.needCoins')}`);
       else if (e instanceof LevelTooLowError) showToast(`🔒 ${t('td.reachLevel')} ${e.requiredLevel}`);
@@ -292,7 +328,7 @@ function run(assets: AssetStore): void {
     reward.innerHTML = `<span class="rr-pending">…</span>`;
     let res: RunnerSubmitResult | null = null;
     try {
-      res = await submitRunnerRun(score, durationMs, selectedPeriod);
+      res = await submitRunnerRun(score, durationMs, activePeriod);
     } catch (e) {
       reward.innerHTML = `<span class="rr-note">${e instanceof SignInRequiredError ? t('td.signInToRank') : '✕'}</span>`;
       return;

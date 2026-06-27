@@ -2,10 +2,12 @@
 //
 // runner-submit — the Ethiopian Runner score gate (server-authoritative, no
 // client-proposed amounts). Every finished run:
-//   1. awards XP from the uniform matrix (BASE x performance), driving level +
-//      season rank (runner_apply_xp);
-//   2. if the player has a live tournament entry with attempts remaining, also
-//      consumes one attempt and records the RAW best for the leaderboard.
+//   1. awards XP per doc §3.1 — a flat 10 × difficulty, capped at 3 rewarded
+//      sessions/day/game (claim_xp_session) — into the UNIFIED global XP wallet
+//      (apply_xp on profiles → the single platform level), not a separate counter;
+//   2. if the player has a live tournament entry (for the chosen period) with
+//      attempts remaining, consumes one attempt, keeps the RAW best, normalizes it
+//      to RP (doc §4.2, rp_for) and ranks the leaderboard by best RP.
 // Free runs (no entry/attempts) still earn XP but don't rank — the doc's two
 // tracks merged on one game. Anti-cheat: an optional single-use round token
 // (start-round) ties the score to a real session.
@@ -16,8 +18,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const GAME_ID = 'temple-dash';
 const MAX_SCORE = 1_000_000; // sane ceiling; runner score is distance-based
-const PAR = 1500;            // a "great run" -> performance 1.0 (full XP)
-const BASE = 100;            // XP for a perfect run
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

@@ -319,7 +319,9 @@ body {
 .rt-coins { color: var(--accent); font-weight: 700; }
 .rt-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.82rem; color: var(--text); }
 .rt-attempts strong { color: var(--accent); }
+.rt-attempts small { color: var(--muted); font-weight: 400; }
 .rt-fee { color: var(--muted); }
+.rt-meta { font-size: 0.74rem; color: var(--muted); margin: 2px 0 4px; }
 .rt-enter {
   font-size: 0.78rem;
   padding: 6px 12px;
