@@ -19,20 +19,15 @@ import { isConfigured, supabase } from './supabase';
 import { config, economyNeedsAuth } from './config';
 import { SignInRequiredError } from './payments';
 
-// Per-cadence economy (doc §4.1): entry fee, attempts banked per entry, and the
-// level-tier funnel (§3.2). The single source of truth for the unified system.
-export const REQUIRED_LEVEL: Record<TournamentCadence, number> = { daily: 3, weekly: 5, monthly: 10 };
-const CADENCE_FEE: Record<TournamentCadence, number> = { daily: 10, weekly: 30, monthly: 75 };
-const CADENCE_ATTEMPTS: Record<TournamentCadence, number> = { daily: 3, weekly: 5, monthly: 10 };
+// Per-cadence economy (doc §4.1): entry fee + attempts banked per entry. Entry is
+// open to any signed-in player who can afford the fee — there is NO level gate.
+const CADENCE_FEE: Record<TournamentCadence, number> = { daily: 2, weekly: 5, monthly: 10 };
+const CADENCE_ATTEMPTS: Record<TournamentCadence, number> = { daily: 5, weekly: 15, monthly: 30 };
 const CADENCE_TITLE: Record<TournamentCadence, { en: string; am: string }> = {
   daily: { en: 'Daily Runner', am: 'ዕለታዊ ሩጫ' },
   weekly: { en: 'Weekly Cup', am: 'ሳምንታዊ ዋንጫ' },
   monthly: { en: 'Monthly Championship', am: 'ወርሃዊ ሻምፒዮና' },
 };
-
-export class LevelTooLowError extends Error {
-  constructor(public requiredLevel: number) { super('level too low'); this.name = 'LevelTooLowError'; }
-}
 
 /** Parse the cadence out of a tournament id (`game-daily-2026-…` / `game-weekly`). */
 export function cadenceOf(id: string): TournamentCadence {
@@ -62,10 +57,9 @@ export interface Tournament {
   prizeTiers: PrizeTier[];
   /** Headline prize coins (computed pool) — kept for back-compat with the hub. */
   prizeCoins: number;
-  /** Cadence + attempts banked per paid entry + required player level (funnel). */
+  /** Cadence + attempts banked per paid entry. */
   cadence: TournamentCadence;
   attempts: number;
-  requiredLevel: number;
   /** Epoch ms. */
   startsAt: number;
   endsAt: number;
@@ -129,7 +123,7 @@ function buildTournament(gameId: string, cadence: TournamentCadence, now = Date.
     titleEn: title.en, titleAm: title.am,
     type: 'paid', entryFeeCoins: CADENCE_FEE[cadence], prizeModel: 'pool',
     sponsoredPrize: 0, prizeTiers: DEFAULT_TIERS, prizeCoins: 0,
-    cadence, attempts: CADENCE_ATTEMPTS[cadence], requiredLevel: REQUIRED_LEVEL[cadence],
+    cadence, attempts: CADENCE_ATTEMPTS[cadence],
     startsAt, endsAt,
   };
   t.prizeCoins = prizePool(t);
@@ -185,7 +179,6 @@ export async function loadTournaments(): Promise<Tournament[]> {
         prizeCoins: 0,
         cadence,
         attempts: Number(r.attempts ?? CADENCE_ATTEMPTS[cadence]),
-        requiredLevel: REQUIRED_LEVEL[cadence],
         startsAt: new Date(r.starts_at as string).getTime(),
         endsAt: new Date(r.ends_at as string).getTime(),
       };
@@ -328,11 +321,11 @@ export async function enterTournament(tournamentIdOrGameId: string): Promise<Tou
     body: { gameId },
   });
   if (error) {
-    // Surface the affordability / level cases so the UI can prompt accordingly.
+    // Surface the affordability / auth cases so the UI can prompt accordingly.
+    // Entry has NO level gate — only sign-in + sufficient coins are required.
     const status = (error as { context?: { status?: number } }).context?.status;
     if (status === 402) throw new InsufficientCoinsError();
     if (status === 401) throw new SignInRequiredError();
-    if (status === 403) throw new LevelTooLowError(t?.requiredLevel ?? REQUIRED_LEVEL[cadenceOf(gameId + '-monthly')]);
     throw error;
   }
   const d = data as { tournamentId: string; feePaid: number; prizeWon: number; enteredAt: number;

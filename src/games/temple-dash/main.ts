@@ -8,11 +8,11 @@ import { AssetStore } from '../../engine/assets';
 import { Preloader } from '../../ui/preloader';
 import { SettingsPanel } from '../../ui/settingsPanel';
 import { registerPwa } from '../../engine/pwa';
-import { fetchSkins, setSkinRemote, fetchWallets, leaderboardRemote, playerStandingRemote } from '../../platform/backend';
+import { fetchSkins, setSkinRemote, leaderboardRemote, playerStandingRemote } from '../../platform/backend';
 import { GameHost } from '../../platform/gameHost';
 import {
   getTournamentForGame, loadTournaments, loadMyEntries, myEntry, prizePool, tournamentEntrants,
-  enterTournament, InsufficientCoinsError, LevelTooLowError,
+  enterTournament, InsufficientCoinsError,
   type Tournament, type LeaderEntry,
 } from '../../platform/tournaments';
 import { levelFor } from '../../platform/config';
@@ -255,30 +255,23 @@ function run(assets: AssetStore): void {
     await Promise.all([loadTournaments(), loadMyEntries()]);
     tourney = getTournamentForGame(GAME_ID);
     if (!tourney) { $('#runnerTourney').innerHTML = ''; return; }
-    const [w, wallets, serverStanding, board] = await Promise.all([
-      balance(), fetchWallets(), playerStandingRemote(tourney.id), leaderboardRemote(tourney.id, 5),
+    const [w, serverStanding, board] = await Promise.all([
+      balance(), playerStandingRemote(tourney.id), leaderboardRemote(tourney.id, 5),
     ]);
     walletCoins = w;
-    const myLevel = levelFor(wallets?.lifetime ?? 0);
     // Best is server-authoritative — seed the game's best so the game-over screen
     // reflects the server, not just this session.
     const serverBest = serverStanding?.score ?? 0;
     if (serverBest > game.best) game.best = serverBest;
 
-    // Level-tier funnel (doc §3.2): locked until the player reaches the level.
-    const needLevel = tourney.requiredLevel;
-    const locked = myLevel < needLevel;
+    // No level gate — any signed-in player with enough coins can enter.
     const entry = myEntry(tourney.id);
     const left = entry?.left ?? 0, used = entry?.used ?? 0, purchased = entry?.purchased ?? 0;
     const pool = prizePool(tourney), entrants = tournamentEntrants(tourney);
-    const status = locked
-      ? `<span class="rt-fee">🔒 ${t('td.reachLevel')} ${needLevel}</span>`
-      : left > 0
-        ? `<span class="rt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${left}</strong> <small>(${used}/${purchased})</small></span>`
-        : `<span class="rt-fee">${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</span>`;
-    const btn = locked
-      ? `<button class="btn rt-enter" disabled>🔒 L${needLevel}</button>`
-      : `<button id="enterBtn" class="btn rt-enter">${left > 0 ? t('td.enterAgain') : t('td.enterFor')} · ${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</button>`;
+    const status = left > 0
+      ? `<span class="rt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${left}</strong> <small>(${used}/${purchased})</small></span>`
+      : `<span class="rt-fee">${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</span>`;
+    const btn = `<button id="enterBtn" class="btn rt-enter">${left > 0 ? t('td.enterAgain') : t('td.enterFor')} · ${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</button>`;
 
     $('#runnerTourney').innerHTML = `
       <div class="rt-head">
@@ -304,7 +297,6 @@ function run(assets: AssetStore): void {
       showToast(`−${fee} 🪙 · 🎟️ ${e.left} ${t('td.attempts')}`);
     } catch (e) {
       if (e instanceof InsufficientCoinsError) showToast(`🪙 ${t('td.needCoins')}`);
-      else if (e instanceof LevelTooLowError) showToast(`🔒 ${t('td.reachLevel')} ${e.requiredLevel}`);
       else if (e instanceof SignInRequiredError) showToast(t('td.signInToRank'));
       else showToast('✕');
       if (b) b.disabled = false;

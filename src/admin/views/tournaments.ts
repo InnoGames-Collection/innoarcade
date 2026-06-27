@@ -134,7 +134,6 @@ function openEditor(existing?: AdminTournament): void {
       prizeCoins: 0,
       cadence: existing?.cadence ?? cadenceOf(existing?.id ?? gameId),
       attempts: existing?.attempts ?? 1,
-      requiredLevel: existing?.requiredLevel ?? 1,
       startsAt: isNew ? new Date(q<HTMLInputElement>('#start').value).getTime() : existing!.startsAt,
       endsAt: isNew ? new Date(q<HTMLInputElement>('#end').value).getTime() : existing!.endsAt,
     };

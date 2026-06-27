@@ -3,11 +3,12 @@
 // enter-tournament — server-authoritative tournament registration on the UNIFIED
 // system. PAY ONCE → N ATTEMPTS (doc §4.1): debiting the entry fee banks a block
 // of attempts whose best RP ranks. Re-entering after the bank empties buys another
-// block. Resolves the game's single live window server-side (no client-built id)
-// and enforces the level-tier funnel (daily ≥ L3, weekly ≥ L5, monthly ≥ L10).
+// block. Resolves the game's single live window server-side (no client-built id).
+// Entry is OPEN to any signed-in player who can afford the fee — there is NO level
+// gate.
 //
 // Body: { gameId } (preferred) or { tournamentId } (legacy/explicit). Returns 402
-// when the player can't afford the fee, 403 when their level is too low.
+// when the player can't afford the fee, 401 when signed out.
 //
 // Deploy: supabase functions deploy enter-tournament
 
@@ -20,18 +21,6 @@ const cors = {
 };
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'content-type': 'application/json' } });
-
-// Doc §3.2 cumulative level table (mirrors src/platform/config.ts).
-const LEVEL_THRESHOLDS = [0, 150, 400, 800, 1500, 2200, 3000, 4000, 5000, 6000];
-const levelFor = (xp: number): number => {
-  const v = Math.max(0, xp); let lvl = 1;
-  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) { if (v >= LEVEL_THRESHOLDS[i]) lvl = i + 1; else return lvl; }
-  return 10 + Math.floor((v - 6000) / 3000);
-};
-// Cadence parsed from the tournament id suffix → required level (funnel).
-const cadenceOf = (id: string): 'daily' | 'weekly' | 'monthly' =>
-  /-daily-/.test(id) ? 'daily' : /-weekly-/.test(id) ? 'weekly' : 'monthly';
-const REQUIRED_LEVEL: Record<string, number> = { daily: 3, weekly: 5, monthly: 10 };
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -69,12 +58,6 @@ Deno.serve(async (req: Request) => {
   const now = Date.now();
   const ended = tour.state === 'settled' || tour.state === 'settling' || new Date(tour.ends_at).getTime() <= now;
   if (ended) return json({ error: 'tournament closed' }, 409);
-
-  // Level-tier funnel (doc §3.2).
-  const need = REQUIRED_LEVEL[cadenceOf(tour.id)] ?? 1;
-  const { data: lp } = await admin.from('profiles').select('xp_lifetime').eq('id', user.id).maybeSingle();
-  const level = levelFor(Number(lp?.xp_lifetime ?? 0));
-  if (level < need) return json({ error: 'level too low', requiredLevel: need, level }, 403);
 
   const fee = tour.type === 'paid' ? Number(tour.entry_fee_coins) : 0;
   const attempts = Math.max(1, Number(tour.attempts ?? 1));

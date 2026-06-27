@@ -51,10 +51,10 @@ declare
 begin
   for rec in
     select * from (values
-      -- game,          cadence,   title_en,            title_am,      fee,        attempts
-      ('temple-dash',  'daily',   'Daily Runner',       'ዕለታዊ ሩጫ',   10::bigint, 3),
-      ('memory-match', 'weekly',  'Weekly Cup',         'ሳምንታዊ ዋንጫ', 30::bigint, 5),
-      ('fruit-slice',  'monthly', 'Monthly Championship','ወርሃዊ ሻምፒዮና',75::bigint, 10)
+      -- game,          cadence,   title_en,            title_am,      fee,       attempts
+      ('temple-dash',  'daily',   'Daily Runner',       'ዕለታዊ ሩጫ',   2::bigint,  5),
+      ('memory-match', 'weekly',  'Weekly Cup',         'ሳምንታዊ ዋንጫ', 5::bigint,  15),
+      ('fruit-slice',  'monthly', 'Monthly Championship','ወርሃዊ ሻምፒዮና',10::bigint, 30)
     ) as v(game, cadence, title_en, title_am, fee, attempts)
   loop
     if rec.cadence = 'daily' then

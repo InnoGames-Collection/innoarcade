@@ -40,6 +40,8 @@ let playing = false;
 let rankedThisRun = false;
 let secondsLeft = ROUND_SECONDS;
 let timerId = 0;
+let roundSeq = 0;    // invalidates stale preview/timer callbacks across restarts
+let starting = false; // re-entrancy lock so a rapid double-tap can't double-charge
 
 const grid = $('#mm-grid');
 const timeEl = $('#mm-time');
@@ -98,32 +100,55 @@ function buildBoard(): void {
   refreshStats();
 }
 
-// Start a paid round: consume a banked attempt or buy the next block (pay-once →
-// N attempts); if refused, play a free practice round. Each Play/Replay = a round.
-async function startPlay(): Promise<void> {
-  if (playing) return;
-  const res = await host.begin();
-  rankedThisRun = res.ok;
-  if (!res.ok) {
-    if (res.reason === 'coins') message.textContent = t('mm.needCoins');
-    else if (res.reason === 'level') message.textContent = t('mm.reachLevel').replace('{n}', String(host.requiredLevel));
-    else if (res.reason === 'auth') message.textContent = t('td.signInToRank');
-  } else {
-    message.textContent = '';
-  }
-  message.style.color = '';
-  buildBoard();
-  playing = true;
-  roundOver = false;
-  canFlip = true;
-  secondsLeft = ROUND_SECONDS;
-  refreshStats();
-  setHUD();
-  clearInterval(timerId);
-  timerId = window.setInterval(tick, 1000);
+// Reveal/hide all unmatched cards (the 1-second preview shown when a round starts).
+function revealAll(show: boolean): void {
+  document.querySelectorAll<HTMLElement>('.mm-card').forEach((card) => {
+    if (card.classList.contains('matched')) return;
+    if (show) { card.textContent = card.dataset.e!; card.classList.add('flipped'); }
+    else if (!flipped.includes(card)) { card.textContent = '❓'; card.classList.remove('flipped'); }
+  });
 }
 
-function tick(): void {
+// Start a paid round: consume a banked attempt or buy the next block (pay-once →
+// N attempts); if refused, play a free practice round. Each Play/Replay reshuffles
+// the board, shows a 1-second preview of all cards, then starts the 2-min timer.
+async function startPlay(): Promise<void> {
+  if (starting) return;
+  starting = true;
+  try {
+    const res = await host.begin();
+    rankedThisRun = res.ok;
+    if (!res.ok) {
+      if (res.reason === 'coins') message.textContent = t('mm.needCoins');
+      else if (res.reason === 'auth') message.textContent = t('td.signInToRank');
+    } else {
+      message.textContent = '';
+    }
+    message.style.color = '';
+    const seq = ++roundSeq;     // supersede any in-flight round (mid-round Replay)
+    clearInterval(timerId);
+    buildBoard();               // reshuffle
+    playing = true;
+    roundOver = false;
+    canFlip = false;            // locked during the preview
+    secondsLeft = ROUND_SECONDS;
+    refreshStats();
+    setHUD();
+    play('flip');
+    revealAll(true);            // 1-second preview (what the old Peek did)
+    window.setTimeout(() => {
+      if (seq !== roundSeq) return; // a newer round replaced this one
+      revealAll(false);
+      canFlip = true;
+      timerId = window.setInterval(() => tick(seq), 1000); // timer starts AFTER preview
+    }, 1000);
+  } finally {
+    starting = false;
+  }
+}
+
+function tick(seq: number): void {
+  if (seq !== roundSeq) return; // stale timer from a superseded round
   secondsLeft -= 1;
   refreshStats();
   if (secondsLeft <= 0) endRound('time');

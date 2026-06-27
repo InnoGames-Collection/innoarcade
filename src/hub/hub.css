@@ -425,6 +425,10 @@ body {
 
 /* compact balance chips in topbar */
 .top-balances { display: flex; align-items: center; gap: 0.25rem; margin-inline: auto; }
+/* player balance bar (Level / Points / Coins) — sits under the promo banner */
+.player-bar-section { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
+.player-bar-section:empty { display: none; }
+.player-bar-section .bal-chip { font-size: 0.82rem; padding: 0.3rem 0.7rem; }
 .bal-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.7rem; font-weight: 600;
   padding: 0.13rem 0.45rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,0.85); white-space: nowrap; }
 .bal-chip strong { font-weight: 800; }

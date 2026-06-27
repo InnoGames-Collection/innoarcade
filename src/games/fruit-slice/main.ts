@@ -73,7 +73,6 @@ async function play(): Promise<void> {
   const res = await host.begin();
   if (res.ok) { rankedThisRun = true; game.start(); return; }
   if (res.reason === 'coins') toast(`🪙 Not enough coins for entry (${host.costCoins})`);
-  else if (res.reason === 'level') toast(`🔒 Reach level ${host.requiredLevel} to compete`);
   else if (res.reason === 'auth') toast('Sign in to compete — playing free');
   rankedThisRun = false;
   game.start(); // free practice run still earns XP

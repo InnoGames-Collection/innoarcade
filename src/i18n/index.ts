@@ -158,7 +158,7 @@ const en = {
   'hub.confirm': 'Confirm',
   'hub.cancel': 'Cancel',
   'hub.needCoins': 'Not enough coins',
-  'hub.buyCoins': 'Buy coins',
+  'hub.buyCoins': 'Buy Coin',
   'hub.feeNotice': 'This entry fee will be deducted from your wallet.',
   'hub.upcoming': 'Upcoming',
   'hub.ended': 'Ended',

@@ -16,7 +16,7 @@
 import { getGame, type GameMode, type GameMeta } from './catalog';
 import {
   getTournamentForGame, enterTournament, isEntered, myEntry, noteAttemptsLeft,
-  countdown, prizePool, InsufficientCoinsError, LevelTooLowError,
+  countdown, prizePool, InsufficientCoinsError,
   type Tournament, type LeaderEntry,
 } from './tournaments';
 import { SignInRequiredError } from './payments';
@@ -25,7 +25,7 @@ import { setBalance, setLifetime } from './currency';
 import { winRateOverride, BASE_POINTS } from './config';
 import { currentUser } from './auth';
 
-export type BeginBlock = 'coins' | 'auth' | 'level';
+export type BeginBlock = 'coins' | 'auth';
 export interface BeginResult {
   ok: boolean;
   /** Why entry was refused (tournament mode only). */
@@ -109,11 +109,6 @@ export class GameHost {
     return this.isTournament ? (myEntry(this.tournament!.id)?.left ?? 0) : 0;
   }
 
-  /** Minimum player level to enter this tournament (the funnel; §3.2). */
-  get requiredLevel(): number {
-    return this.isTournament ? (this.tournament!.requiredLevel ?? 1) : 1;
-  }
-
   /** This game's cadence ('daily' | 'weekly' | 'monthly'), or undefined when free. */
   get cadence(): Tournament['cadence'] | undefined {
     return this.tournament?.cadence;
@@ -157,7 +152,6 @@ export class GameHost {
     } catch (e) {
       if (e instanceof InsufficientCoinsError) return { ok: false, reason: 'coins' };
       if (e instanceof SignInRequiredError) return { ok: false, reason: 'auth' };
-      if (e instanceof LevelTooLowError) return { ok: false, reason: 'level' };
       // Unexpected error — don't block play over an infrastructure hiccup.
       console.warn('tournament entry skipped:', e);
       return { ok: true };

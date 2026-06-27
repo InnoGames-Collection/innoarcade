@@ -110,19 +110,24 @@ function renderGlobalBoard(): void {
   });
 }
 
-// --- Compact balance pill strip (in the topbar) ------------------------------
+// --- Player balance bar -----------------------------------------------------
+// The Level / Points / Coins chips render in their own bar right under the promo
+// banner (where the KPI strip used to be). The Buy Coin button stays in the topbar.
 function renderMyStats(): void {
-  const host = document.querySelector('#topBalances');
-  if (!host) return;
   const chip = (icon: string, val: string, cls: string): string =>
     `<span class="bal-chip ${cls}">${icon} <strong>${val}</strong></span>`;
-  // Top bar shows Level + Points + Coins, then a Buy button.
-  host.innerHTML =
-    chip('🎖️', `L${levelFor(xpLifetime())}`, 'bal-level') +
-    chip('⭐', xpBal().toLocaleString(), 'bal-points') +
-    chip('🪙', balanceSync().toLocaleString(), 'bal-coins') +
-    `<button class="bal-buy" id="buyCoinsBtn">🪙＋ ${t('hub.buyCoins')}</button>`;
-  host.querySelector('#buyCoinsBtn')?.addEventListener('click', () => openStore());
+  const bar = document.querySelector('#playerBar');
+  if (bar) {
+    bar.innerHTML =
+      chip('🎖️', `L${levelFor(xpLifetime())}`, 'bal-level') +
+      chip('⭐', xpBal().toLocaleString(), 'bal-points') +
+      chip('🪙', balanceSync().toLocaleString(), 'bal-coins');
+  }
+  const host = document.querySelector('#topBalances');
+  if (host) {
+    host.innerHTML = `<button class="bal-buy" id="buyCoinsBtn">${t('hub.buyCoins')}</button>`;
+    host.querySelector('#buyCoinsBtn')?.addEventListener('click', () => openStore());
+  }
 }
 
 // --- Tournament entry economy (CTA + confirm flow) --------------------------
