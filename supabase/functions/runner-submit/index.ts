@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
   const xpSeason = Number(xpRow?.xp_season ?? 0);
 
   // 2) Ranked track — only if entered with attempts left in the live tournament.
-  let ranked = false, best = 0, rank = 0, total = 0, attemptsLeft = 0;
+  let ranked = false, best = 0, bestRp = 0, rank = 0, total = 0, attemptsLeft = 0;
   const { data: tid } = await admin.rpc('active_runner_tournament_period', { p_period: period });
   if (tid) {
     const { data: entry } = await admin
@@ -124,9 +124,10 @@ Deno.serve(async (req: Request) => {
       best = Math.max(Number(prev?.best ?? 0), score);
       // Normalize raw → RP (doc §4.2); the board ranks by best RP.
       const { data: rpVal } = await admin.rpc('rp_for', { p_game: GAME_ID, p_raw: best });
+      bestRp = Number(rpVal ?? 0);
       await admin.from('runner_scores').upsert({
         user_id: user.id, tournament_id: String(tid),
-        best, rp: Number(rpVal ?? 0), plays: Number(prev?.plays ?? 0) + 1, updated_at: new Date().toISOString(),
+        best, rp: bestRp, plays: Number(prev?.plays ?? 0) + 1, updated_at: new Date().toISOString(),
       });
 
       // Rank + field size from the ranked view.
@@ -140,5 +141,5 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  return json({ award, xp, xpSeason, level: levelFor(xp), ranked, best, rank, total, attemptsLeft });
+  return json({ award, xp, xpSeason, level: levelFor(xp), ranked, best, rp: bestRp, rank, total, attemptsLeft });
 });

@@ -45,6 +45,7 @@ export interface RunnerSubmitResult {
   level: number;
   ranked: boolean;
   best: number;
+  rp: number;
   rank: number;
   total: number;
   attemptsLeft: number;
@@ -109,6 +110,19 @@ export async function getMyEntry(tournamentId: string): Promise<RunnerEntry | nu
     const purchased = Number(data.attempts_purchased), used = Number(data.attempts_used);
     return { attemptsPurchased: purchased, attemptsUsed: used, attemptsLeft: Math.max(0, purchased - used) };
   } catch { return null; }
+}
+
+export interface RunnerPool { pool: number; entrants: number; }
+
+/** Live prize pool + entrant count for a tournament (doc §4.3/§4.4: 65% of fees
+ *  + per-period top-up). Read from the public runner_pools aggregate view. */
+export async function getRunnerPool(tournamentId: string): Promise<RunnerPool> {
+  if (!isConfigured()) return { pool: 0, entrants: 0 };
+  try {
+    const { data } = await supabase()
+      .from('runner_pools').select('pool, entrants').eq('tournament_id', tournamentId).maybeSingle();
+    return { pool: Number(data?.pool ?? 0), entrants: Number(data?.entrants ?? 0) };
+  } catch { return { pool: 0, entrants: 0 }; }
 }
 
 /** The signed-in player's server-authoritative best score for a tournament

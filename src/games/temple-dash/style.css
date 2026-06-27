@@ -322,6 +322,20 @@ body {
 .rt-attempts small { color: var(--muted); font-weight: 400; }
 .rt-fee { color: var(--muted); }
 .rt-meta { font-size: 0.74rem; color: var(--muted); margin: 2px 0 4px; }
+.runner-hint {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--text);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 10px; padding: 7px 10px; margin: 0 0 10px; text-align: left;
+}
+.hint-x {
+  margin-left: auto; flex: none; background: none; border: none;
+  color: var(--muted); font-size: 0.85rem; cursor: pointer; padding: 0 2px;
+}
+.rt-prize { font-size: 0.8rem; color: var(--text); margin: 2px 0; }
+.rt-prize strong { color: var(--accent); }
+.rt-prize small { color: var(--muted); }
 .rt-enter {
   font-size: 0.78rem;
   padding: 6px 12px;

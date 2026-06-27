@@ -10,7 +10,7 @@ import { SettingsPanel } from '../../ui/settingsPanel';
 import { registerPwa } from '../../engine/pwa';
 import { fetchSkins, setSkinRemote } from '../../platform/backend';
 import {
-  getRunnerTournament, getMyEntry, getMyBest, getMyXp, enterRunnerTournament, submitRunnerRun, runnerLeaderboard,
+  getRunnerTournament, getMyEntry, getMyBest, getMyXp, getRunnerPool, enterRunnerTournament, submitRunnerRun, runnerLeaderboard,
   InsufficientCoinsError, LevelTooLowError, REQUIRED_LEVEL,
   type RunnerTournament, type RunnerEntry, type RunnerLeaderRow, type RunnerSubmitResult,
   type RunnerPeriod,
@@ -96,7 +96,13 @@ function run(assets: AssetStore): void {
   // Bind the run to the currently-selected tournament + capture whether it's a
   // ranked attempt (entered, attempts left). Done at START so a mid-run tab switch
   // can't change where the score lands.
+  // One-line economy explainer — shown on first visit (session-only, no storage),
+  // dismissed by ✕ or once the player starts their first run.
+  const dismissHint = (): void => $('#runnerHint').classList.add('hidden');
+  $('#hintClose').addEventListener('click', dismissHint);
+
   function startRun(): void {
+    dismissHint();
     activePeriod = selectedPeriod;
     game.start();
   }
@@ -256,9 +262,9 @@ function run(assets: AssetStore): void {
     await currentUser();
     tourney = await getRunnerTournament(selectedPeriod);
     if (!tourney) { $('#runnerTourney').innerHTML = ''; return; }
-    let serverBest: number, myLevel: number;
-    [myEntry, walletCoins, serverBest, myLevel] = await Promise.all([
-      getMyEntry(tourney.id), balance(), getMyBest(tourney.id), getMyXp().then((x) => x.level),
+    let serverBest: number, myLevel: number, pool: { pool: number; entrants: number };
+    [myEntry, walletCoins, serverBest, myLevel, pool] = await Promise.all([
+      getMyEntry(tourney.id), balance(), getMyBest(tourney.id), getMyXp().then((x) => x.level), getRunnerPool(tourney.id),
     ]);
     // Best is server-authoritative (matches the leaderboard) — seed the game's
     // best from it so the game-over screen + record indicator reflect the server,
@@ -290,6 +296,7 @@ function run(assets: AssetStore): void {
         <span class="rt-title">🏆 ${escHtml(getLang() === 'am' ? tourney.titleAm : tourney.titleEn)}</span>
         <span class="rt-coins">${walletCoins.toLocaleString()} 🪙</span>
       </div>
+      <div class="rt-prize">🏆 ${t('td.prizePool')}: <strong>${pool.pool.toLocaleString()} 🪙</strong> · 🥇 ${Math.round(pool.pool * 0.5).toLocaleString()} 🪙 +5 🎟️ <small>· ${pool.entrants} ${t('td.entrants')}</small></div>
       <div class="rt-meta">⏳ ${t('td.endsIn')} ${endsIn(tourney.endsAt)} · 🏅 ${t('td.bestRanks')}</div>
       <div class="rt-status">${status}${btn}</div>
       <div class="runner-board">${boardHtml(board)}</div>`;
@@ -340,7 +347,8 @@ function run(assets: AssetStore): void {
       $('#finalBest').textContent = String(res.best);
     }
     const rankLine = res.ranked
-      ? `<span class="rr-stat"><b>${t('td.rank')}</b> #${res.rank}/${res.total}</span>`
+      ? `<span class="rr-stat"><b>${t('td.rank')}</b> #${res.rank}/${res.total}</span>
+         <span class="rr-stat"><b>RP</b> ${res.rp}</span>`
       : `<span class="rr-note">${t('td.notRanked')}</span>`;
     reward.innerHTML = `
       <span class="rr-stat xp">+${res.award} ${t('td.xpGained')}</span>
