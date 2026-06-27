@@ -216,8 +216,11 @@ function run(assets: AssetStore): void {
   // The tournament a started run counts toward — captured at run START so switching
   // tabs mid-run can't misfile the score.
   let activePeriod: RunnerPeriod = 'daily';
+  // Ethiorunner runs a single DAILY tournament (no weekly/monthly for now). The
+  // RunnerPeriod type still carries weekly/monthly so they can be re-enabled by
+  // restoring those entries here.
   const PERIODS: { id: RunnerPeriod; label: string }[] = [
-    { id: 'daily', label: t('td.daily') }, { id: 'weekly', label: t('td.weekly') }, { id: 'monthly', label: t('td.monthly') },
+    { id: 'daily', label: t('td.daily') },
   ];
 
   const escHtml = (s: string): string =>
@@ -287,11 +290,14 @@ function run(assets: AssetStore): void {
     const btn = locked
       ? `<button class="btn rt-enter" disabled>🔒 L${needLevel}</button>`
       : `<button id="enterBtn" class="btn rt-enter">${left > 0 ? t('td.enterAgain') : t('td.enterFor')} · ${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</button>`;
-    const tabs = PERIODS.map((p) =>
-      `<button class="rt-tab${p.id === selectedPeriod ? ' is-active' : ''}" data-period="${p.id}">${p.label}</button>`).join('');
+    // Only show the period switcher when there's more than one period to pick.
+    const tabs = PERIODS.length > 1
+      ? `<div class="rt-tabs">${PERIODS.map((p) =>
+          `<button class="rt-tab${p.id === selectedPeriod ? ' is-active' : ''}" data-period="${p.id}">${p.label}</button>`).join('')}</div>`
+      : '';
 
     $('#runnerTourney').innerHTML = `
-      <div class="rt-tabs">${tabs}</div>
+      ${tabs}
       <div class="rt-head">
         <span class="rt-title">🏆 ${escHtml(getLang() === 'am' ? tourney.titleAm : tourney.titleEn)}</span>
         <span class="rt-coins">${walletCoins.toLocaleString()} 🪙</span>

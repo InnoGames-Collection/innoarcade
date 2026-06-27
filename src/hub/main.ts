@@ -9,6 +9,7 @@ import { sfx } from '../engine/audio';
 import { renderDashboard, injectDashboardStyles } from './dashboard';
 import { mergedLeaderboard, fetchWallets, fetchUnlocks, unlockGameRemote, fetchActiveSeason, fetchSeasonLeaderboard, claimDailyLogin } from '../platform/backend';
 import { CATALOG, orderedCatalog, getGame, type GameMeta } from '../platform/catalog';
+import { getRunnerTournament, getRunnerPool, runnerLeaderboard, RUNNER_GAME_ID, type RunnerTournament } from '../platform/runner';
 import {
   activeTournaments, featuredTournament, tournamentGame,
   countdown, loadTournaments, loadMyEntries,
@@ -34,6 +35,12 @@ function escapeHtml(s: string): string {
 function thumbStyle(g: GameMeta): string {
   return `background:linear-gradient(145deg, ${g.thumb[0]}, ${g.thumb[1]});`;
 }
+
+// When no generic tournament is live (e.g. the Ethiorunner-only storefront), the
+// hub hero + stats fall back to Ethiorunner's daily runner tournament. Cached here
+// by refreshRunnerFeatured() so the synchronous renders (hero, stats, countdown)
+// can read it.
+let runnerFeatured: { tour: RunnerTournament; pool: number } | null = null;
 
 // --- Promo banner carousel --------------------------------------------------
 const PROMOS = [
@@ -252,7 +259,8 @@ function renderFeatured(): void {
   const host = $('#featured');
   const tour = featuredTournament();
   const game = tour ? tournamentGame(tour) : undefined;
-  if (!tour || !game) { host.innerHTML = ''; return; }
+  // No generic tournament → feature Ethiorunner's daily runner tournament instead.
+  if (!tour || !game) { renderRunnerFeatured(); return; }
   // The board + your-rank start empty and are filled by refreshFeatured() from
   // the server (no local simulation).
   const top3: LeaderEntry[] = [];
@@ -320,13 +328,79 @@ async function refreshFeatured(): Promise<void> {
   }
 }
 
+// Featured hero backed by Ethiorunner's daily runner tournament (used when the
+// generic tournament system has no live event — i.e. the Ethiorunner-only
+// storefront). The CTA simply opens the game: entry happens inside the runner,
+// not via the generic enter-tournament flow.
+function renderRunnerFeatured(): void {
+  const host = $('#featured');
+  const game = getGame(RUNNER_GAME_ID);
+  if (!game) { host.innerHTML = ''; return; }
+  const fcStyle = game.cover
+    ? `background-image:url('${game.cover}');background-size:cover;background-position:center;`
+    : thumbStyle(game);
+  const pool = runnerFeatured?.pool ?? 0;
+  const fee = runnerFeatured?.tour.entryFeeCoins ?? 10;
+  const title = runnerFeatured
+    ? (lang() === 'am' ? runnerFeatured.tour.titleAm : runnerFeatured.tour.titleEn)
+    : t('td.daily');
+  host.innerHTML = `
+    <article class="featured-card" style="${fcStyle}">
+      <div class="fc-info">
+        <span class="fc-badge">🏆 ${escapeHtml(title)}</span>
+        <h3 class="fc-title">${escapeHtml(name(game))}</h3>
+        <p class="fc-genre">${escapeHtml(genre(game))}</p>
+        <div class="fc-meta">
+          <div class="fc-countdown" id="fcCountdown"></div>
+          <div class="fc-prize">${t('hub.prize')}: <strong>${pool.toLocaleString()}</strong> ${t('hub.coins')} 🪙</div>
+        </div>
+        <div class="fc-econ">
+          <span class="econ-badge fee">${t('hub.entry')}: ${fee} 🪙</span>
+          <span class="econ-badge pool">${t('hub.pool')}: ${pool.toLocaleString()} 🪙</span>
+        </div>
+        <a class="btn primary fc-cta" href="${game.route}">${t('hub.playNow')}</a>
+      </div>
+      <div class="fc-board">
+        <div class="fc-board-head">${t('hub.leaderboard')}</div>
+        <ol class="leader-list"></ol>
+        <div class="fc-yourrank"><span class="muted-small">${t('hub.unranked')}</span></div>
+      </div>
+      <div class="fc-glyph">${game.icon}</div>
+    </article>`;
+}
+
+// Hydrate the runner-backed hero from the server: the live daily tournament, its
+// prize pool and top-3 board. No-op when a generic tournament is featured.
+async function refreshRunnerFeatured(): Promise<void> {
+  if (featuredTournament()) return;
+  const tour = await getRunnerTournament('daily');
+  if (!tour) return;
+  const [pool, board] = await Promise.all([getRunnerPool(tour.id), runnerLeaderboard(tour.id, 3)]);
+  runnerFeatured = { tour, pool: pool.pool };
+  renderRunnerFeatured(); // re-render with real title + pool
+  renderStats();          // KPIs now reflect the live daily tournament
+  tickCountdowns();       // start the hero countdown immediately
+  const list = document.querySelector('#featured .leader-list');
+  if (list && board.length) {
+    list.innerHTML = board.map((r) => `
+      <li class="leader-row${r.isPlayer ? ' me' : ''}">
+        <span class="lr-rank">${r.rank}</span>
+        <span class="lr-name">${escapeHtml(r.name)}</span>
+        <span class="lr-score">${r.score.toLocaleString()}</span>
+      </li>`).join('');
+  }
+}
+
 // --- Stats strip (platform KPIs — shown above the games list) ---------------
 function renderStats(): void {
   const host = document.querySelector('#statsStrip');
   if (!host) return;
-  const tours = activeTournaments();
-  const live = tours.filter((x) => tournamentState(x) === 'live').length;
-  const pool = tours.reduce((s, x) => s + prizePool(x), 0);
+  // Count only tournaments whose game is actually listed (parked games may still
+  // have DB rows but render nothing), then fold in the runner daily tournament.
+  const tours = activeTournaments().filter((x) => tournamentGame(x));
+  let live = tours.filter((x) => tournamentState(x) === 'live').length;
+  let pool = tours.reduce((s, x) => s + prizePool(x), 0);
+  if (runnerFeatured) { live += 1; pool += runnerFeatured.pool; }
   const players = 12_480; // community size shown on the storefront
   const stat = (icon: string, value: string, label: string): string =>
     `<div class="stat"><div class="stat-top"><span class="stat-icon">${icon}</span><span class="stat-value">${value}</span></div><div class="stat-label">${label}</div></div>`;
@@ -359,6 +433,9 @@ function renderTournaments(): void {
         ${entryCta(tour, game, 'tc-cta')}
       </article>`;
   }).join('');
+  // Hide the whole Tournaments section when there are no generic cards to show
+  // (the daily Ethiorunner tournament lives in the hero + in-game instead).
+  document.querySelector('#tournaments')?.classList.toggle('hidden', !host.innerHTML.trim());
   wireEntryCtas();
   void refreshTourTops();
 }
@@ -651,7 +728,9 @@ function fmt(end: number): string {
 function tickCountdowns(): void {
   const tour = featuredTournament();
   const fc = document.querySelector('#fcCountdown');
-  if (fc && tour) fc.innerHTML = `<span class="cd-label">${t('hub.endsIn')}</span> <span class="cd-val">${fmt(tour.endsAt)}</span>`;
+  // Hero countdown: generic featured tournament, else the runner daily fallback.
+  const fcEnds = tour ? tour.endsAt : runnerFeatured?.tour.endsAt;
+  if (fc && fcEnds != null) fc.innerHTML = `<span class="cd-label">${t('hub.endsIn')}</span> <span class="cd-val">${fmt(fcEnds)}</span>`;
   document.querySelectorAll<HTMLElement>('.tc-count, .dc-count').forEach((el) => {
     const end = Number(el.dataset.ends);
     el.innerHTML = `<span class="cd-label">${t('hub.endsIn')}</span> <strong>${fmt(end)}</strong>`;
@@ -678,6 +757,7 @@ function renderAll(): void {
   if (search) search.placeholder = t('hub.searchGames');
   tickCountdowns();
   void refreshFeatured(); // swap in real scores once they load
+  void refreshRunnerFeatured(); // hydrate the Ethiorunner-only hero from the server
   void renderDashboard();
 }
 
@@ -687,6 +767,7 @@ async function refreshData(): Promise<void> {
   await Promise.all([loadTournaments(), loadMyEntries()]);
   renderFeatured();
   renderTournaments();
+  void refreshRunnerFeatured();
   void renderDashboard();
 }
 

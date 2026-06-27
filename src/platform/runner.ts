@@ -74,7 +74,7 @@ export const REQUIRED_LEVEL: Record<RunnerPeriod, number> = { daily: 3, weekly: 
 // --- reads (live, no cache) -------------------------------------------------
 
 /** The currently-live Runner tournament for a period (default monthly), or null. */
-export async function getRunnerTournament(period: RunnerPeriod = 'monthly'): Promise<RunnerTournament | null> {
+export async function getRunnerTournament(period: RunnerPeriod = 'daily'): Promise<RunnerTournament | null> {
   if (!isConfigured()) return null;
   try {
     const now = new Date().toISOString();
@@ -194,7 +194,7 @@ export async function runnerSeasonLeaderboard(limit = 10): Promise<RunnerSeasonR
 // --- writes (Edge Functions) ------------------------------------------------
 
 /** Buy a block of attempts for a period's tournament (pays the entry fee in coins). */
-export async function enterRunnerTournament(period: RunnerPeriod = 'monthly'): Promise<RunnerEntry> {
+export async function enterRunnerTournament(period: RunnerPeriod = 'daily'): Promise<RunnerEntry> {
   await currentUser(); // hydrate the session (game pages skip the hub sign-in flow)
   const { data, error } = await supabase().functions.invoke('runner-enter', { body: { period } });
   if (error) {
@@ -209,7 +209,7 @@ export async function enterRunnerTournament(period: RunnerPeriod = 'monthly'): P
 }
 
 /** Submit a finished run: awards XP and (if entered in `period`) records the ranked score. */
-export async function submitRunnerRun(score: number, timeMs = 0, period: RunnerPeriod = 'monthly'): Promise<RunnerSubmitResult | null> {
+export async function submitRunnerRun(score: number, timeMs = 0, period: RunnerPeriod = 'daily'): Promise<RunnerSubmitResult | null> {
   if (!isConfigured()) return null;
   await currentUser();
   const token = await startRoundRemote(RUNNER_GAME_ID);

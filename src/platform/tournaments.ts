@@ -122,7 +122,10 @@ const poolCache: Record<string, { entrants: number; fees: number }> = {};
 
 function derivedTournaments(now: number): Tournament[] {
   const list: Tournament[] = [];
-  for (const game of tournamentGames()) {
+  // Ethiorunner (temple-dash) runs on the dedicated runner tournament system
+  // (platform/runner.ts) — a single daily event — so it must NOT also derive a
+  // generic monthly/weekly card here, or the hub would show duplicates.
+  for (const game of tournamentGames().filter((g) => g.id !== 'temple-dash')) {
     list.push(buildTournament(`${game.id}-monthly`, game.id, startOfMonth(now), endOfMonth(now)));
     list.push(buildTournament(`${game.id}-weekly`, game.id, endOfWeek(now) - 7 * 864e5, endOfWeek(now)));
   }

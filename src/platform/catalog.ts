@@ -41,7 +41,7 @@ export interface GameMeta {
   play?: { winPoints?: number; winRate?: number; winScore?: number };
 }
 
-export const CATALOG: GameMeta[] = [
+const ALL_GAMES: GameMeta[] = [
   {
     id: 'orbit-blast',
     route: 'games/orbit-blast/',
@@ -256,6 +256,13 @@ export const CATALOG: GameMeta[] = [
     genreEn: 'Brain · Logic', genreAm: 'አእምሮ · ሎጂክ', mode: 'free', icon: '🔗',
     accent: '#7a6cff', thumb: ['#7a6cff', '#3d2f9e'], scoreEn: 'Score', scoreAm: 'ነጥብ' },
 ];
+
+// Storefront gating: only ENABLED ids are exposed across the platform. Every game
+// above is fully built and stays in the file — re-enable one by adding its id here
+// (a one-line change). Right now we ship Ethiorunner (temple-dash) alone; the rest
+// are parked until we relist them.
+const ENABLED = new Set<string>(['temple-dash']);
+export const CATALOG: GameMeta[] = ALL_GAMES.filter((g) => ENABLED.has(g.id));
 
 // WebP cover art for the catalog cards (files live in /public). Attached to the
 // catalog entries below so a card shows the artwork instead of the emoji glyph.
