@@ -72,16 +72,28 @@ export async function setSkinRemote(gameId: string, skinId: string): Promise<voi
   await sb.from('profiles').update({ skins: cur }).eq('id', me);
 }
 
-// Read the signed-in player's authoritative points balance + lifetime total from
+// Read the signed-in player's authoritative XP balance + lifetime total from
 // their profile (server-sourced; the client never writes them).
-export async function fetchWallets(): Promise<{ points: number; lifetime: number } | null> {
+export async function fetchWallets(): Promise<{ xp: number; lifetime: number } | null> {
   if (!isConfigured()) return null;
   const sb = supabase();
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return null;
-  const { data, error } = await sb.from('profiles').select('points, points_lifetime').eq('id', me).maybeSingle();
+  const { data, error } = await sb.from('profiles').select('xp, xp_lifetime').eq('id', me).maybeSingle();
   if (error || !data) return null;
-  return { points: Number(data.points ?? 0), lifetime: Number(data.points_lifetime ?? 0) };
+  return { xp: Number(data.xp ?? 0), lifetime: Number(data.xp_lifetime ?? 0) };
+}
+
+// Claim the daily-login XP streak (doc §3.1). Returns the XP awarded (0 if
+// already claimed today) plus the refreshed XP balances. Best-effort.
+export interface DailyClaim { award: number; xp: number; lifetime: number }
+export async function claimDailyLogin(): Promise<DailyClaim | null> {
+  if (!isConfigured()) return null;
+  try {
+    const { data, error } = await supabase().functions.invoke('claim-daily', { body: {} });
+    if (error || !data) return null;
+    return { award: Number(data.award ?? 0), xp: Number(data.xp ?? 0), lifetime: Number(data.lifetime ?? 0) };
+  } catch { return null; }
 }
 
 // The signed-in player's unlocked games (level-gated games bought with coins).
@@ -110,13 +122,13 @@ export async function fetchGlobalLeaderboard(limit = 5): Promise<GlobalRow[]> {
   const me = (await sb.auth.getUser()).data.user?.id;
   const { data, error } = await sb
     .from('global_leaderboard')
-    .select('rank, name, points_lifetime, user_id')
+    .select('rank, name, xp_lifetime, user_id')
     .order('rank', { ascending: true })
     .limit(limit);
   if (error || !data) return [];
   return data.map((r) => ({
     rank: Number(r.rank), name: (r.name as string) ?? 'Player',
-    lifetime: Number(r.points_lifetime), isPlayer: r.user_id === me,
+    lifetime: Number(r.xp_lifetime), isPlayer: r.user_id === me,
   }));
 }
 
@@ -151,36 +163,37 @@ export async function fetchActiveSeason(): Promise<Season | null> {
   return { id: Number(data.id), name: String(data.name), endsAt: new Date(data.ends_at as string).getTime() };
 }
 
-// Seasonal competition leaderboard (ranked by season points). Drives the global
-// board widget; level is still derived from lifetime points.
+// Seasonal competition leaderboard — doc §5: ranked by AVERAGE best RP across
+// the season's tournaments (min 3 entries). `season` carries the avg RP; level is
+// still derived from lifetime XP.
 export async function fetchSeasonLeaderboard(limit = 5): Promise<GlobalRow[]> {
   if (!isConfigured()) return [];
   const sb = supabase();
   const me = (await sb.auth.getUser()).data.user?.id;
   const { data, error } = await sb
-    .from('season_leaderboard')
-    .select('rank, name, points_season, points_lifetime, user_id')
+    .from('season_rp_leaderboard')
+    .select('rank, name, avg_rp, entries, xp_lifetime, user_id')
     .order('rank', { ascending: true })
     .limit(limit);
   if (error || !data) return [];
   return data.map((r) => ({
     rank: Number(r.rank), name: (r.name as string) ?? 'Player',
-    lifetime: Number(r.points_lifetime), season: Number(r.points_season),
+    lifetime: Number(r.xp_lifetime), season: Number(r.avg_rp),
     isPlayer: r.user_id === me,
   }));
 }
 
-/** @deprecated use fetchWallets — kept for callers that only need points. */
+/** @deprecated use fetchWallets — kept for callers that only need the XP balance. */
 export async function fetchPoints(): Promise<number | null> {
   const w = await fetchWallets();
-  return w ? w.points : null;
+  return w ? w.xp : null;
 }
 
-// Buy one draw ticket by spending points (server-authoritative). Returns the new
-// points balance and the player's ticket count for that draw.
-export interface DrawEnterResult { points: number; tickets: number }
-export async function enterDrawRemote(drawId: string): Promise<DrawEnterResult> {
-  const { data, error } = await supabase().functions.invoke('enter-draw', { body: { drawId } });
+// Buy one draw ticket (server-authoritative) using XP (per-draw price) or Coins
+// (flat 20/ticket, doc §6.1). Returns the new XP + coin balances and ticket count.
+export interface DrawEnterResult { points: number; coins: number; tickets: number }
+export async function enterDrawRemote(drawId: string, pay: 'xp' | 'coins' = 'xp'): Promise<DrawEnterResult> {
+  const { data, error } = await supabase().functions.invoke('enter-draw', { body: { drawId, pay } });
   if (error) throw error;
   return data as DrawEnterResult;
 }

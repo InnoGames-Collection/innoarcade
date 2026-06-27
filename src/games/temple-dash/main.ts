@@ -10,8 +10,10 @@ import { SettingsPanel } from '../../ui/settingsPanel';
 import { registerPwa } from '../../engine/pwa';
 import { fetchSkins, setSkinRemote } from '../../platform/backend';
 import {
-  getRunnerTournament, getMyEntry, enterRunnerTournament, submitRunnerRun, runnerLeaderboard,
-  InsufficientCoinsError, type RunnerTournament, type RunnerEntry, type RunnerLeaderRow, type RunnerSubmitResult,
+  getRunnerTournament, getMyEntry, getMyBest, getMyXp, enterRunnerTournament, submitRunnerRun, runnerLeaderboard,
+  InsufficientCoinsError, LevelTooLowError, REQUIRED_LEVEL,
+  type RunnerTournament, type RunnerEntry, type RunnerLeaderRow, type RunnerSubmitResult,
+  type RunnerPeriod,
 } from '../../platform/runner';
 import { balance } from '../../platform/wallet';
 import { SignInRequiredError } from '../../platform/payments';
@@ -194,6 +196,11 @@ function run(assets: AssetStore): void {
   let tourney: RunnerTournament | null = null;
   let myEntry: RunnerEntry | null = null;
   let walletCoins = 0;
+  // Daily / Weekly / Monthly tournaments (doc §4.1) — each scored independently.
+  let selectedPeriod: RunnerPeriod = 'monthly';
+  const PERIODS: { id: RunnerPeriod; label: string }[] = [
+    { id: 'daily', label: t('td.daily') }, { id: 'weekly', label: t('td.weekly') }, { id: 'monthly', label: t('td.monthly') },
+  ];
 
   const escHtml = (s: string): string =>
     s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -216,18 +223,36 @@ function run(assets: AssetStore): void {
     // still be restoring from storage — without this, coins/attempts read empty
     // (logged-out-looking) and the panel never recovers until the next game over.
     await currentUser();
-    tourney = await getRunnerTournament();
+    tourney = await getRunnerTournament(selectedPeriod);
     if (!tourney) { $('#runnerTourney').innerHTML = ''; return; }
-    [myEntry, walletCoins] = await Promise.all([getMyEntry(tourney.id), balance()]);
+    let serverBest: number, myLevel: number;
+    [myEntry, walletCoins, serverBest, myLevel] = await Promise.all([
+      getMyEntry(tourney.id), balance(), getMyBest(tourney.id), getMyXp().then((x) => x.level),
+    ]);
+    // Best is server-authoritative (matches the leaderboard) — seed the game's
+    // best from it so the game-over screen + record indicator reflect the server,
+    // not just this session.
+    if (serverBest > game.best) game.best = serverBest;
     const board = await runnerLeaderboard(tourney.id, 5);
 
+    // Level-tier funnel (doc §3.2): the period is locked until the player reaches
+    // the required level.
+    const needLevel = REQUIRED_LEVEL[selectedPeriod];
+    const locked = myLevel < needLevel;
     const left = myEntry?.attemptsLeft ?? 0;
-    const status = left > 0
-      ? `<span class="rt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${left}</strong></span>`
-      : `<span class="rt-fee">${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</span>`;
-    const btn = `<button id="enterBtn" class="btn rt-enter">${t('td.enterFor')} · ${tourney.entryFeeCoins} 🪙</button>`;
+    const status = locked
+      ? `<span class="rt-fee">🔒 ${t('td.reachLevel')} ${needLevel}</span>`
+      : left > 0
+        ? `<span class="rt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${left}</strong></span>`
+        : `<span class="rt-fee">${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</span>`;
+    const btn = locked
+      ? `<button class="btn rt-enter" disabled>🔒 L${needLevel}</button>`
+      : `<button id="enterBtn" class="btn rt-enter">${t('td.enterFor')} · ${tourney.entryFeeCoins} 🪙 → ${tourney.attempts} ${t('td.attempts')}</button>`;
+    const tabs = PERIODS.map((p) =>
+      `<button class="rt-tab${p.id === selectedPeriod ? ' is-active' : ''}" data-period="${p.id}">${p.label}</button>`).join('');
 
     $('#runnerTourney').innerHTML = `
+      <div class="rt-tabs">${tabs}</div>
       <div class="rt-head">
         <span class="rt-title">🏆 ${escHtml(getLang() === 'am' ? tourney.titleAm : tourney.titleEn)}</span>
         <span class="rt-coins">${walletCoins.toLocaleString()} 🪙</span>
@@ -235,18 +260,25 @@ function run(assets: AssetStore): void {
       <div class="rt-status">${status}${btn}</div>
       <div class="runner-board">${boardHtml(board)}</div>`;
 
-    $('#enterBtn').addEventListener('click', onEnter);
+    document.querySelector('#enterBtn')?.addEventListener('click', onEnter);
+    document.querySelectorAll<HTMLButtonElement>('#runnerTourney .rt-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const p = tab.dataset.period as RunnerPeriod;
+        if (p && p !== selectedPeriod) { selectedPeriod = p; sfx.click(); void refreshTourney(); }
+      });
+    });
   }
 
   async function onEnter(): Promise<void> {
     const b = document.querySelector<HTMLButtonElement>('#enterBtn');
     if (b) b.disabled = true;
     try {
-      myEntry = await enterRunnerTournament();
+      myEntry = await enterRunnerTournament(selectedPeriod);
       await refreshTourney();
       showToast(`🎟️ ${t('td.attemptsLeft')}: ${myEntry.attemptsLeft}`);
     } catch (e) {
       if (e instanceof InsufficientCoinsError) showToast(`🪙 ${t('td.needCoins')}`);
+      else if (e instanceof LevelTooLowError) showToast(`🔒 ${t('td.reachLevel')} ${e.requiredLevel}`);
       else if (e instanceof SignInRequiredError) showToast(t('td.signInToRank'));
       else showToast('✕');
       if (b) b.disabled = false;
@@ -260,12 +292,17 @@ function run(assets: AssetStore): void {
     reward.innerHTML = `<span class="rr-pending">…</span>`;
     let res: RunnerSubmitResult | null = null;
     try {
-      res = await submitRunnerRun(score, durationMs);
+      res = await submitRunnerRun(score, durationMs, selectedPeriod);
     } catch (e) {
       reward.innerHTML = `<span class="rr-note">${e instanceof SignInRequiredError ? t('td.signInToRank') : '✕'}</span>`;
       return;
     }
     if (!res) { reward.innerHTML = ''; return; }
+    // Reflect the server's authoritative best (ranked runs) on the game-over card.
+    if (res.ranked && res.best > game.best) {
+      game.best = res.best;
+      $('#finalBest').textContent = String(res.best);
+    }
     const rankLine = res.ranked
       ? `<span class="rr-stat"><b>${t('td.rank')}</b> #${res.rank}/${res.total}</span>`
       : `<span class="rr-note">${t('td.notRanked')}</span>`;

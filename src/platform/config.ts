@@ -16,10 +16,21 @@ import { isSignedIn } from './auth';
 // hints. Mirrored in the submit-score Edge Function; keep in sync.
 export const BASE_POINTS = 100;
 
-// Player level derived from lifetime points (only grows). Gentle sqrt curve:
-// L2 at 100, L3 at 400, L4 at 900, L5 at 1600 … Used for status + game unlocks.
-export function levelFor(lifetimePoints: number): number {
-  return 1 + Math.floor(Math.sqrt(Math.max(0, lifetimePoints) / 100));
+// Player level from lifetime XP (only grows). Cumulative XP table from the Game
+// Mechanics doc §3.2 (L6/L8/L9 interpolated). Drives status, game unlocks, and
+// the tournament-tier funnel (L3 → Daily, L5 → Weekly, L10 → Monthly). Beyond
+// L10 the curve continues at +3000 XP/level. Mirrored server-side (runner-submit)
+// and in runner.ts — keep all three in sync.
+export const LEVEL_THRESHOLDS = [0, 150, 400, 800, 1500, 2200, 3000, 4000, 5000, 6000];
+
+export function levelFor(lifetimeXp: number): number {
+  const xp = Math.max(0, lifetimeXp);
+  let lvl = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) lvl = i + 1; else return lvl;
+  }
+  // Past the table (L10 = 6000): +3000 XP per additional level.
+  return 10 + Math.floor((xp - 6000) / 3000);
 }
 
 // The coin economy is server-only. Operations hit the backend whenever Supabase
@@ -62,12 +73,13 @@ export interface AppConfig {
 // The shipped defaults. Coin pricing is tuned so ~2 ETB ≈ 1 coin at the entry
 // tier, with escalating bonus at higher tiers — standard free-to-play curve.
 export const DEFAULT_CONFIG: AppConfig = {
+  // Coin packs from the Game Mechanics doc §7.1 (price ETB → base coins + bonus%).
+  // The "total" matches the doc: 50, 220, 600, 1300.
   coinPackages: [
-    { id: 'starter', coins: 50, bonus: 0, priceEtb: 25 },
-    { id: 'plus', coins: 120, bonus: 10, priceEtb: 50, popular: true },
-    { id: 'pro', coins: 300, bonus: 50, priceEtb: 100 },
-    { id: 'mega', coins: 700, bonus: 150, priceEtb: 200 },
-    { id: 'whale', coins: 2000, bonus: 600, priceEtb: 500 },
+    { id: 'starter', coins: 50, bonus: 0, priceEtb: 5 },
+    { id: 'popular', coins: 200, bonus: 20, priceEtb: 20, popular: true }, // +10%
+    { id: 'value', coins: 500, bonus: 100, priceEtb: 50 },                 // +20%
+    { id: 'pro', coins: 1000, bonus: 300, priceEtb: 100 },                 // +30%
   ],
   paymentMethods: { telebirr: true, topup: true },
   defaultEntryFeeCoins: 10,

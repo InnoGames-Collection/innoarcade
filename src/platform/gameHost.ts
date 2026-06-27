@@ -134,7 +134,7 @@ export class GameHost {
   async finish(score: number, isWin: boolean, timeMs = 0): Promise<FinishResult> {
     try {
       const res = await submitPlayRemote(this.meta.id, Math.max(0, Math.floor(score)), isWin, this.isTournament, this.roundToken, timeMs);
-      if (typeof res.points === 'number') setBalance('points', res.points);
+      if (typeof res.points === 'number') setBalance('xp', res.points);
       if (typeof res.lifetime === 'number') setLifetime(res.lifetime);
       // Cache the server standing so standing() reflects the latest real rank.
       if (this.isTournament && typeof res.rank === 'number') {

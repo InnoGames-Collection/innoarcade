@@ -37,10 +37,13 @@ Deno.serve(async (req: Request) => {
   const user = userData.user;
   if (!user) return json({ error: 'not signed in' }, 401);
 
-  let body: { drawId?: string };
+  let body: { drawId?: string; pay?: string };
   try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
   const drawId = String(body.drawId ?? '');
   if (!drawId) return json({ error: 'invalid draw' }, 400);
+  // Payment rail (doc §6.1): XP (per-draw price) or Coins (flat 20/ticket).
+  const pay = body.pay === 'coins' ? 'coins' : 'xp';
+  const COINS_PER_TICKET = 20;
 
   const admin = createClient(url, serviceKey);
 
@@ -56,22 +59,33 @@ Deno.serve(async (req: Request) => {
   const closed = draw.state !== 'open' || new Date(draw.ends_at).getTime() <= Date.now();
   if (closed) return json({ error: 'draw closed' }, 409);
 
-  const cost = Number(draw.ticket_cost_points);
-
   // Enforce the per-user ticket cap so no single spender can dominate the pool.
   const { data: existing } = await admin
     .from('draw_entries').select('tickets').eq('user_id', user.id).eq('draw_id', drawId).maybeSingle();
   const held = Number(existing?.tickets ?? 0);
   if (held >= Number(draw.max_tickets_per_user)) return json({ error: 'ticket cap reached' }, 409);
 
-  // Debit points first (raises check_violation if the balance can't cover it).
-  let points: number;
-  try {
-    const { data: pbal, error } = await admin.rpc('apply_points', { p_user: user.id, p_delta: -cost });
-    if (error) throw error;
-    points = Number(pbal);
-  } catch {
-    return json({ error: 'not enough points' }, 402);
+  // Debit the chosen currency (the SQL fn raises check_violation if short).
+  let points = 0, coins = 0;
+  if (pay === 'coins') {
+    try {
+      const { data: bal, error } = await admin.rpc('apply_coins', {
+        p_user: user.id, p_delta: -COINS_PER_TICKET, p_reason: 'draw_ticket', p_ref: drawId,
+      });
+      if (error) throw error;
+      coins = Number(bal);
+    } catch { return json({ error: 'not enough coins' }, 402); }
+    const { data: prof } = await admin.from('profiles').select('xp').eq('id', user.id).maybeSingle();
+    points = Number(prof?.xp ?? 0);
+  } else {
+    const cost = Number(draw.ticket_cost_points);
+    try {
+      const { data: pbal, error } = await admin.rpc('apply_xp', { p_user: user.id, p_delta: -cost });
+      if (error) throw error;
+      points = Number(pbal);
+    } catch { return json({ error: 'not enough xp' }, 402); }
+    const { data: prof } = await admin.from('profiles').select('coins').eq('id', user.id).maybeSingle();
+    coins = Number(prof?.coins ?? 0);
   }
 
   // Record the ticket (upsert tickets += 1).
@@ -80,5 +94,5 @@ Deno.serve(async (req: Request) => {
     user_id: user.id, draw_id: drawId, tickets, updated_at: new Date().toISOString(),
   });
 
-  return json({ points, tickets });
+  return json({ points, coins, tickets, xp: points });
 });

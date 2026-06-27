@@ -7,7 +7,7 @@ import { mountWallet, openStore, needsSignInToBuy } from './wallet';
 import { onAuthChange, currentUser, signOut, authAvailable } from '../platform/auth';
 import { sfx } from '../engine/audio';
 import { renderDashboard, injectDashboardStyles } from './dashboard';
-import { mergedLeaderboard, fetchWallets, fetchUnlocks, unlockGameRemote, fetchActiveSeason, fetchSeasonLeaderboard } from '../platform/backend';
+import { mergedLeaderboard, fetchWallets, fetchUnlocks, unlockGameRemote, fetchActiveSeason, fetchSeasonLeaderboard, claimDailyLogin } from '../platform/backend';
 import { CATALOG, orderedCatalog, getGame, type GameMeta } from '../platform/catalog';
 import {
   activeTournaments, featuredTournament, tournamentGame,
@@ -18,7 +18,7 @@ import {
 import { balanceSync, balance, onWalletChange } from '../platform/wallet';
 import { SignInRequiredError } from '../platform/payments';
 import { activeDraws, myTickets, enterDraw, recentWinners, NotEnoughPointsError, hydrateTickets, loadDraws, loadWinners, myOdds, type DrawPeriod, type Winner } from '../platform/draws';
-import { points as pointsBal, onCurrencyChange, setBalance, setLifetime, pointsLifetime } from '../platform/currency';
+import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, xpLifetime } from '../platform/currency';
 import { levelFor, economyNeedsAuth } from '../platform/config';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
@@ -106,7 +106,7 @@ function renderGlobalBoard(): void {
         <span class="gb-rank">${medal[r.rank - 1] ?? '#' + r.rank}</span>
         <span class="gb-name">${escapeHtml(r.name)}</span>
         <span class="gb-lvl">L${levelFor(r.lifetime)}</span>
-        <span class="gb-pts">${(r.season ?? 0).toLocaleString()} ⭐</span>
+        <span class="gb-pts">${(r.season ?? 0).toLocaleString()} RP</span>
       </div>`).join('');
   });
 }
@@ -119,8 +119,8 @@ function renderMyStats(): void {
     `<span class="bal-chip ${cls}">${icon} <strong>${val}</strong></span>`;
   // Top bar shows Level + Points + Coins, then a Buy button.
   host.innerHTML =
-    chip('🎖️', `L${levelFor(pointsLifetime())}`, 'bal-level') +
-    chip('⭐', pointsBal().toLocaleString(), 'bal-points') +
+    chip('🎖️', `L${levelFor(xpLifetime())}`, 'bal-level') +
+    chip('⭐', xpBal().toLocaleString(), 'bal-points') +
     chip('🪙', balanceSync().toLocaleString(), 'bal-coins') +
     `<button class="bal-buy" id="buyCoinsBtn">🪙＋ ${t('hub.buyCoins')}</button>`;
   host.querySelector('#buyCoinsBtn')?.addEventListener('click', () => openStore());
@@ -425,7 +425,7 @@ const unlockedSet = new Set<string>();
 
 // A game is locked when it's gated above the player's level and not yet unlocked.
 function isLocked(g: GameMeta): boolean {
-  return !!g.minLevel && levelFor(pointsLifetime()) < g.minLevel && !unlockedSet.has(g.id);
+  return !!g.minLevel && levelFor(xpLifetime()) < g.minLevel && !unlockedSet.has(g.id);
 }
 
 function gameCard(g: GameMeta): string {
@@ -540,7 +540,7 @@ function renderDraws(): void {
   const draws = activeDraws();
   host.innerHTML = draws.map((d) => {
     const tickets = myTickets(d.id);
-    const afford = pointsBal() >= d.ticketCostPoints;
+    const afford = xpBal() >= d.ticketCostPoints;
     const atCap = tickets >= d.maxTicketsPerUser;
     const odds = myOdds(d.id);
     const oddsPct = odds > 0 ? (odds * 100).toFixed(odds < 0.01 ? 2 : 1) : null;
@@ -844,7 +844,7 @@ function setupBrowse(): void {
 // it now with coins (server-validated charge). On success, mark unlocked + rerender.
 function openUnlock(g: GameMeta): void {
   if (economyNeedsAuth()) { openSignIn(); return; }
-  const lvl = levelFor(pointsLifetime());
+  const lvl = levelFor(xpLifetime());
   const coins = balanceSync();
   const cost = g.unlockCost ?? 0;
   const canPay = coins >= cost;
@@ -919,9 +919,17 @@ void mountWallet();
 void refreshData();
 // Hydrate the points balance from the server (the authority); refresh on load
 // and whenever auth changes, then re-render the top balance strip.
+let dailyClaimed = false; // once per page load (the server is idempotent per day)
 function hydratePoints(): void {
   void fetchWallets().then((w) => {
-    if (w) { setBalance('points', w.points); setLifetime(w.lifetime); renderMyStats(); }
+    if (w) { setBalance('xp', w.xp); setLifetime(w.lifetime); renderMyStats(); }
+    // Daily-login XP streak (doc §3.1) — claim once when signed in.
+    if (w && !dailyClaimed) {
+      dailyClaimed = true;
+      void claimDailyLogin().then((d) => {
+        if (d && d.award > 0) { setBalance('xp', d.xp); setLifetime(d.lifetime); renderMyStats(); }
+      });
+    }
   });
   void loadDraws().then(() => hydrateTickets()).then(() => renderDraws());
   void loadWinners().then(() => renderWinners());

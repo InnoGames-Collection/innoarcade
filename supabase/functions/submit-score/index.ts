@@ -55,6 +55,18 @@ const GAME_SCORING: Record<string, ScoreCfg> = {
   'sequence': { par: 8, timeWeight: 0.4, parTime: 90000 },
   _default: { par: 100 },
 };
+// XP difficulty multiplier per game (doc §3.1: Easy 1.0 / Medium 1.5 / Hard 2.0).
+// Drives normal-game XP = 10 × difficulty. Default 1.0 (Easy/casual).
+const XP_DIFFICULTY: Record<string, number> = {
+  // Hard — skill/brain games
+  'sudoku': 2, 'crosssum': 2, 'logic': 2, 'target24': 2, 'sequence': 2,
+  'merge-2048': 2, 'orbit-blast': 2, 'ethiopian-quiz': 2,
+  // Medium — reflex/word games
+  'temple-dash': 1.5, 'metro-rush': 1.5, 'dot-link': 1.5, 'brick-blitz': 1.5,
+  'sky-hopper': 1.5, 'fruit-slice': 1.5, 'spell': 1.5, 'vocab': 1.5, 'rhyme': 1.5,
+  'candy-crunch': 1.5, 'bubble-pop': 1.5, 'memory-match': 1.5,
+  // Easy/chance — everything else defaults to 1.0
+};
 const MIN_SECONDS_BETWEEN = 3; // basic flood protection per (user, tournament)
 
 const cors = {
@@ -142,37 +154,33 @@ Deno.serve(async (req: Request) => {
   // Service-role client for the privileged read/write.
   const admin = createClient(url, serviceKey);
 
-  // UNIFORM SCORING MATRIX — server-authoritative. Every game maps its raw round
-  // result to points on one common scale (BASE), so points are comparable on the
-  // global leaderboard regardless of the game's nature:
-  //   points = round(BASE × performance × difficulty × time)
-  //     performance = clamp(score / par, 0, 1)         (per-game `par` target)
-  //     time        = 1 + timeWeight·clamp((parTime-timeMs)/parTime, 0, 1)  (timed games)
-  //     difficulty  = per-game tier (default 1)
-  // The client cannot propose an amount; applied only after all gates pass.
-  const BASE = 100;
-  const cfg = GAME_SCORING[gameId] ?? GAME_SCORING._default;
-  const timeMs = Number(body.timeMs ?? 0);
-  const performance = Math.max(0, Math.min(1, score / cfg.par));
-  const timeFactor = (cfg.timeWeight && cfg.parTime && timeMs > 0)
-    ? 1 + cfg.timeWeight * Math.max(0, Math.min(1, (cfg.parTime - timeMs) / cfg.parTime))
-    : 1;
-  const award = Math.round(BASE * performance * (cfg.difficulty ?? 1) * timeFactor);
-  let points = 0;
-  let lifetime = 0;
-  const grantPoints = async (): Promise<void> => {
+  // XP earning — doc §3.1: a NORMAL (free) game session earns a flat
+  // 10 XP × difficulty, capped at 3 rewarded sessions/day/game (unlimited play,
+  // just no XP past the cap). TOURNAMENT play earns NO XP — it earns Score→Rank
+  // (doc §1/§2). The client never proposes an amount.
+  const XP_BASE = 10;
+  const difficulty = XP_DIFFICULTY[gameId] ?? 1;
+  let points = 0;   // spendable XP balance (response key kept as `points` for back-compat)
+  let lifetime = 0; // lifetime XP -> level
+  // Apply a delta (>0) then read the authoritative balances for the response.
+  const applyXpAndRead = async (delta: number): Promise<void> => {
     try {
-      await admin.rpc('apply_points', { p_user: user.id, p_delta: award });
-      const { data: prof } = await admin.from('profiles').select('points, points_lifetime').eq('id', user.id).maybeSingle();
-      points = Number(prof?.points ?? 0);
-      lifetime = Number(prof?.points_lifetime ?? 0);
+      if (delta > 0) await admin.rpc('apply_xp', { p_user: user.id, p_delta: delta });
+      const { data: prof } = await admin.from('profiles').select('xp, xp_lifetime').eq('id', user.id).maybeSingle();
+      points = Number(prof?.xp ?? 0);
+      lifetime = Number(prof?.xp_lifetime ?? 0);
     } catch { /* best-effort; never blocks the response */ }
   };
 
-  // Free games: points only, no leaderboard, no token required.
+  // Free games: XP only (capped), no leaderboard, no token required.
   if (!wantsLeaderboard) {
-    await grantPoints();
-    return json({ points, lifetime });
+    let award = 0;
+    try {
+      const { data: rewardable } = await admin.rpc('claim_xp_session', { p_user: user.id, p_game: gameId, p_cap: 3 });
+      if (rewardable) award = Math.round(XP_BASE * difficulty);
+    } catch { /* if the cap check fails, default to no award */ }
+    await applyXpAndRead(award);
+    return json({ points, lifetime, xp: points, award });
   }
 
   // --- anti-cheat: leaderboard scores require a valid single-use round token ---
@@ -224,17 +232,21 @@ Deno.serve(async (req: Request) => {
   const isRecord = score > prevBest;
   const best = Math.max(prevBest, score);
 
+  // Normalize raw → RP (doc §4.2); the tournament board ranks by best RP.
+  const { data: rpVal } = await admin.rpc('rp_for', { p_game: gameId, p_raw: best });
   const { error: upErr } = await admin.from('scores').upsert({
     user_id: user.id,
     tournament_id: tournamentId,
     best,
+    rp: Number(rpVal ?? 0),
     plays: (existing?.plays ?? 0) + 1,
     updated_at: new Date().toISOString(),
   });
   if (upErr) return json({ error: 'write failed' }, 500);
 
-  // All gates passed — now (and only now) credit the points for this round.
-  await grantPoints();
+  // Tournament play earns NO XP (doc §1/§2: it earns Score→Rank, not XP). Just
+  // read the current balances for the response.
+  await applyXpAndRead(0);
 
   // Compute the player's rank and the field size from the ranked view.
   const { data: board } = await admin
@@ -244,5 +256,5 @@ Deno.serve(async (req: Request) => {
   const total = board?.length ?? 1;
   const rank = board?.find((r: { user_id: string; rank: number }) => r.user_id === user.id)?.rank ?? total;
 
-  return json({ best, isRecord, rank, total, points, lifetime });
+  return json({ best, isRecord, rank, total, points, lifetime, xp: points });
 });

@@ -17,6 +17,14 @@ const cors = {
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'content-type': 'application/json' } });
 
+// Doc §3.2 cumulative level table (mirrors src/platform/config.ts).
+const LEVEL_THRESHOLDS = [0, 150, 400, 800, 1500, 2200, 3000, 4000, 5000, 6000];
+const levelFor = (xp: number): number => {
+  const v = Math.max(0, xp); let lvl = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) { if (v >= LEVEL_THRESHOLDS[i]) lvl = i + 1; else return lvl; }
+  return 10 + Math.floor((v - 6000) / 3000);
+};
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
@@ -29,10 +37,16 @@ Deno.serve(async (req: Request) => {
   const user = u.user;
   if (!user) return json({ error: 'not signed in' }, 401);
 
+  let body: { period?: string };
+  try { body = await req.json(); } catch { body = {}; }
+  const period = ['daily', 'weekly', 'monthly'].includes(String(body.period)) ? String(body.period) : 'monthly';
+
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  // Make sure a live window exists, then read it (authoritative fee + attempts).
-  const { data: tid } = await admin.rpc('ensure_runner_tournament');
+  // Make sure the live windows exist, then read the requested period's window
+  // (authoritative fee + attempts; doc §4.1).
+  await admin.rpc('ensure_runner_tournaments');
+  const { data: tid } = await admin.rpc('active_runner_tournament_period', { p_period: period });
   const { data: tour } = await admin
     .from('runner_tournaments')
     .select('id, entry_fee_coins, attempts, ends_at, state')
@@ -41,6 +55,13 @@ Deno.serve(async (req: Request) => {
   if (tour.state !== 'live' || new Date(tour.ends_at).getTime() <= Date.now()) {
     return json({ error: 'tournament closed' }, 409);
   }
+
+  // Level-tier funnel (doc §3.2): Daily ≥ L3, Weekly ≥ L5, Monthly ≥ L10.
+  const REQUIRED_LEVEL: Record<string, number> = { daily: 3, weekly: 5, monthly: 10 };
+  const need = REQUIRED_LEVEL[period] ?? 1;
+  const { data: lp } = await admin.from('profiles').select('xp_lifetime').eq('id', user.id).maybeSingle();
+  const level = levelFor(Number(lp?.xp_lifetime ?? 0));
+  if (level < need) return json({ error: 'level too low', requiredLevel: need, level }, 403);
 
   const fee = Number(tour.entry_fee_coins);
   const attempts = Number(tour.attempts);

@@ -145,17 +145,18 @@ export class NotEnoughPointsError extends Error {
   constructor() { super('not enough points'); this.name = 'NotEnoughPointsError'; }
 }
 
-/** Buy one ticket into a draw on the server (spends points via enter-draw). */
-export async function enterDraw(draw: Draw): Promise<number> {
+/** Buy one ticket into a draw on the server. Pay with XP (per-draw price) or
+ *  Coins (flat 20/ticket, doc §6.1). */
+export async function enterDraw(draw: Draw, pay: 'xp' | 'coins' = 'xp'): Promise<number> {
   try {
-    const res = await enterDrawRemote(draw.id);
-    setBalance('points', res.points);
+    const res = await enterDrawRemote(draw.id, pay);
+    setBalance('xp', res.points); // coin balance (res.coins) is owned by wallet.ts; refreshed on render
     ticketCache[draw.id] = res.tickets;
     // Keep the live odds fresh after a purchase (best-effort).
     void hydratePools();
     return res.tickets;
   } catch (e) {
-    // 402 from the function (apply_points overdraw guard) → not enough points.
+    // 402 from the function (overdraw guard) → not enough of the chosen currency.
     throw new NotEnoughPointsError();
   }
 }

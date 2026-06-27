@@ -50,7 +50,13 @@ async function verifyAndBurnToken(admin, token: string, uid: string, gid: string
   return !error; // unique-violation (replay) -> reject
 }
 
-const levelFor = (xp: number): number => 1 + Math.floor(Math.sqrt(Math.max(0, xp) / 100));
+// Doc §3.2 cumulative level table (mirrors src/platform/config.ts).
+const LEVEL_THRESHOLDS = [0, 150, 400, 800, 1500, 2200, 3000, 4000, 5000, 6000];
+const levelFor = (xp: number): number => {
+  const v = Math.max(0, xp); let lvl = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) { if (v >= LEVEL_THRESHOLDS[i]) lvl = i + 1; else return lvl; }
+  return 10 + Math.floor((v - 6000) / 3000);
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -64,8 +70,9 @@ Deno.serve(async (req: Request) => {
   const user = u.user;
   if (!user) return json({ error: 'not signed in' }, 401);
 
-  let body: { score?: number; timeMs?: number; token?: string };
+  let body: { score?: number; timeMs?: number; token?: string; period?: string };
   try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const period = ['daily', 'weekly', 'monthly'].includes(String(body.period)) ? String(body.period) : 'monthly';
   const score = Number(body.score);
   if (!Number.isInteger(score) || score < 0) return json({ error: 'invalid score' }, 400);
   if (score > MAX_SCORE) return json({ error: 'score out of range' }, 422);
@@ -79,18 +86,25 @@ Deno.serve(async (req: Request) => {
     if (!ok) return json({ error: 'invalid round token' }, 403);
   }
 
-  // 1) Award XP (free track) — every run, server-computed.
-  const performance = Math.max(0, Math.min(1, score / PAR));
-  const award = Math.round(BASE * performance);
-  await admin.rpc('runner_apply_xp', { p_user: user.id, p_delta: award });
+  // 1) Award XP (free track) — doc §3.1: a normal session earns a flat
+  // 10 XP × difficulty, capped at 3 rewarded sessions/day. UNIFIED ECONOMY: the
+  // runner feeds the SAME global XP wallet as every other game (profiles via
+  // apply_xp → the single platform level), not a separate runner_xp counter.
+  const XP_BASE = 10, DIFFICULTY = 1.5; // temple-dash = Medium
+  let award = 0;
+  try {
+    const { data: rewardable } = await admin.rpc('claim_xp_session', { p_user: user.id, p_game: GAME_ID, p_cap: 3 });
+    if (rewardable) award = Math.round(XP_BASE * DIFFICULTY);
+  } catch { /* no award if the cap check fails */ }
+  if (award > 0) await admin.rpc('apply_xp', { p_user: user.id, p_delta: award });
   const { data: xpRow } = await admin
-    .from('runner_xp').select('xp, xp_season').eq('user_id', user.id).maybeSingle();
-  const xp = Number(xpRow?.xp ?? award);
-  const xpSeason = Number(xpRow?.xp_season ?? award);
+    .from('profiles').select('xp_lifetime, xp_season').eq('id', user.id).maybeSingle();
+  const xp = Number(xpRow?.xp_lifetime ?? 0);        // lifetime XP → level
+  const xpSeason = Number(xpRow?.xp_season ?? 0);
 
   // 2) Ranked track — only if entered with attempts left in the live tournament.
   let ranked = false, best = 0, rank = 0, total = 0, attemptsLeft = 0;
-  const { data: tid } = await admin.rpc('active_runner_tournament');
+  const { data: tid } = await admin.rpc('active_runner_tournament_period', { p_period: period });
   if (tid) {
     const { data: entry } = await admin
       .from('runner_entries')
@@ -108,9 +122,11 @@ Deno.serve(async (req: Request) => {
         .from('runner_scores').select('best, plays')
         .eq('user_id', user.id).eq('tournament_id', String(tid)).maybeSingle();
       best = Math.max(Number(prev?.best ?? 0), score);
+      // Normalize raw → RP (doc §4.2); the board ranks by best RP.
+      const { data: rpVal } = await admin.rpc('rp_for', { p_game: GAME_ID, p_raw: best });
       await admin.from('runner_scores').upsert({
         user_id: user.id, tournament_id: String(tid),
-        best, plays: Number(prev?.plays ?? 0) + 1, updated_at: new Date().toISOString(),
+        best, rp: Number(rpVal ?? 0), plays: Number(prev?.plays ?? 0) + 1, updated_at: new Date().toISOString(),
       });
 
       // Rank + field size from the ranked view.

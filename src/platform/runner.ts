@@ -12,11 +12,15 @@ import { isConfigured, supabase } from './supabase';
 import { currentUser } from './auth';
 import { startRoundRemote } from './backend';
 import { SignInRequiredError } from './payments';
+import { levelFor } from './config';
 
 export const RUNNER_GAME_ID = 'temple-dash';
 
+export type RunnerPeriod = 'daily' | 'weekly' | 'monthly';
+
 export interface RunnerTournament {
   id: string;
+  period: RunnerPeriod;
   titleEn: string;
   titleAm: string;
   entryFeeCoins: number;
@@ -49,30 +53,39 @@ export interface RunnerSubmitResult {
 export interface RunnerLeaderRow { rank: number; name: string; score: number; isPlayer: boolean; }
 export interface RunnerSeasonRow { rank: number; name: string; xpSeason: number; isPlayer: boolean; }
 
-/** Player level from lifetime XP (gentle sqrt curve; mirrors the server). */
+/** Player level from lifetime XP — the SINGLE platform curve (doc §3.2). The
+ *  runner shows the same level as the hub. */
 export function levelForXp(xp: number): number {
-  return 1 + Math.floor(Math.sqrt(Math.max(0, xp) / 100));
+  return levelFor(xp);
 }
 
 export class InsufficientCoinsError extends Error {
   constructor() { super('insufficient coins'); this.name = 'InsufficientCoinsError'; }
 }
 
+export class LevelTooLowError extends Error {
+  constructor(public requiredLevel: number) { super('level too low'); this.name = 'LevelTooLowError'; }
+}
+
+/** Doc §3.2 level funnel: minimum player level to enter each tournament period. */
+export const REQUIRED_LEVEL: Record<RunnerPeriod, number> = { daily: 3, weekly: 5, monthly: 10 };
+
 // --- reads (live, no cache) -------------------------------------------------
 
-/** The currently-live Runner tournament, or null. */
-export async function getRunnerTournament(): Promise<RunnerTournament | null> {
+/** The currently-live Runner tournament for a period (default monthly), or null. */
+export async function getRunnerTournament(period: RunnerPeriod = 'monthly'): Promise<RunnerTournament | null> {
   if (!isConfigured()) return null;
   try {
     const now = new Date().toISOString();
     const { data } = await supabase()
       .from('runner_tournaments')
-      .select('id, title_en, title_am, entry_fee_coins, attempts, starts_at, ends_at, state')
-      .eq('state', 'live').lte('starts_at', now).gt('ends_at', now)
+      .select('id, period, title_en, title_am, entry_fee_coins, attempts, starts_at, ends_at, state')
+      .eq('state', 'live').eq('period', period).lte('starts_at', now).gt('ends_at', now)
       .order('ends_at', { ascending: true }).limit(1).maybeSingle();
     if (!data) return null;
     return {
-      id: String(data.id), titleEn: String(data.title_en), titleAm: String(data.title_am),
+      id: String(data.id), period: data.period as RunnerPeriod,
+      titleEn: String(data.title_en), titleAm: String(data.title_am),
       entryFeeCoins: Number(data.entry_fee_coins), attempts: Number(data.attempts),
       startsAt: new Date(data.starts_at as string).getTime(),
       endsAt: new Date(data.ends_at as string).getTime(),
@@ -98,15 +111,33 @@ export async function getMyEntry(tournamentId: string): Promise<RunnerEntry | nu
   } catch { return null; }
 }
 
-/** The signed-in player's XP + level (live from runner_xp). */
+/** The signed-in player's server-authoritative best score for a tournament
+ *  (live from runner_scores). 0 if they've never posted a ranked run. This is the
+ *  real Best — the leaderboard authority — not a session value. */
+export async function getMyBest(tournamentId: string): Promise<number> {
+  if (!isConfigured()) return 0;
+  try {
+    const sb = supabase();
+    const me = (await sb.auth.getUser()).data.user?.id;
+    if (!me) return 0;
+    const { data } = await sb
+      .from('runner_scores').select('best')
+      .eq('user_id', me).eq('tournament_id', tournamentId).maybeSingle();
+    return Number(data?.best ?? 0);
+  } catch { return 0; }
+}
+
+/** The signed-in player's XP + level. UNIFIED ECONOMY: read the SAME global XP
+ *  wallet as the hub (profiles.xp_lifetime/xp_season), so the runner
+ *  shows ONE level identical to the hub — not a separate runner_xp counter. */
 export async function getMyXp(): Promise<RunnerXp> {
   if (!isConfigured()) return { xp: 0, xpSeason: 0, level: 1 };
   try {
     const sb = supabase();
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) return { xp: 0, xpSeason: 0, level: 1 };
-    const { data } = await sb.from('runner_xp').select('xp, xp_season').eq('user_id', me).maybeSingle();
-    const xp = Number(data?.xp ?? 0);
+    const { data } = await sb.from('profiles').select('xp_lifetime, xp_season').eq('id', me).maybeSingle();
+    const xp = Number(data?.xp_lifetime ?? 0);
     return { xp, xpSeason: Number(data?.xp_season ?? 0), level: levelForXp(xp) };
   } catch { return { xp: 0, xpSeason: 0, level: 1 }; }
 }
@@ -148,27 +179,28 @@ export async function runnerSeasonLeaderboard(limit = 10): Promise<RunnerSeasonR
 
 // --- writes (Edge Functions) ------------------------------------------------
 
-/** Buy a block of attempts (pays the entry fee in coins). */
-export async function enterRunnerTournament(): Promise<RunnerEntry> {
+/** Buy a block of attempts for a period's tournament (pays the entry fee in coins). */
+export async function enterRunnerTournament(period: RunnerPeriod = 'monthly'): Promise<RunnerEntry> {
   await currentUser(); // hydrate the session (game pages skip the hub sign-in flow)
-  const { data, error } = await supabase().functions.invoke('runner-enter', { body: {} });
+  const { data, error } = await supabase().functions.invoke('runner-enter', { body: { period } });
   if (error) {
     const status = (error as { context?: { status?: number } }).context?.status;
     if (status === 402) throw new InsufficientCoinsError();
     if (status === 401) throw new SignInRequiredError();
+    if (status === 403) throw new LevelTooLowError(REQUIRED_LEVEL[period]);
     throw error;
   }
   const d = data as { attemptsPurchased: number; attemptsUsed: number; attemptsLeft: number };
   return { attemptsPurchased: d.attemptsPurchased, attemptsUsed: d.attemptsUsed, attemptsLeft: d.attemptsLeft };
 }
 
-/** Submit a finished run: awards XP and (if entered) records the ranked score. */
-export async function submitRunnerRun(score: number, timeMs = 0): Promise<RunnerSubmitResult | null> {
+/** Submit a finished run: awards XP and (if entered in `period`) records the ranked score. */
+export async function submitRunnerRun(score: number, timeMs = 0, period: RunnerPeriod = 'monthly'): Promise<RunnerSubmitResult | null> {
   if (!isConfigured()) return null;
   await currentUser();
   const token = await startRoundRemote(RUNNER_GAME_ID);
   const { data, error } = await supabase().functions.invoke('runner-submit', {
-    body: { score: Math.max(0, Math.floor(score)), timeMs: Math.max(0, Math.floor(timeMs)), token },
+    body: { score: Math.max(0, Math.floor(score)), timeMs: Math.max(0, Math.floor(timeMs)), token, period },
   });
   if (error) {
     const status = (error as { context?: { status?: number } }).context?.status;
