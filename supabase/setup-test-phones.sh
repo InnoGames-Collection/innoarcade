@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 # Push test phone numbers + OTP 123456 to the linked Supabase project.
-# Requires: supabase CLI logged in (`supabase login`) and project linked.
+#
+# Uses the Management API (auth config only) — avoids `supabase config push`,
+# which can fail on Storage schema errors and overwrite redirect URLs.
+#
+# Requires SUPABASE_ACCESS_TOKEN (same token as `supabase login` uses):
+#   https://supabase.com/dashboard/account/tokens
 #
 # Usage (from innoarcade/):
-#   supabase link --project-ref YOUR_REF
-#   ./supabase/setup-test-phones.sh
+#   export SUPABASE_ACCESS_TOKEN=sbp_…
+#   npm run setup:test-phones
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "Pushing auth.sms.test_otp from supabase/config.toml …"
-echo "Phones: 251911000000 … 251911000010 · OTP: 123456"
-supabase config push
+if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
+  echo "Missing SUPABASE_ACCESS_TOKEN."
+  echo "Create one at https://supabase.com/dashboard/account/tokens"
+  echo "Then: export SUPABASE_ACCESS_TOKEN=sbp_… && npm run setup:test-phones"
+  exit 1
+fi
 
-echo ""
-echo "Done. Test sign-in: 0911000000 … 0911000010 with OTP 123456"
-echo "See supabase/test-phones.json for the full list."
+node supabase/push-test-phones.mjs

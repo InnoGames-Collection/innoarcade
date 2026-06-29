@@ -85,14 +85,18 @@ supabase secrets set SUPABASE_SERVICE_ROLE_KEY=sb_secret_xxx
   | … through …       | 123456 |
   | `251911000010`    | 123456 |
 
-   Local Supabase CLI: the same OTP map is in `supabase/config.toml` under
-   `[auth.sms.test_otp]`. Push it to the hosted project after linking:
+   Local / CLI: list is in `supabase/test-phones.json`. Push to hosted with the
+   Management API (updates **only** test OTP — safe; does not change redirect URLs):
 
 ```bash
-supabase login
-supabase link --project-ref aopmkdefqykctrxhflaq
-npm run setup:test-phones   # runs: supabase config push
+# Token: https://supabase.com/dashboard/account/tokens
+export SUPABASE_ACCESS_TOKEN=sbp_…
+npm run setup:test-phones
 ```
+
+   > Do **not** use `supabase config push` with the minimal `config.toml` in this
+   > repo — it can fail on Storage schema errors and may overwrite your Vercel
+   > redirect URLs. The script above patches `sms_test_otp` only.
 
    Test numbers bypass SMS entirely: Supabase accepts the fixed code, so **no SMS
    gateway, no Send SMS hook, and no `dev_otps` table** are needed for sign-in.
