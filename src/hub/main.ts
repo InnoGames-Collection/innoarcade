@@ -111,7 +111,7 @@ function renderGlobalBoard(): void {
 }
 
 // --- Player balance bar -----------------------------------------------------
-// The Level / Points / Coins chips render in their own bar right under the promo
+// The Level / XP / Coins chips render in their own bar right under the promo
 // banner (where the KPI strip used to be). The Buy Coin button stays in the topbar.
 function renderMyStats(): void {
   function chip(icon: string, label: string, val: string, cls: string): string {
@@ -120,9 +120,9 @@ function renderMyStats(): void {
   const bar = document.querySelector('#playerBar');
   if (bar) {
     bar.innerHTML =
-      chip('🎖️', 'Level', String(levelFor(xpLifetime())), 'bal-level') +
-      chip('⭐', 'Point', xpLifetime().toLocaleString(), 'bal-points') +
-      chip('🪙', 'Coin', balanceSync().toLocaleString(), 'bal-coins');
+      chip('🎖️', t('hub.statLevel'), String(levelFor(xpLifetime())), 'bal-level') +
+      chip('⭐', t('hub.points'), xpLifetime().toLocaleString(), 'bal-points') +
+      chip('🪙', t('hub.coinsLabel'), balanceSync().toLocaleString(), 'bal-coins');
   }
   const host = document.querySelector('#topBalances');
   if (host) {

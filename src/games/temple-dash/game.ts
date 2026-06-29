@@ -81,6 +81,8 @@ export class TempleDash {
   multT = 0;
   shield = false;
   biomeName = BIOMES[0].name;
+  /** 0–1 ramp; drives spawn density and gap tightness. */
+  difficulty = 0;
 
   onStateChange: (s: GameState) => void = () => {};
   // record = beat the session best; durationMs = how long the run lasted (for the
@@ -108,7 +110,6 @@ export class TempleDash {
   private coinsArr: Coin[] = [];
   private powerups: PowerUp[] = [];
   private spawnCursor = 25;
-  private overAt = 0;
   private skinId: string;
 
   constructor(private assets: AssetStore) {
@@ -131,6 +132,7 @@ export class TempleDash {
     this.spawnCursor = 25;
     this.particles.clear(); this.fx.reset();
     this.walkPhase = 0;
+    this.difficulty = 0;
     this.runStart = this.time;
     this.setState('playing');
     sfx.startMusic([262, 0, 330, 392, 0, 330, 294, 0], 104);
@@ -142,7 +144,7 @@ export class TempleDash {
   handleAction(a: Action): void {
     switch (this.state) {
       case 'menu': break; // Play button only — no tap-to-start on the menu overlay
-      case 'over': if (a === 'tap' && this.time - this.overAt > 0.8) this.start(); break;
+      case 'over': break; // Play Again / Enter Tournament buttons only
       case 'playing':
         if (a === 'left') this.lane = Math.max(-1, this.lane - 1);
         else if (a === 'right') this.lane = Math.min(1, this.lane + 1);
@@ -190,6 +192,8 @@ export class TempleDash {
     // Biome readout (safe modulo guards any non-positive distance).
     const bi = ((Math.floor(this.dist / BIOME_LEN) % BIOMES.length) + BIOMES.length) % BIOMES.length;
     this.biomeName = BIOMES[bi].name;
+    // Difficulty ramps with time + distance — drives obstacle density (endless runner curve).
+    this.difficulty = Math.min(1, Math.max(this.elapsed / 90, this.dist / 1500));
 
     const delta = this.lane - this.laneF;
     const step = LANE_LERP * dt;
@@ -271,7 +275,6 @@ export class TempleDash {
     sfx.crash(); sfx.stopMusic();
     this.fx.shake(16, 0.5); this.fx.flash('#c8281e', 0.5); this.fx.hitStop(0.08);
     this.particles.burst(this.sx(this.laneF, PLAYER_Z), this.sy(PLAYER_Z) - 50, 26, ['#e0533a', '#ffce54', '#fff'], { speed: 300, gravity: 700, glow: true });
-    this.overAt = this.time;
     const record = this.score > this.best;
     if (record) this.best = this.score;
     const durationMs = Math.max(0, Math.round((this.time - this.runStart) * 1000));
@@ -282,22 +285,37 @@ export class TempleDash {
 
   private setState(s: GameState): void { this.state = s; this.onStateChange(s); }
 
+  /** Human-readable tier for HUD (i18n keys resolved in main.ts). */
+  difficultyTier(): 'normal' | 'hard' | 'extreme' {
+    if (this.difficulty < 0.33) return 'normal';
+    if (this.difficulty < 0.66) return 'hard';
+    return 'extreme';
+  }
+
   private spawnPattern(): void {
     const z = this.spawnCursor;
     const lanes = [-1, 0, 1];
     const lane = lanes[(Math.random() * 3) | 0];
     const r = Math.random();
+    const d = this.difficulty;
 
-    if (r < 0.28) {
+    // More blocks / hurdles / beams and fewer coin rows as difficulty rises.
+    const tBlock = 0.28 + d * 0.14;
+    const tMulti = tBlock + 0.14 + d * 0.10;
+    const tHurdle = tMulti + 0.12 + d * 0.06;
+    const tBeam = tHurdle + 0.12 + d * 0.06;
+    const tPower = tBeam + 0.06 - d * 0.04;
+
+    if (r < tBlock) {
       this.obstacles.push({ kind: 'block', lane, z });
-    } else if (r < 0.44) {
+    } else if (r < tMulti) {
       const free = lanes[(Math.random() * 3) | 0];
       for (const l of lanes) if (l !== free) this.obstacles.push({ kind: 'block', lane: l, z });
-    } else if (r < 0.58) {
+    } else if (r < tHurdle) {
       this.obstacles.push({ kind: 'hurdle', lane, z });
-    } else if (r < 0.72) {
+    } else if (r < tBeam) {
       this.obstacles.push({ kind: 'beam', lane, z });
-    } else if (r < 0.78 && this.dist > 60) {
+    } else if (r < tPower && this.dist > 60) {
       const kinds: PowerKind[] = ['magnet', 'shield', 'mult'];
       this.powerups.push({ kind: kinds[(Math.random() * 3) | 0], lane, z, taken: false });
     } else {
@@ -306,7 +324,8 @@ export class TempleDash {
       this.spawnCursor += 8;
     }
 
-    const minGap = this.speed * 0.55;
+    const gapScale = 0.55 - d * 0.24;
+    const minGap = this.speed * gapScale;
     this.spawnCursor += minGap + Math.random() * minGap;
   }
 

@@ -68,6 +68,7 @@ function run(assets: AssetStore): void {
   game.onStateChange = (s) => {
     showOverlay(s);
     if (s === 'over' || s === 'menu') { buildShop(); void refreshTourney(); }
+    else updateActionButtons();
   };
 
   game.onGameOver = (score, _coins, _record, durationMs) => {
@@ -100,9 +101,9 @@ function run(assets: AssetStore): void {
     }
   }
 
-  $('#startBtn').addEventListener('click', () => void startRun());
-  $('#againBtn').addEventListener('click', () => void startRun());
-  $('#restartBtn').addEventListener('click', () => void startRun());
+  $('#startBtn').addEventListener('click', () => void onPlayOrEnter());
+  $('#againBtn').addEventListener('click', () => void onPlayOrEnter());
+  $('#restartBtn').addEventListener('click', () => void onPlayOrEnter());
   $('#resumeBtn').addEventListener('click', () => game.resume());
   $('#pauseBtn').addEventListener('click', () => {
     if (game.state === 'playing') game.pause();
@@ -171,7 +172,12 @@ function run(assets: AssetStore): void {
   function updateHud(): void {
     scoreVal.textContent = String(game.score);
     coinsVal.textContent = String(game.coins);
-    biomeVal.textContent = game.biomeName;
+    if (game.state === 'playing') {
+      const tierKeys = { normal: 'td.diffNormal', hard: 'td.diffHard', extreme: 'td.diffExtreme' } as const;
+      biomeVal.textContent = `${game.biomeName} · ${t(tierKeys[game.difficultyTier()])}`;
+    } else {
+      biomeVal.textContent = game.biomeName;
+    }
     const chips: string[] = [];
     if (game.magnetT > 0) chips.push(`<span class="chip magnet">🧲 ${game.magnetT.toFixed(0)}</span>`);
     if (game.shield) chips.push(`<span class="chip shield">🛡️</span>`);
@@ -184,14 +190,37 @@ function run(assets: AssetStore): void {
     s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const medal = (rank: number): string => ['🥇', '🥈', '🥉'][rank - 1] ?? `${rank}`;
 
-  function updatePlayButton(): void {
-    const btn = document.querySelector<HTMLButtonElement>('#startBtn');
-    if (!btn) return;
-    const left = tourney ? (myEntry(tourney.id)?.left ?? 0) : 0;
-    btn.disabled = left <= 0;
-    btn.textContent = left > 0
-      ? `▶ ${t('td.playTournament')} · 🎟️ ${left}`
-      : t('td.enterFirst');
+  function attemptsLeft(): number {
+    return tourney ? (myEntry(tourney.id)?.left ?? 0) : 0;
+  }
+
+  function updateActionButtons(): void {
+    const left = attemptsLeft();
+    const startBtn = document.querySelector<HTMLButtonElement>('#startBtn');
+    const againBtn = document.querySelector<HTMLButtonElement>('#againBtn');
+    const restartBtn = document.querySelector<HTMLButtonElement>('#restartBtn');
+
+    if (startBtn) {
+      startBtn.disabled = left <= 0;
+      startBtn.textContent = left > 0
+        ? `▶ ${t('td.playTournament')} · 🎟️ ${left}`
+        : t('td.enterFirst');
+    }
+    if (againBtn) {
+      againBtn.disabled = false;
+      againBtn.textContent = left > 0
+        ? `▶ ${t('td.playTournament')} · 🎟️ ${left}`
+        : t('td.enterFor');
+    }
+    if (restartBtn) {
+      restartBtn.disabled = left <= 0;
+      restartBtn.textContent = left > 0 ? t('td.restart') : t('td.enterFor');
+    }
+  }
+
+  async function onPlayOrEnter(): Promise<void> {
+    if (attemptsLeft() > 0) await startRun();
+    else await onEnter();
   }
 
   function boardHtml(rows: LeaderEntry[]): string {
@@ -239,7 +268,7 @@ function run(assets: AssetStore): void {
       </div>
       <div class="runner-board">${boardHtml(board)}</div>`;
 
-    updatePlayButton();
+    updateActionButtons();
     document.querySelector('#enterBtn')?.addEventListener('click', onEnter);
   }
 
