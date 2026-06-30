@@ -134,28 +134,42 @@ function renderEntryBody(
 
   if (!afford) {
     const pkgs = coinPackagesForEntry(fee);
+    let selectedId = pkgs[0]?.id ?? '';
     card.innerHTML = `
       <div class="entry-buy">
         <p class="entry-buy-title">${t('hub.buyCoinsToPlay')}</p>
         <div class="entry-pkg-grid" id="pkgGrid">${pkgs.map((p) => {
           const total = p.coins + p.bonus;
-          return `<button type="button" class="entry-pkg" data-id="${p.id}">
+          const sel = p.id === selectedId ? ' sel' : '';
+          return `<button type="button" class="entry-pkg${sel}" data-id="${p.id}">
             <span class="ep-coins">🪙 ${total.toLocaleString()}</span>
             <span class="ep-price">${p.priceEtb} ETB</span>
           </button>`;
         }).join('')}</div>
       </div>
       <p class="entry-err" id="err"></p>
-      ${actionRow(`<button type="button" class="btn primary" id="confirm" disabled>${t('hub.ok')}</button>`)}`;
+      ${actionRow(`<button type="button" class="btn primary" id="confirm"${selectedId ? '' : ' disabled'}>${t('hub.ok')}</button>`)}`;
+
+    const confirmBtn = card.querySelector<HTMLButtonElement>('#confirm')!;
+
+    const syncSelection = (id: string): void => {
+      selectedId = id;
+      card.querySelectorAll<HTMLButtonElement>('.entry-pkg').forEach((b) => {
+        b.classList.toggle('sel', b.dataset.id === id);
+      });
+      confirmBtn.disabled = !id;
+    };
 
     card.querySelectorAll<HTMLButtonElement>('.entry-pkg').forEach((b) => {
-      b.addEventListener('click', () => {
-        const pkg = pkgs.find((p) => p.id === b.dataset.id);
-        if (!pkg) return;
-        openInlineCoinCheckout(pkg, m, {
-          onBack: () => renderEntryBody(m, tour, opts),
-          onPaid: () => tryEnterAfterPurchase(m, tour, opts),
-        });
+      b.addEventListener('click', () => syncSelection(b.dataset.id ?? ''));
+    });
+
+    confirmBtn.addEventListener('click', () => {
+      const pkg = pkgs.find((p) => p.id === selectedId);
+      if (!pkg) return;
+      openInlineCoinCheckout(pkg, m, {
+        onBack: () => renderEntryBody(m, tour, opts),
+        onPaid: () => tryEnterAfterPurchase(m, tour, opts),
       });
     });
   } else {
@@ -227,6 +241,7 @@ function injectStyles(): void {
     .entry-pkg { display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 6px;
       border:1px solid #e6efdc; border-radius:12px; background:#fff; cursor:pointer; font:inherit; }
     .entry-pkg:hover { border-color:#4f9e16; box-shadow:0 4px 12px rgba(79,158,22,.15); }
+    .entry-pkg.sel { border-color:#2f8fe6; box-shadow:0 0 0 2px rgba(47,143,230,.25); background:#f4f9ff; }
     .ep-coins { font-weight:900; font-size:.95rem; color:#7a5212; }
     .ep-price { font-size:.72rem; font-weight:700; color:#5f7262; }
     .entry-joined { text-align:center; display:flex; flex-direction:column; gap:12px; align-items:center; padding:12px 4px; }
