@@ -125,11 +125,16 @@ function renderStoreGrid(m: HTMLElement): void {
   });
 }
 
-/** Checkout embedded inside another modal (e.g. tournament entry). Keeps parent open on success. */
+/** Checkout embedded inside another modal (e.g. tournament entry). */
+export interface InlineCheckoutHandlers {
+  onBack: () => void;
+  onPaid: () => void | Promise<void>;
+}
+
 export function openInlineCoinCheckout(
   pkg: CoinPackage,
   parentModal: HTMLElement,
-  onSuccess: () => void,
+  handlers: InlineCheckoutHandlers,
 ): void {
   injectStyles();
   if (needsSignInToBuy()) { parentModal.remove(); openSignIn(); return; }
@@ -165,18 +170,22 @@ export function openInlineCoinCheckout(
       chosen = b.dataset.m as PayMethod;
     });
   });
-  card.querySelector('#back')!.addEventListener('click', () => onSuccess());
+  card.querySelector('#back')!.addEventListener('click', () => handlers.onBack());
   const pay = card.querySelector<HTMLButtonElement>('#pay')!;
   pay.addEventListener('click', async () => {
     pay.disabled = true;
-    pay.textContent = t('processing');
     try {
       const { order } = await startCheckout(pkg.id, chosen);
-      if (order.status === 'paid') { await balance(); onSuccess(); return; }
+      if (order.status === 'paid') {
+        await balance();
+        await handlers.onPaid();
+        return;
+      }
       if (order.redirectUrl) { window.location.href = order.redirectUrl; return; }
+      pay.textContent = t('processing');
       await pollOrder(order.id);
       await balance();
-      onSuccess();
+      await handlers.onPaid();
     } catch (e) {
       if (e instanceof SignInRequiredError) { parentModal.remove(); openSignIn(); return; }
       card.querySelector('#err')!.textContent = t('failed');
@@ -219,14 +228,11 @@ function openCheckout(pkg: CoinPackage): void {
   const pay = m.querySelector<HTMLButtonElement>('#pay')!;
   pay.addEventListener('click', async () => {
     pay.disabled = true;
-    pay.textContent = t('processing');
     try {
       const { order } = await startCheckout(pkg.id, chosen);
-      // Mock payment: the server credits immediately and returns a paid order.
       if (order.status === 'paid') { await balance(); showSuccess(m, total); return; }
-      // (Real TeleBirr, if ever enabled, hands off via a hosted page.)
       if (order.redirectUrl) { window.location.href = order.redirectUrl; return; }
-      // Otherwise poll the order row until the webhook credits it.
+      pay.textContent = t('processing');
       await pollOrder(order.id);
       await balance();
       showSuccess(m, total);

@@ -67,11 +67,10 @@ export async function startCheckout(packageId: string, method: PayMethod): Promi
   return { order: data.order as Order, sandbox: Boolean(data.sandbox) };
 }
 
-// Drive a pending order to completion by polling the order row the webhook
-// updates (up to ~30s). Resolves with the final order.
+// Poll the order row until it leaves `pending` (immediate first check, then every 500ms).
 export async function pollOrder(orderId: string): Promise<Order> {
   const sb = supabase();
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     const { data } = await sb
       .from('payment_orders')
       .select('id, package_id, coins, amount_etb, method, status, created_at')
@@ -80,7 +79,7 @@ export async function pollOrder(orderId: string): Promise<Order> {
       const order = mapOrder(data);
       if (order.status !== 'pending') return order;
     }
-    await new Promise((r) => setTimeout(r, 1000));
+    if (i < 59) await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error('payment timed out');
 }

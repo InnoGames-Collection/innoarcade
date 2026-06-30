@@ -1,4 +1,4 @@
-// Unified tournament entry: one modal for balance, buy coins, and confirmed entry.
+// Unified tournament entry: buy coins, pay, and confirmed entry.
 
 import { t, getLang } from '../i18n';
 import { maskPhone } from '../platform/phone';
@@ -65,19 +65,46 @@ function showSuccess(
   opts.onEntered?.();
 }
 
+function actionRow(confirmHtml: string): string {
+  return `<div class="entry-actions entry-actions-row">
+    ${confirmHtml}
+    <button type="button" class="btn ghost" id="cancel">${t('hub.cancel')}</button>
+  </div>`;
+}
+
+async function tryEnterAfterPurchase(
+  m: HTMLElement,
+  tour: Tournament,
+  opts: { onEntered?: () => void; playHref?: string; onPlay?: () => void },
+): Promise<void> {
+  await balance();
+  if (balanceSync() < tour.entryFeeCoins) {
+    renderEntryBody(m, tour, opts);
+    return;
+  }
+  try {
+    await enterTournament(tour.id);
+    showSuccess(m, opts);
+  } catch (e) {
+    if (e instanceof SignInRequiredError) { m.remove(); openSignIn(); return; }
+    if (e instanceof InsufficientCoinsError) {
+      renderEntryBody(m, tour, opts);
+      return;
+    }
+    renderEntryBody(m, tour, opts);
+    m.querySelector('#err')!.textContent = t('hub.entryFailed');
+  }
+}
+
 /** Open the combined enter / buy-coins modal for a tournament window. */
 export function openTournamentEntry(opts: TournamentEntryOptions): void {
-  const { tour, game, onEntered, playHref, onPlay } = opts;
-  const meta = game ?? getGame(tour.gameId);
+  const { tour, onEntered, playHref, onPlay } = opts;
 
   if (isPaid(tour) && needsSignInToBuy()) {
     const m = entryShell(`
       <h3>🏆 ${esc(titleOf(tour))}</h3>
       <p class="entry-notice">${t('hub.signInToEnter')}</p>
-      <div class="entry-actions">
-        <button type="button" class="btn primary" id="signin">${t('hub.register')}</button>
-        <button type="button" class="btn ghost" id="cancel">${t('hub.cancel')}</button>
-      </div>`);
+      ${actionRow(`<button type="button" class="btn primary" id="signin">${t('hub.register')}</button>`)}`);
     m.querySelector('#signin')!.addEventListener('click', () => { m.remove(); openSignIn(); });
     m.querySelector('#cancel')!.addEventListener('click', () => m.remove());
     return;
@@ -91,17 +118,7 @@ export function openTournamentEntry(opts: TournamentEntryOptions): void {
     return;
   }
 
-  const gameName = meta ? (getLang() === 'am' ? meta.nameAm : meta.nameEn) : '';
-  const m = entryShell(`
-    <h3>🏆 ${esc(titleOf(tour))}</h3>
-    ${gameName ? `<p class="entry-game">${esc(gameName)}</p>` : ''}
-    <div class="entry-balance" id="balanceRow"></div>
-    <p class="entry-summary" id="summary"></p>
-    <p class="entry-notice" id="feeNotice"></p>
-    <div class="entry-buy" id="buySection" hidden></div>
-    <p class="entry-err" id="err"></p>
-    <div class="entry-actions" id="actions"></div>`);
-
+  const m = entryShell('');
   renderEntryBody(m, tour, { onEntered, playHref, onPlay });
 }
 
@@ -111,58 +128,44 @@ function renderEntryBody(
   opts: { onEntered?: () => void; playHref?: string; onPlay?: () => void },
 ): void {
   const fee = tour.entryFeeCoins;
-  const attempts = tour.attempts;
   const bal = balanceSync();
   const afford = bal >= fee;
-
-  m.querySelector('#balanceRow')!.innerHTML =
-    `<span>${t('hub.yourBalance')}</span><strong>${bal.toLocaleString()} 🪙</strong>`;
-
-  m.querySelector('#summary')!.textContent =
-    t('hub.entrySummary').replace('{fee}', String(fee)).replace('{attempts}', String(attempts));
-
-  m.querySelector('#feeNotice')!.textContent = afford
-    ? t('hub.entryJoinHint').replace('{fee}', String(fee))
-    : t('hub.needCoinsShort').replace('{fee}', String(fee));
-
-  const buySection = m.querySelector<HTMLElement>('#buySection')!;
-  const actions = m.querySelector('#actions')!;
+  const card = m.querySelector('.entry-card')!;
 
   if (!afford) {
-    buySection.hidden = false;
-    buySection.innerHTML =
-      `<p class="entry-buy-title">${t('hub.buyCoinsToPlay')}</p><div class="entry-pkg-grid" id="pkgGrid"></div>`;
     const pkgs = coinPackagesForEntry(fee);
-    const grid = buySection.querySelector('#pkgGrid')!;
-    grid.innerHTML = pkgs.map((p) => {
-      const total = p.coins + p.bonus;
-      return `<button type="button" class="entry-pkg" data-id="${p.id}">
-        <span class="ep-coins">🪙 ${total.toLocaleString()}</span>
-        <span class="ep-price">${p.priceEtb} ETB</span>
-      </button>`;
-    }).join('');
-    grid.querySelectorAll<HTMLButtonElement>('.entry-pkg').forEach((b) => {
+    card.innerHTML = `
+      <div class="entry-buy">
+        <p class="entry-buy-title">${t('hub.buyCoinsToPlay')}</p>
+        <div class="entry-pkg-grid" id="pkgGrid">${pkgs.map((p) => {
+          const total = p.coins + p.bonus;
+          return `<button type="button" class="entry-pkg" data-id="${p.id}">
+            <span class="ep-coins">🪙 ${total.toLocaleString()}</span>
+            <span class="ep-price">${p.priceEtb} ETB</span>
+          </button>`;
+        }).join('')}</div>
+      </div>
+      <p class="entry-err" id="err"></p>
+      ${actionRow(`<button type="button" class="btn primary" id="confirm" disabled>${t('hub.ok')}</button>`)}`;
+
+    card.querySelectorAll<HTMLButtonElement>('.entry-pkg').forEach((b) => {
       b.addEventListener('click', () => {
         const pkg = pkgs.find((p) => p.id === b.dataset.id);
         if (!pkg) return;
-        openInlineCoinCheckout(pkg, m, async () => {
-          await balance();
-          renderEntryBody(m, tour, opts);
+        openInlineCoinCheckout(pkg, m, {
+          onBack: () => renderEntryBody(m, tour, opts),
+          onPaid: () => tryEnterAfterPurchase(m, tour, opts),
         });
       });
     });
-    actions.innerHTML = `
-      <button type="button" class="btn primary" id="confirm" disabled>${t('hub.ok')}</button>
-      <button type="button" class="btn ghost" id="cancel">${t('hub.cancel')}</button>`;
   } else {
-    buySection.hidden = true;
-    actions.innerHTML = `
-      <button type="button" class="btn primary" id="confirm">${t('hub.ok')}</button>
-      <button type="button" class="btn ghost" id="cancel">${t('hub.cancel')}</button>`;
-    actions.querySelector<HTMLButtonElement>('#confirm')!.addEventListener('click', async () => {
-      const btn = actions.querySelector<HTMLButtonElement>('#confirm')!;
+    card.innerHTML = `
+      <p class="entry-err" id="err"></p>
+      ${actionRow(`<button type="button" class="btn primary" id="confirm">${t('hub.ok')}</button>`)}`;
+
+    card.querySelector<HTMLButtonElement>('#confirm')!.addEventListener('click', async () => {
+      const btn = card.querySelector<HTMLButtonElement>('#confirm')!;
       btn.disabled = true;
-      btn.textContent = t('hub.joining');
       try {
         await enterTournament(tour.id);
         showSuccess(m, opts);
@@ -173,13 +176,13 @@ function renderEntryBody(
           renderEntryBody(m, tour, opts);
           return;
         }
-        m.querySelector('#err')!.textContent = t('hub.entryFailed');
+        card.querySelector('#err')!.textContent = t('hub.entryFailed');
         btn.disabled = false;
-        btn.textContent = t('hub.ok');
       }
     });
   }
-  actions.querySelector('#cancel')?.addEventListener('click', () => m.remove());
+
+  card.querySelector('#cancel')?.addEventListener('click', () => m.remove());
 }
 
 /** Open entry modal for a game id. Pass `onPlay` when already on the game page. */
@@ -211,14 +214,11 @@ function injectStyles(): void {
       background:#fff; color:#14271a; border-radius:16px; padding:22px;
       box-shadow:0 20px 50px rgba(20,30,60,.3); display:flex; flex-direction:column; gap:10px; }
     .entry-card h3 { font-size:1.15rem; margin:0; color:#14271a; font-weight:800; }
-    .entry-game { color:#5f7262; font-size:.85rem; margin:0; }
-    .entry-balance { display:flex; justify-content:space-between; align-items:center;
-      background:#f3fbe9; border:1px solid #d4ebc0; border-radius:12px; padding:10px 14px; font-weight:700; }
-    .entry-summary { font-size:.92rem; font-weight:700; margin:0; text-align:center; color:#14271a; }
     .entry-notice { font-size:.82rem; color:#5f7262; margin:0; line-height:1.45; text-align:center; }
     .entry-err { font-size:.8rem; color:#d64545; min-height:1em; margin:0; text-align:center; }
-    .entry-actions { display:flex; flex-direction:column; gap:8px; }
-    .entry-buy { border-top:1px solid #e6efdc; padding-top:10px; }
+    .entry-actions { display:flex; gap:8px; }
+    .entry-actions-row { flex-direction:row; }
+    .entry-actions-row .btn { flex:1; min-width:0; }
     .entry-buy-title { font-size:.88rem; font-weight:800; color:#9a6b12; margin:0 0 8px; text-align:center; }
     .entry-pkg-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); gap:8px; }
     .entry-pkg { display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 6px;
@@ -227,7 +227,7 @@ function injectStyles(): void {
     .ep-coins { font-weight:900; font-size:.95rem; color:#7a5212; }
     .ep-price { font-size:.72rem; font-weight:700; color:#5f7262; }
     .entry-joined { text-align:center; display:flex; flex-direction:column; gap:12px; align-items:center; padding:12px 4px; }
-    .entry-joined h3 { color:#14271a; font-size:1.2rem; }
+    .entry-joined h3 { color:#14271a; font-size:1.2rem; margin:0; }
     .ej-burst { font-size:3rem; line-height:1; }
     .btn { display:inline-flex; align-items:center; justify-content:center; width:100%;
       padding:.7rem 1rem; border-radius:10px; font:inherit; font-weight:700; cursor:pointer;

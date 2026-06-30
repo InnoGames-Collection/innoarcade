@@ -268,7 +268,9 @@ body {
 .split-chip { font-size: 0.72rem; font-weight: 700; background: rgba(91,108,255,0.12); color: var(--accent); padding: 0.1rem 0.5rem; border-radius: 999px; }
 .entry-notice { font-size: 0.78rem; color: var(--muted); margin: 0; }
 .entry-err { font-size: 0.8rem; color: #d64545; min-height: 1em; margin: 0; }
-.entry-actions { display: flex; flex-direction: column; gap: 8px; }
+.entry-actions { display: flex; gap: 8px; }
+.entry-actions-row { flex-direction: row; }
+.entry-actions-row .btn { flex: 1; min-width: 0; }
 .entry-need { font-size: 0.85rem; color: #9a6b12; font-weight: 700; margin: 0; text-align: center; }
 .entry-joined { text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 8px; }
 .ej-burst { font-size: 3rem; }
