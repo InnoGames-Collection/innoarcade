@@ -34,6 +34,23 @@
           <button type="button" class="mm-action-btn mm-peek hidden" id="mm-resume-btn" data-i18n="td.resume">Resume</button>
           <button type="button" class="mm-action-btn hidden" id="mm-restart-btn" data-i18n="mm.restart">Restart</button>
         </div>
+
+        <div id="mmOverOverlay" class="mm-over-overlay hidden" aria-hidden="true">
+          <div class="mm-over-panel">
+            <h2 data-i18n="td.gameOver">Game over</h2>
+            <p id="mmNewBest" class="mm-new-best hidden" data-i18n="td.newBest"></p>
+            <div class="mm-over-final">
+              <div class="mm-over-stat"><span data-i18n="td.score">Score</span><strong id="mmFinalScore">0</strong></div>
+              <div class="mm-over-stat"><span data-i18n="td.best">Best</span><strong id="mmFinalBest">0</strong></div>
+            </div>
+            <div class="mm-run-reward" id="mmRunReward"></div>
+            <div class="mm-over-board-wrap">
+              <h3 data-i18n="td.leaderboard">Leaderboard</h3>
+              <div class="mm-over-board" id="mmBoardOver"></div>
+            </div>
+            <button type="button" class="mm-action-btn mm-peek" id="mmAgainBtn" data-i18n="td.restart">Play again</button>
+          </div>
+        </div>
       </div>
     </div>
 

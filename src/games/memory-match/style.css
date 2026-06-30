@@ -69,6 +69,7 @@
   --bg-solid: #0b1521;
   --hud-bg: #162436;
   --border-color: #2a3e56;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -237,6 +238,84 @@
   border: 1px solid var(--pink);
   color: var(--pink);
 }
+
+/* --- Game-over overlay (runner parity) ------------------------------------ */
+.mm-over-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 10, 22, 0.72);
+  backdrop-filter: blur(5px);
+  padding: 14px;
+  border-radius: inherit;
+}
+.mm-over-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  text-align: center;
+  background: var(--hud-bg);
+  border: 1px solid rgba(0, 212, 170, 0.35);
+  border-radius: 16px;
+  padding: 22px 20px;
+  width: min(320px, 96%);
+  max-height: 92%;
+  overflow-y: auto;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+}
+.mm-over-panel h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--teal);
+}
+.mm-new-best {
+  margin: 0;
+  color: var(--pink);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.mm-over-final {
+  display: flex;
+  gap: 20px;
+}
+.mm-over-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+.mm-over-stat strong {
+  font-size: 1.35rem;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.mm-run-reward {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: center;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 0.86rem;
+  color: #fff;
+  min-height: 1.2em;
+}
+.mm-rr-stat b { color: rgba(255, 255, 255, 0.55); font-weight: 600; margin-right: 3px; }
+.mm-rr-note { color: rgba(255, 255, 255, 0.55); font-size: 0.82rem; }
+.mm-rr-pending { color: rgba(255, 255, 255, 0.55); }
+.mm-over-board-wrap { width: 100%; margin-top: 2px; }
+.mm-over-board-wrap h3 {
+  font-size: 0.82rem;
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: left;
+}
+.mm-over-board { display: flex; flex-direction: column; gap: 3px; }
 .mm-peek:hover:not(:disabled) { background: #fff !important; border-color: #fff !important; color: #0b1521 !important; }
 .mm-pause-btn {
   background: rgba(255, 255, 255, 0.08);

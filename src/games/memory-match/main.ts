@@ -6,7 +6,9 @@ import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { openTournamentEntryForGame } from '../../hub/tournamentEntry';
 import { createHost } from '../../platform/gameHost';
-import { refreshGameTournamentPanel } from '../../platform/gameTournamentPanel';
+import { leaderboardRemote } from '../../platform/backend';
+import { refreshGameTournamentPanel, tournamentBoardHtml } from '../../platform/gameTournamentPanel';
+import { isConfigured } from '../../platform/supabase';
 import { loadTournaments, loadMyEntries, myEntry, getTournamentForGame } from '../../platform/tournaments';
 
 const GAME_ID = 'memory-match';
@@ -41,6 +43,7 @@ let roundSeq = 0;
 let starting = false;
 /** Frozen final score for this attempt (shown after round ends). */
 let lastFinalScore = 0;
+let serverBest = 0;
 
 const grid = $('#mm-grid');
 const timeEl = $('#mm-time');
@@ -107,20 +110,70 @@ function playAgainLabel(): string {
 
 function setPhase(next: Phase): void {
   phase = next;
-  playBtn.classList.toggle('hidden', next !== 'idle' && next !== 'over');
+  playBtn.classList.toggle('hidden', next !== 'idle');
   pauseBtn.classList.toggle('hidden', next !== 'playing');
   resumeBtn.classList.toggle('hidden', next !== 'paused');
   restartBtn.classList.toggle('hidden', next !== 'paused');
-  grid.classList.toggle('mm-paused', next === 'paused');
+  grid.classList.toggle('mm-paused', next === 'paused' || next === 'over');
 
   if (next === 'idle') playBtn.textContent = playLabel();
-  else if (next === 'over') playBtn.textContent = playAgainLabel();
+}
+
+function updateAgainBtn(): void {
+  $('#mmAgainBtn').textContent = playAgainLabel();
+}
+
+function showOverOverlay(final: number): void {
+  const overlay = $('#mmOverOverlay');
+  $('#mmFinalScore').textContent = final.toLocaleString();
+  $('#mmFinalBest').textContent = SCORE_PLACEHOLDER;
+  $('#mmNewBest').classList.add('hidden');
+  $('#mmRunReward').innerHTML = `<span class="mm-rr-pending">…</span>`;
+  $('#mmBoardOver').innerHTML = '';
+  updateAgainBtn();
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-hidden', 'false');
+}
+
+function hideOverOverlay(): void {
+  const overlay = $('#mmOverOverlay');
+  overlay.classList.add('hidden');
+  overlay.setAttribute('aria-hidden', 'true');
 }
 
 async function refreshTournamentPanel(): Promise<void> {
-  await refreshGameTournamentPanel(GAME_ID, tourneyMount());
+  const snap = await refreshGameTournamentPanel(GAME_ID, tourneyMount());
+  if (snap) serverBest = snap.serverBest;
   if (phase === 'idle') playBtn.textContent = playLabel();
-  else if (phase === 'over') playBtn.textContent = playAgainLabel();
+  else if (phase === 'over') updateAgainBtn();
+}
+
+async function submitRound(score: number, cleared: boolean, durationMs: number): Promise<void> {
+  const reward = $('#mmRunReward');
+  const boardOver = $('#mmBoardOver');
+  if (!isConfigured()) {
+    reward.innerHTML = '';
+    boardOver.innerHTML = '';
+    $('#mmFinalBest').textContent = score.toLocaleString();
+    return;
+  }
+  reward.innerHTML = `<span class="mm-rr-pending">…</span>`;
+  let res;
+  try {
+    res = await host.finish(score, cleared, durationMs, { ranked: rankedThisRun });
+  } catch {
+    reward.innerHTML = `<span class="mm-rr-note">${t('td.signInToRank')}</span>`;
+    return;
+  }
+  serverBest = res.best ?? serverBest;
+  $('#mmFinalBest').textContent = serverBest.toLocaleString();
+  $('#mmNewBest').classList.toggle('hidden', !res.isRecord);
+  if (res.isRecord) bumpScoreStat();
+  reward.innerHTML = `<span class="mm-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
+    <span class="mm-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
+  const tour = getTournamentForGame(GAME_ID);
+  if (tour) boardOver.innerHTML = tournamentBoardHtml(await leaderboardRemote(tour.id, 5));
+  void refreshTournamentPanel();
 }
 
 function fmtTime(s: number): string {
@@ -206,6 +259,7 @@ async function beginRankedRound(): Promise<void> {
     await host.startRound();
     rankedThisRun = true;
     lastFinalScore = 0;
+    hideOverOverlay();
     scoreEl.closest('.mm-stat-score')?.classList.remove('mm-score-bump');
     abortRound();
     const seq = roundSeq;
@@ -262,16 +316,16 @@ function tick(seq: number): void {
 
 function endRound(): void {
   if (phase !== 'playing' && phase !== 'paused') return;
+  const cleared = pairs === PAIR_COUNT;
+  if (!cleared) playSfx('lose');
   abortRound();
   lastFinalScore = computeScore();
   const durationMs = spentSeconds() * 1000;
   setPhase('over');
   scoreEl.textContent = String(lastFinalScore);
   bumpScoreStat();
-  void host.finish(lastFinalScore, false, durationMs, { ranked: rankedThisRun }).then((r) => {
-    void refreshTournamentPanel();
-    if (r.isRecord) bumpScoreStat();
-  });
+  showOverOverlay(lastFinalScore);
+  void submitRound(lastFinalScore, cleared, durationMs);
 }
 
 function flipCard(card: HTMLElement): void {
@@ -315,6 +369,7 @@ function checkMatch(): void {
 }
 
 playBtn.addEventListener('click', () => { playSfx('click'); void onPlayOrEnter(); });
+$('#mmAgainBtn').addEventListener('click', () => { playSfx('click'); void onPlayOrEnter(); });
 pauseBtn.addEventListener('click', () => { playSfx('click'); pauseRound(); });
 resumeBtn.addEventListener('click', () => { playSfx('click'); resumeRound(); });
 restartBtn.addEventListener('click', () => { playSfx('click'); void restartRound(); });
@@ -331,6 +386,7 @@ function pick(lang: Lang): void {
   applyTranslations();
   syncLangButtons();
   void refreshTournamentPanel();
+  if (phase === 'over') updateAgainBtn();
 }
 langEn.addEventListener('click', () => pick('en'));
 langAm.addEventListener('click', () => pick('am'));
