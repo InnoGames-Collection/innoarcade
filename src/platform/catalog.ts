@@ -263,12 +263,13 @@ const ALL_GAMES: GameMeta[] = [
     accent: '#7a6cff', thumb: ['#7a6cff', '#3d2f9e'], scoreEn: 'Score', scoreAm: 'ነጥብ' },
 ];
 
-// Storefront gating: only ENABLED ids are exposed across the platform. Every game
-// above is fully built and stays in the file — re-enable one by adding its id here
-// (a one-line change). Right now we ship Ethiorunner (temple-dash) alone; the rest
-// are parked until we relist them.
-const ENABLED = new Set<string>(['temple-dash', 'memory-match', 'fruit-slice']);
-export const CATALOG: GameMeta[] = ALL_GAMES.filter((g) => ENABLED.has(g.id));
+// Storefront gating: free games ship by default; tournament games are opt-in via
+// ENABLED. Every game above is fully built — re-enable a tournament title by adding
+// its id here (a one-line change).
+const ENABLED_TOURNAMENT = new Set<string>(['temple-dash', 'memory-match', 'fruit-slice']);
+export const CATALOG: GameMeta[] = ALL_GAMES.filter(
+  (g) => g.mode === 'free' || ENABLED_TOURNAMENT.has(g.id),
+);
 
 // WebP cover art for the catalog cards (files live in /public). Attached to the
 // catalog entries below so a card shows the artwork instead of the emoji glyph.
