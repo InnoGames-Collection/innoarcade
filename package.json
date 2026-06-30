@@ -10,9 +10,11 @@
     "preview": "vite preview",
     "seed": "node supabase/seed.mjs",
     "setup:test-phones": "node supabase/push-test-phones.mjs",
-    "verify:auth": "node supabase/verify-auth-setup.mjs"
+    "verify:auth": "node supabase/verify-auth-setup.mjs",
+    "skins:ethio-f": "node scripts/process-ethio-f-skins.mjs"
   },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "typescript": "~5.6.2",
     "vite": "^5.4.11"
   },

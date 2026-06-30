@@ -1,0 +1,85 @@
+{
+  "canvas": {
+    "width": 515,
+    "height": 732
+  },
+  "poses": {
+    "stand": {
+      "file": "stand.png",
+      "crop": {
+        "width": 230,
+        "height": 683
+      },
+      "placedAt": {
+        "left": 143,
+        "top": 41
+      }
+    },
+    "slide": {
+      "file": "slide.png",
+      "crop": {
+        "width": 417,
+        "height": 380
+      },
+      "placedAt": {
+        "left": 49,
+        "top": 344
+      }
+    },
+    "walk1": {
+      "file": "walk1.png",
+      "crop": {
+        "width": 221,
+        "height": 644
+      },
+      "placedAt": {
+        "left": 147,
+        "top": 80
+      }
+    },
+    "walk2": {
+      "file": "walk2.png",
+      "crop": {
+        "width": 255,
+        "height": 496
+      },
+      "placedAt": {
+        "left": 130,
+        "top": 228
+      }
+    },
+    "walk3": {
+      "file": "walk3.png",
+      "crop": {
+        "width": 364,
+        "height": 605
+      },
+      "placedAt": {
+        "left": 76,
+        "top": 119
+      }
+    },
+    "jump": {
+      "file": "jump.png",
+      "crop": {
+        "width": 250,
+        "height": 422
+      },
+      "placedAt": {
+        "left": 133,
+        "top": 302
+      }
+    },
+    "hit": {
+      "file": "hit.png",
+      "crop": {
+        "width": 491,
+        "height": 708
+      },
+      "placedAt": {
+        "left": 12,
+        "top": 16
+      }
+    }
+  }
+}
