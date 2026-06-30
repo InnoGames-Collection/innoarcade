@@ -15,7 +15,7 @@ const tourneyMount = (): HTMLElement => $('#mmTourney');
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
-/** Score = timeGain + pairGain − moveLoss at submit; live HUD shows progress only. */
+/** Score = pairGain − moveLoss + timeGain (server submit). Live HUD uses time accrued (+25/s). */
 const TIME_BASE = 3000;
 const TIME_DRAIN_PER_SEC = 25;
 const PAIR_GAIN = 100;
@@ -65,8 +65,14 @@ function spentSeconds(): number {
   return ROUND_SECONDS - Math.max(0, secondsLeft);
 }
 
+/** Speed bonus at submit: 3000 − spent×25 (same pool as live accrual, opposite side). */
 function timeGain(): number {
   return Math.max(0, TIME_BASE - spentSeconds() * TIME_DRAIN_PER_SEC);
+}
+
+/** Live time component — +25 each elapsed second (always increases while the clock runs). */
+function timeAccrued(): number {
+  return spentSeconds() * TIME_DRAIN_PER_SEC;
 }
 
 function pairGain(): number {
@@ -78,20 +84,25 @@ function moveLoss(): number {
   return Math.max(0, moves - pairs) * WASTED_MOVE_LOSS;
 }
 
-/** Final score = progress + time bonus (submitted to server). */
+/** Tournament submit: progress + remaining-time bonus. */
 function finalScore(): number {
   return Math.max(0, progressScore() + timeGain());
 }
 
-/** Live HUD while playing: pairs − wasted moves only (no clock drain). */
+/** Pairs − wasted flips. */
 function progressScore(): number {
   return Math.max(0, pairGain() - moveLoss());
+}
+
+/** Full score while playing — rises every second (+25) and on each match (+100). */
+function liveScore(): number {
+  return Math.max(0, progressScore() + timeAccrued());
 }
 
 function displayScore(): number {
   if (phase === 'over') return lastFinalScore;
   if (phase === 'idle') return 0;
-  return progressScore();
+  return liveScore();
 }
 
 function bumpScoreStat(): void {
@@ -100,16 +111,16 @@ function bumpScoreStat(): void {
   scoreEl.closest('.mm-stat-score')?.classList.add('mm-score-bump');
 }
 
-/** Count up from progress score to final (time bonus applied visibly at end). */
-function animateScoreToFinal(from: number, to: number, done: () => void): void {
-  if (from >= to) {
+/** Smooth step to the authoritative submit score when it differs from live. */
+function animateScoreTo(from: number, to: number, done: () => void): void {
+  if (from === to) {
     scoreEl.textContent = String(to);
     bumpScoreStat();
     done();
     return;
   }
   const t0 = performance.now();
-  const dur = 550;
+  const dur = 450;
   const step = (now: number): void => {
     const p = Math.min(1, (now - t0) / dur);
     scoreEl.textContent = String(Math.round(from + (to - from) * p));
@@ -290,12 +301,11 @@ function tick(seq: number): void {
 function endRound(): void {
   if (phase !== 'playing' && phase !== 'paused') return;
   abortRound();
-  const progress = progressScore();
+  const live = liveScore();
   lastFinalScore = finalScore();
   const durationMs = spentSeconds() * 1000;
   setPhase('over');
-  scoreEl.textContent = String(progress);
-  animateScoreToFinal(progress, lastFinalScore, () => {
+  animateScoreTo(live, lastFinalScore, () => {
     void host.finish(lastFinalScore, false, durationMs, { ranked: rankedThisRun }).then((r) => {
       void refreshTournamentPanel();
       if (r.isRecord) bumpScoreStat();
