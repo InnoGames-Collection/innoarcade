@@ -1,9 +1,10 @@
-// Temple Dash runners — custom 3D-style skin PNGs (one image per skin; all poses
-// reuse the same sheet). Kenney CC0 assets remain for obstacles/coins/backgrounds.
+// Temple Dash runners — custom 3D-style skin PNGs. Animated skins ship one PNG per
+// pose under skins/<id>/; others reuse a single thumb for every pose. Kenney CC0
+// assets remain for obstacles/coins/backgrounds.
 
 import type { SheetDef } from '../../engine/assets';
 
-const urls = import.meta.glob(['./kenney/*.png', './skins/*.png'], {
+const urls = import.meta.glob(['./kenney/*.png', './skins/*.png', './skins/**/*.png'], {
   eager: true,
   query: '?url',
   import: 'default',
@@ -28,14 +29,27 @@ export const SKINS: Skin[] = [
 
 const POSES = ['stand', 'walk1', 'walk2', 'walk3', 'jump', 'slide'] as const;
 
-function skinUrl(thumbPath: string): string {
-  const key = Object.keys(urls).find((k) => k.endsWith(thumbPath.replace('./', '')));
+function assetUrl(relativePath: string): string {
+  const suffix = relativePath.replace('./', '');
+  const key = Object.keys(urls).find((k) => k.endsWith(suffix));
   return key ? urls[key] : '';
+}
+
+function skinThumbSrc(skin: Skin): string {
+  return assetUrl(skin.thumb);
+}
+
+/** Per-pose PNG when present, otherwise the skin thumb (static skins). */
+function skinPoseSrc(skinId: string, pose: string): string {
+  const poseSrc = assetUrl(`./skins/${skinId}/${pose}.png`);
+  if (poseSrc) return poseSrc;
+  const skin = SKINS.find((s) => s.id === skinId);
+  return skin ? skinThumbSrc(skin) : '';
 }
 
 export function skinThumbUrl(id: string): string {
   const skin = SKINS.find((s) => s.id === id);
-  return skin ? skinUrl(skin.thumb) : '';
+  return skin ? skinThumbSrc(skin) : '';
 }
 
 /** Kenney environment sprites + per-pose aliases for each runner skin. */
@@ -47,9 +61,9 @@ export function sheetDefs(): Record<string, SheetDef> {
     defs[name] = { src: url };
   }
   for (const skin of SKINS) {
-    const src = skinUrl(skin.thumb);
-    if (!src) continue;
     for (const pose of POSES) {
+      const src = skinPoseSrc(skin.id, pose);
+      if (!src) continue;
       defs[`${skin.id}_${pose}`] = { src };
     }
   }
