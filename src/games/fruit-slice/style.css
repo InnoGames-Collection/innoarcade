@@ -5,28 +5,18 @@ body {
 }
 
 body.game-shell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100dvh;
   padding: calc(10px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));
   box-sizing: border-box;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  background: #07090f;
 }
 
 #stage {
-  position: relative;
   height: min(100dvh - 20px, 150vw);
   max-height: 100%;
   max-width: 100%;
   aspect-ratio: 2 / 3;
-  margin: 0 auto;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
 }
 
 #closeBtn {
@@ -92,7 +82,7 @@ body.game-shell {
   align-items: stretch;
   gap: 11px;
   width: min(360px, 94vw);
-  max-height: min(92dvh, 680px);
+  max-height: min(86dvh, 680px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }

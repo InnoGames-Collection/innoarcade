@@ -7,7 +7,7 @@
     <title>Memory Match — GoPlay</title>
   </head>
   <body class="game-shell" data-game="memory-match">
-    <div id="stage" class="mm-stage">
+    <div id="stage" class="mm-stage game-shell-stage">
       <div id="mmBackdrop" class="mm-backdrop" aria-hidden="true"></div>
 
       <div id="menuOverlay" class="game-overlay">
@@ -34,7 +34,7 @@
         </div>
       </div>
 
-      <div id="mmOverOverlay" class="game-overlay hidden" aria-hidden="true">
+      <div id="mmOverOverlay" class="game-overlay is-scroll hidden" aria-hidden="true">
         <div class="game-panel mm-over-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
