@@ -19,10 +19,10 @@ const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(s
 
 /** End-of-attempt score only (not shown live during play). */
 const TIME_BASE = 3000;
-const TIME_DRAIN_PER_SEC = 25;
+const TIME_DRAIN_PER_SEC = 27;
 const PAIR_GAIN = 100;
 /** Penalty per wasted two-card try (moves − pairs). */
-const WASTED_MOVE_LOSS = 40;
+const WASTED_MOVE_LOSS = 52;
 
 const ROUND_SECONDS = 120;
 const PAIR_COUNT = 6;
@@ -68,7 +68,7 @@ function spentSeconds(): number {
   return ROUND_SECONDS - Math.max(0, secondsLeft);
 }
 
-/** timeGain = 3000 − spent×25 */
+/** timeGain = 3000 − spent×27 */
 function timeGain(): number {
   return Math.max(0, TIME_BASE - spentSeconds() * TIME_DRAIN_PER_SEC);
 }
