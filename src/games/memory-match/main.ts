@@ -39,6 +39,8 @@ let secondsLeft = ROUND_SECONDS;
 let timerId = 0;
 let roundSeq = 0;
 let starting = false;
+/** Frozen final score for this attempt (shown after round ends). */
+let lastFinalScore = 0;
 
 const grid = $('#mm-grid');
 const timeEl = $('#mm-time');
@@ -87,9 +89,38 @@ function progressScore(): number {
 }
 
 function displayScore(): number {
-  if (phase === 'over') return finalScore();
+  if (phase === 'over') return lastFinalScore;
   if (phase === 'idle') return 0;
   return progressScore();
+}
+
+function bumpScoreStat(): void {
+  scoreEl.closest('.mm-stat-score')?.classList.remove('mm-score-bump');
+  void scoreEl.offsetWidth;
+  scoreEl.closest('.mm-stat-score')?.classList.add('mm-score-bump');
+}
+
+/** Count up from progress score to final (time bonus applied visibly at end). */
+function animateScoreToFinal(from: number, to: number, done: () => void): void {
+  if (from >= to) {
+    scoreEl.textContent = String(to);
+    bumpScoreStat();
+    done();
+    return;
+  }
+  const t0 = performance.now();
+  const dur = 550;
+  const step = (now: number): void => {
+    const p = Math.min(1, (now - t0) / dur);
+    scoreEl.textContent = String(Math.round(from + (to - from) * p));
+    if (p < 1) requestAnimationFrame(step);
+    else {
+      scoreEl.textContent = String(to);
+      bumpScoreStat();
+      done();
+    }
+  };
+  requestAnimationFrame(step);
 }
 
 function attemptsLeft(): number {
@@ -201,6 +232,8 @@ async function beginRankedRound(): Promise<void> {
   try {
     await host.startRound();
     rankedThisRun = true;
+    lastFinalScore = 0;
+    scoreEl.closest('.mm-stat-score')?.classList.remove('mm-score-bump');
     abortRound();
     const seq = roundSeq;
     buildBoard();
@@ -257,12 +290,16 @@ function tick(seq: number): void {
 function endRound(): void {
   if (phase !== 'playing' && phase !== 'paused') return;
   abortRound();
-  const submitted = finalScore();
-  scoreEl.textContent = String(submitted);
+  const progress = progressScore();
+  lastFinalScore = finalScore();
   const durationMs = spentSeconds() * 1000;
   setPhase('over');
-  void host.finish(submitted, false, durationMs, { ranked: rankedThisRun }).then(() => {
-    void refreshTournamentPanel();
+  scoreEl.textContent = String(progress);
+  animateScoreToFinal(progress, lastFinalScore, () => {
+    void host.finish(lastFinalScore, false, durationMs, { ranked: rankedThisRun }).then((r) => {
+      void refreshTournamentPanel();
+      if (r.isRecord) bumpScoreStat();
+    });
   });
 }
 
@@ -301,6 +338,7 @@ function checkMatch(): void {
       c2.textContent = '❓';
       flipped = [];
       canFlip = true;
+      refreshStats();
     }, 900);
   }
 }

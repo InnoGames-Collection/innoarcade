@@ -165,6 +165,15 @@
   line-height: 1.1;
 }
 .mm-stat-score .mm-stat-value { color: #ffd700; }
+.mm-stat-score.mm-score-bump .mm-stat-value {
+  animation: mm-score-pop 0.55s ease;
+}
+@keyframes mm-score-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); color: #fff; }
+  100% { transform: scale(1); }
+}
+.mm-stat-value { transition: color 0.2s; }
 .mm-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
