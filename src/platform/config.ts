@@ -70,19 +70,16 @@ export interface AppConfig {
   winRateOverride: number | null;
 }
 
-// The shipped defaults. Coin pricing is tuned so ~2 ETB ≈ 1 coin at the entry
-// tier, with escalating bonus at higher tiers — standard free-to-play curve.
+// Early-stage coin economy: ~4 ETB ≈ 1 coin at entry tier, bonus on larger packs.
 export const DEFAULT_CONFIG: AppConfig = {
-  // Coin packs from the Game Mechanics doc §7.1 (price ETB → base coins + bonus%).
-  // The "total" matches the doc: 50, 220, 600, 1300.
   coinPackages: [
-    { id: 'starter', coins: 50, bonus: 0, priceEtb: 5 },
-    { id: 'popular', coins: 200, bonus: 20, priceEtb: 20, popular: true }, // +10%
-    { id: 'value', coins: 500, bonus: 100, priceEtb: 50 },                 // +20%
-    { id: 'pro', coins: 1000, bonus: 300, priceEtb: 100 },                 // +30%
+    { id: 'starter', coins: 20, bonus: 0, priceEtb: 5 },
+    { id: 'popular', coins: 60, bonus: 10, priceEtb: 15, popular: true },
+    { id: 'value', coins: 150, bonus: 30, priceEtb: 40 },
+    { id: 'pro', coins: 350, bonus: 100, priceEtb: 80 },
   ],
   paymentMethods: { telebirr: true, topup: true },
-  defaultEntryFeeCoins: 10,
+  defaultEntryFeeCoins: 1,
   houseRakePct: 10,
   maintenance: false,
   winRateOverride: null,
@@ -90,9 +87,9 @@ export const DEFAULT_CONFIG: AppConfig = {
 
 /** Top-3 season coin prizes — mirror the default store catalogue totals. */
 export const SEASON_TOP_PRIZES: { rank: number; packId: string; label: string; coins: number }[] = [
-  { rank: 1, packId: 'pro', label: 'Pro', coins: 1300 },
-  { rank: 2, packId: 'value', label: 'Value', coins: 600 },
-  { rank: 3, packId: 'popular', label: 'Popular', coins: 220 },
+  { rank: 1, packId: 'pro', label: 'Pro', coins: 450 },
+  { rank: 2, packId: 'value', label: 'Value', coins: 180 },
+  { rank: 3, packId: 'popular', label: 'Popular', coins: 70 },
 ];
 
 export const SEASON_POT_COINS =

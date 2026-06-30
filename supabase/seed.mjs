@@ -22,15 +22,15 @@ if (!URL || !KEY) {
 const db = createClient(URL, KEY, { auth: { persistSession: false } });
 
 const PACKAGES = [
-  { id: 'starter', coins: 50, bonus: 0, priceEtb: 5 },
-  { id: 'popular', coins: 200, bonus: 20, priceEtb: 20, popular: true },
-  { id: 'value', coins: 500, bonus: 100, priceEtb: 50 },
-  { id: 'pro', coins: 1000, bonus: 300, priceEtb: 100 },
+  { id: 'starter', coins: 20, bonus: 0, priceEtb: 5 },
+  { id: 'popular', coins: 60, bonus: 10, priceEtb: 15, popular: true },
+  { id: 'value', coins: 150, bonus: 30, priceEtb: 40 },
+  { id: 'pro', coins: 350, bonus: 100, priceEtb: 80 },
 ];
 const APP_CONFIG = {
   coinPackages: PACKAGES,
   paymentMethods: { telebirr: true, topup: true },
-  defaultEntryFeeCoins: 10,
+  defaultEntryFeeCoins: 1,
   houseRakePct: 10,
   maintenance: false,
   winRateOverride: null,

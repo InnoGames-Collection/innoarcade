@@ -19,10 +19,9 @@ import { isConfigured, supabase } from './supabase';
 import { config, economyNeedsAuth } from './config';
 import { SignInRequiredError } from './payments';
 
-// Per-cadence economy (doc §4.1): entry fee + attempts banked per entry. Entry is
-// open to any signed-in player who can afford the fee — there is NO level gate.
-const CADENCE_FEE: Record<TournamentCadence, number> = { daily: 2, weekly: 5, monthly: 10 };
-const CADENCE_ATTEMPTS: Record<TournamentCadence, number> = { daily: 5, weekly: 15, monthly: 30 };
+// Per-cadence economy: entry fee + attempts banked per entry.
+const CADENCE_FEE: Record<TournamentCadence, number> = { daily: 1, weekly: 3, monthly: 5 };
+const CADENCE_ATTEMPTS: Record<TournamentCadence, number> = { daily: 5, weekly: 10, monthly: 15 };
 const CADENCE_TITLE: Record<TournamentCadence, { en: string; am: string }> = {
   daily: { en: 'Daily Runner', am: 'ዕለታዊ ሩጫ' },
   weekly: { en: 'Weekly Cup', am: 'ሳምንታዊ ዋንጫ' },
