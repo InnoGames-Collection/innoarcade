@@ -57,7 +57,7 @@ export class FruitSlice {
   best = getHighScore('fruit-slice');
 
   onStateChange: (s: GameState) => void = () => {};
-  onGameOver: (score: number, record: boolean) => void = () => {};
+  onGameOver: (score: number, record: boolean, durationMs: number) => void = () => {};
 
   private time = 0;
   // Difficulty ramp: spawn rate + object speed scale up with elapsed time, so the
@@ -245,7 +245,7 @@ export class FruitSlice {
       this.combo = 0;
       if (this.lives <= 0) {
         this.setState('gameOver');
-        this.onGameOver(this.score, this.score > this.best);
+        this.onGameOver(this.score, this.score > this.best, Math.floor(this.time * 1000));
         if (this.score > this.best) {
           setHighScore('fruit-slice', this.score);
           this.best = this.score;

@@ -84,7 +84,7 @@ const ALL_GAMES: GameMeta[] = [
     nameEn: 'Ethiorunner',
     nameAm: 'ኢትዮሯጭ',
     genreEn: 'Runner · Tournament', genreAm: 'ሩጫ · ውድድር',
-    mode: 'tournament', tournament: 'daily', stable: 'v1', icon: '🏃', accent: '#e2563a', thumb: ['#7a2d1a', '#2a0f08'],
+    mode: 'tournament', tournament: 'daily', stable: 'v2', icon: '🏃', accent: '#e2563a', thumb: ['#7a2d1a', '#2a0f08'],
     scoreEn: 'Score', scoreAm: 'ነጥብ',
   },
   {

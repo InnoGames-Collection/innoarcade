@@ -1,6 +1,6 @@
 // Shared in-game tournament panel — mirrors EthioRunner's #runnerTourney layout.
 // Consumed by tournament games (memory-match, fruit-slice). EthioRunner keeps its
-// inline stable-v1 copy; new games use this module.
+// inline stable-v2 copy; new games use this module.
 
 import { getLang, t } from '../i18n';
 import { leaderboardRemote, playerStandingRemote } from './backend';

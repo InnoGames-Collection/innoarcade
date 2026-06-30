@@ -88,6 +88,8 @@ body {
   padding: 32px 38px;
   min-width: 280px;
   max-width: 92%;
+  max-height: 92%;
+  overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
@@ -197,3 +199,93 @@ body {
   color: #0a0f1a;
   font-weight: 700;
 }
+
+/* --- Tournament panel (shared layout — see gameTournamentPanel.ts) ---------- */
+.game-tourney {
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 150, 50, 0.35);
+  border-radius: 14px;
+  background: rgba(20, 30, 50, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.game-tourney:empty { display: none; }
+.gt-head { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; }
+.gt-title { font-weight: 800; color: #fff; }
+.gt-coins { color: #ff9632; font-weight: 800; }
+.gt-best { font-size: 0.82rem; color: rgba(255, 255, 255, 0.85); }
+.gt-best strong { color: #ffd700; font-size: 1rem; }
+.gt-status { font-size: 0.82rem; color: #fff; }
+.gt-attempts strong { color: #ff9632; }
+.gt-board { display: flex; flex-direction: column; gap: 3px; }
+.gt-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+}
+.gt-row.me { background: rgba(255, 150, 50, 0.18); font-weight: 700; }
+.gt-rank { text-align: center; }
+.gt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gt-score { color: #ffaa66; font-variant-numeric: tabular-nums; font-weight: 700; }
+.gt-empty { font-size: 0.8rem; color: rgba(255, 255, 255, 0.55); text-align: center; margin: 4px 0; }
+.gt-board-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* --- Game-over overlay (runner / memory-match parity) --------------------- */
+.fs-over-panel {
+  padding: 22px 20px;
+  gap: 11px;
+  align-items: stretch;
+  text-align: center;
+}
+.fs-over-final {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+.fs-over-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+.fs-over-stat strong {
+  font-size: 1.35rem;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.fs-run-reward {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: center;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 0.86rem;
+  color: #fff;
+  min-height: 1.2em;
+}
+.fs-rr-stat b { color: rgba(255, 255, 255, 0.55); font-weight: 600; margin-right: 3px; }
+.fs-rr-note { color: rgba(255, 255, 255, 0.55); font-size: 0.82rem; }
+.fs-rr-pending { color: rgba(255, 255, 255, 0.55); }
+.fs-over-board-wrap { width: 100%; margin-top: 2px; }
+.fs-over-board-wrap h3 {
+  font-size: 0.82rem;
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: left;
+}
+.fs-over-board { display: flex; flex-direction: column; gap: 3px; }

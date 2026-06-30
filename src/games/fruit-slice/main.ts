@@ -1,13 +1,20 @@
 import '../../styles/base.css';
 import { GameHost } from '../../platform/gameHost';
 import { openTournamentEntryForGame } from '../../hub/tournamentEntry';
-import { loadTournaments, loadMyEntries } from '../../platform/tournaments';
+import { refreshGameTournamentPanel, tournamentBoardHtml } from '../../platform/gameTournamentPanel';
+import { leaderboardRemote, playerStandingRemote } from '../../platform/backend';
+import { isConfigured } from '../../platform/supabase';
+import { currentUser } from '../../platform/auth';
+import { loadTournaments, loadMyEntries, myEntry, getTournamentForGame } from '../../platform/tournaments';
 import './style.css';
-import { applyTranslations, getLang, setLang, type Lang } from '../../i18n';
+import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
 import { sfx } from '../../engine/audio';
 import { FruitSlice, W, H, type GameState } from './game';
+
+const GAME_ID = 'fruit-slice';
+const tourneyMount = (): HTMLElement => $('#fsTourney');
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
@@ -20,8 +27,10 @@ ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
 const game = new FruitSlice();
 
-const host = new GameHost('fruit-slice');
+const host = new GameHost(GAME_ID);
 let rankedThisRun = false;
+let serverBest = 0;
+let starting = false;
 
 // Minimal transient toast (this game has no toast element of its own).
 let toastT = 0;
@@ -39,6 +48,24 @@ function toast(msg: string): void {
   toastT = window.setTimeout(() => { el!.style.opacity = '0'; }, 2400);
 }
 
+function attemptsLeft(): number {
+  const tour = getTournamentForGame(GAME_ID);
+  return tour ? (myEntry(tour.id)?.left ?? 0) : 0;
+}
+
+function tournamentPlayLabel(): string {
+  const left = attemptsLeft();
+  return left > 0 ? `▶ ${t('td.playTournament')} · 🎟️ ${left}` : t('td.playTournament');
+}
+
+function updateActionButtons(): void {
+  const left = attemptsLeft();
+  const playLabel = tournamentPlayLabel();
+  $('#startBtn').textContent = playLabel;
+  $('#againBtn').textContent = playLabel;
+  $('#restartBtn').textContent = left > 0 ? t('td.restart') : t('td.playTournament');
+}
+
 const overlays: Record<string, HTMLElement> = {
   menu: $('#menuOverlay'),
   paused: $('#pauseOverlay'),
@@ -53,36 +80,97 @@ function showOverlay(state: GameState): void {
 
 game.onStateChange = showOverlay;
 
-game.onGameOver = (score, record) => {
-  $('#finalScore').textContent = `Final Score: ${score}`;
-  $('#newBest').classList.toggle('hidden', !record);
-  void host.finish(score, score >= host.winScore, 0, { ranked: rankedThisRun }).then((res) => {
-    const note = document.querySelector<HTMLElement>('#fsRanked');
-    if (note) {
-      note.textContent = (res.ranked ?? false)
-        ? `🏆 Ranked · #${res.rank ?? '—'}/${res.total ?? '—'} · 🎟️ ${res.attemptsLeft ?? 0} left`
-        : '';
-    }
-  });
-};
+async function refreshTournamentPanel(): Promise<void> {
+  const snap = await refreshGameTournamentPanel(GAME_ID, tourneyMount());
+  if (snap) serverBest = snap.serverBest;
+  updateActionButtons();
+}
 
-// Authorise + start a round: consume a banked attempt, or buy the next block
-// (pay-once → N attempts). If refused (coins/level/auth), fall back to a free run.
-async function play(): Promise<void> {
-  const res = await host.begin();
-  if (!res.ok) {
-    if (res.reason === 'coins') {
-      openTournamentEntryForGame('fruit-slice', {
-        onEntered: () => { void play(); },
-        onPlay: () => { void play(); },
-      });
-      return;
-    }
-    else if (res.reason === 'auth') toast('Sign in to compete');
+function showGameOverOverlay(score: number): void {
+  $('#fsFinalScore').textContent = score.toLocaleString();
+  $('#fsFinalBest').textContent = '—';
+  $('#newBest').classList.add('hidden');
+  $('#fsRunReward').innerHTML = `<span class="fs-rr-pending">…</span>`;
+  $('#fsBoardOver').innerHTML = '';
+  updateActionButtons();
+}
+
+async function submitRun(score: number, durationMs: number, isWin: boolean): Promise<void> {
+  const reward = $('#fsRunReward');
+  const boardOver = $('#fsBoardOver');
+  if (!isConfigured()) {
+    reward.innerHTML = '';
+    boardOver.innerHTML = '';
+    $('#fsFinalBest').textContent = score.toLocaleString();
     return;
   }
-  rankedThisRun = true;
-  game.start();
+  reward.innerHTML = `<span class="fs-rr-pending">…</span>`;
+  let res;
+  try {
+    res = await host.finish(score, isWin, durationMs, { ranked: rankedThisRun });
+  } catch {
+    reward.innerHTML = `<span class="fs-rr-note">${t('td.signInToRank')}</span>`;
+    toast(t('td.signInToRank'));
+    return;
+  }
+  if (rankedThisRun && res.rank == null) {
+    reward.innerHTML = `<span class="fs-rr-note">${t('td.signInToRank')}</span>`;
+    toast(t('td.signInToRank'));
+    return;
+  }
+  serverBest = res.best ?? serverBest;
+  $('#fsFinalBest').textContent = serverBest.toLocaleString();
+  $('#newBest').classList.toggle('hidden', !res.isRecord);
+  reward.innerHTML = `<span class="fs-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
+    <span class="fs-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
+  const tour = getTournamentForGame(GAME_ID);
+  if (tour) {
+    const board = await leaderboardRemote(tour.id, 5);
+    const standing = await playerStandingRemote(tour.id);
+    boardOver.innerHTML = tournamentBoardHtml(board, standing);
+  }
+  void refreshTournamentPanel();
+}
+
+game.onGameOver = (score, record, durationMs) => {
+  showGameOverOverlay(score);
+  $('#newBest').classList.toggle('hidden', !record);
+  void submitRun(score, durationMs, score >= host.winScore);
+};
+
+async function onEnter(): Promise<void> {
+  openTournamentEntryForGame(GAME_ID, {
+    onEntered: () => { void refreshTournamentPanel(); },
+    onPlay: () => { void onPlayOrEnter(); },
+  });
+}
+
+async function onPlayOrEnter(): Promise<void> {
+  if (starting || game.state === 'playing') return;
+  if (attemptsLeft() <= 0) {
+    await onEnter();
+    return;
+  }
+  await beginRankedRound();
+}
+
+async function beginRankedRound(): Promise<void> {
+  if (starting) return;
+  if (isConfigured() && !(await currentUser())) {
+    toast(t('td.signInToRank'));
+    return;
+  }
+  starting = true;
+  try {
+    await host.startRound();
+    rankedThisRun = true;
+    game.start();
+    void refreshTournamentPanel();
+  } catch {
+    toast(t('td.signInToRank'));
+  } finally {
+    starting = false;
+  }
 }
 
 const input = new Input(document.body);
@@ -116,9 +204,9 @@ canvas.addEventListener('pointerleave', () => {
   game.endSlice();
 });
 
-$('#startBtn').addEventListener('click', () => void play());
-$('#againBtn').addEventListener('click', () => void play());
-$('#restartBtn').addEventListener('click', () => void play());
+$('#startBtn').addEventListener('click', () => void onPlayOrEnter());
+$('#againBtn').addEventListener('click', () => void onPlayOrEnter());
+$('#restartBtn').addEventListener('click', () => void onPlayOrEnter());
 $('#resumeBtn').addEventListener('click', () => game.resume());
 $('#pauseBtn').addEventListener('click', () => {
   if (game.state === 'playing') game.pause();
@@ -140,7 +228,10 @@ function syncLangButtons(): void {
 }
 function pick(lang: Lang): void {
   setLang(lang);
+  applyTranslations();
   syncLangButtons();
+  void refreshTournamentPanel();
+  updateActionButtons();
 }
 langEn.addEventListener('click', () => pick('en'));
 langAm.addEventListener('click', () => pick('am'));
@@ -159,9 +250,8 @@ const loop = new GameLoop(
 document.documentElement.lang = getLang();
 applyTranslations();
 syncLangButtons();
+updateActionButtons();
 showOverlay('menu');
 loop.start();
 
-// Hydrate the live tournament + the player's attempt bank so the first play
-// knows whether it's a ranked attempt or a free run.
-void Promise.all([loadTournaments(), loadMyEntries()]);
+void Promise.all([loadTournaments(), loadMyEntries()]).then(() => refreshTournamentPanel());

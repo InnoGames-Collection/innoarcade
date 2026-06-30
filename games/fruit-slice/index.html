@@ -20,8 +20,9 @@
         <div class="panel">
           <h1>Fruit Slice</h1>
           <p class="subtitle" data-i18n="game.fruitSlice.desc"></p>
+          <div class="game-tourney" id="fsTourney" aria-live="polite"></div>
           <p class="controls" data-i18n="fs.controls"></p>
-          <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
+          <button id="startBtn" class="btn primary" data-i18n="td.playTournament">Play Tournament</button>
           <div class="lang-switch" role="group" aria-label="Language">
             <button id="langEn" class="lang-btn">EN</button>
             <button id="langAm" class="lang-btn">አማ</button>
@@ -40,11 +41,18 @@
       </div>
 
       <div id="overOverlay" class="overlay hidden">
-        <div class="panel">
+        <div class="panel fs-over-panel">
           <h2 data-i18n="td.gameOver">Game over</h2>
-          <p id="finalScore" class="score"></p>
-          <p id="fsRanked" class="fs-ranked"></p>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
+          <div class="fs-over-final">
+            <div class="fs-over-stat"><span data-i18n="td.score">Score</span><strong id="fsFinalScore">0</strong></div>
+            <div class="fs-over-stat"><span data-i18n="td.best">Best</span><strong id="fsFinalBest">0</strong></div>
+          </div>
+          <div class="fs-run-reward" id="fsRunReward"></div>
+          <div class="fs-over-board-wrap">
+            <h3 data-i18n="td.leaderboard">Leaderboard</h3>
+            <div class="fs-over-board" id="fsBoardOver"></div>
+          </div>
           <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         </div>
