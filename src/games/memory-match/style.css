@@ -14,8 +14,7 @@ body.game-shell[data-game="memory-match"] {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
   padding: 14px 12px 28px;
 }
 
@@ -46,16 +45,26 @@ body.game-shell[data-game="memory-match"] {
   align-items: center;
   justify-content: center;
   padding: clamp(12px, 3vw, 20px);
+  padding-top: clamp(2.5rem, 6vw, 3rem);
   background: var(--bg-solid);
   border-radius: clamp(16px, 4vw, 24px);
   font-family: inherit;
   color: #fff;
   width: 100%;
+  flex: 1;
+  min-height: 0;
   box-sizing: border-box;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   border: 2px solid var(--border-color);
 }
 #memory-match-wrapper * { box-sizing: border-box; }
+
+#mmCloseBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 6;
+}
 
 .mm-stats {
   display: grid;
@@ -170,14 +179,26 @@ body.game-shell[data-game="memory-match"] {
   color: var(--pink);
 }
 
-/* Game-over overlay inside the playfield wrapper */
-.mm-over-overlay {
-  border-radius: inherit;
+.mm-stage > .game-overlay {
+  z-index: 10;
+}
+
+#mmOverOverlay.game-overlay {
+  z-index: 12;
 }
 
 .mm-over-panel {
   align-items: stretch;
   gap: 11px;
+  width: min(360px, 94vw);
+  max-height: min(92dvh, 680px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mm-over-panel .btn.primary {
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .mm-over-final {

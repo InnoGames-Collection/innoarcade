@@ -91,6 +91,15 @@ body.game-shell {
 .fs-over-panel {
   align-items: stretch;
   gap: 11px;
+  width: min(360px, 94vw);
+  max-height: min(92dvh, 680px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fs-over-panel .btn.primary {
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .fs-over-final {

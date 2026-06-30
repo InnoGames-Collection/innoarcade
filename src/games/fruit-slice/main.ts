@@ -71,6 +71,10 @@ function updateActionButtons(): void {
   $('#restartBtn').textContent = left > 0 ? t('td.restart') : t('hub.play');
 }
 
+function syncAttemptsUi(): void {
+  updateActionButtons();
+}
+
 const overlays: Record<string, HTMLElement> = {
   menu: $('#menuOverlay'),
   paused: $('#pauseOverlay'),
@@ -154,12 +158,16 @@ async function submitRun(score: number, durationMs: number, isWin: boolean): Pro
   $('#newBest').classList.toggle('hidden', !res.isRecord);
   reward.innerHTML = `<span class="fs-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
     <span class="fs-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
+  if (typeof res.attemptsLeft === 'number') {
+    reward.innerHTML += `<span class="fs-rr-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
+  }
   const tour = getTournamentForGame(GAME_ID);
   if (tour) {
     const board = await leaderboardRemote(tour.id, 5);
     const standing = await playerStandingRemote(tour.id);
     boardOver.innerHTML = tournamentBoardHtml(board, standing);
   }
+  syncAttemptsUi();
   void refreshTournamentPanel();
 }
 
@@ -177,7 +185,7 @@ async function onEnter(): Promise<void> {
 }
 
 async function onPlayOrEnter(): Promise<void> {
-  if (starting || game.state === 'playing') return;
+  if (starting || game.state === 'playing' || game.state === 'paused') return;
   if (attemptsLeft() <= 0) {
     await onEnter();
     return;
@@ -196,6 +204,7 @@ async function beginRankedRound(): Promise<void> {
     await host.startRound();
     rankedThisRun = true;
     game.start();
+    syncAttemptsUi();
     void refreshTournamentPanel();
   } catch {
     toast(t('td.signInToRank'));

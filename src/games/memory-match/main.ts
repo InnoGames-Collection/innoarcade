@@ -78,11 +78,18 @@ const restartBtn = $('#mm-restart-btn') as HTMLButtonElement;
 function showMenu(): void {
   $('#menuOverlay').classList.remove('hidden');
   $('#memory-match-wrapper').classList.add('hidden');
+  $('#mmBackdrop').classList.remove('hidden');
+  hideOverOverlay();
 }
 
 function showGame(): void {
   $('#menuOverlay').classList.add('hidden');
   $('#memory-match-wrapper').classList.remove('hidden');
+  $('#mmBackdrop').classList.add('hidden');
+}
+
+function syncAttemptsUi(): void {
+  updateActionButtons();
 }
 
 function playSfx(type: 'flip' | 'match' | 'nomatch' | 'win' | 'lose' | 'click'): void {
@@ -140,6 +147,7 @@ function setPhase(next: Phase): void {
   phase = next;
   if (next === 'menu') showMenu();
   else showGame();
+  $('#mmCloseBtn').classList.toggle('hidden', next === 'menu' || next === 'over');
   pauseBtn.classList.toggle('hidden', next !== 'playing');
   resumeBtn.classList.toggle('hidden', next !== 'paused');
   restartBtn.classList.toggle('hidden', next !== 'paused');
@@ -154,6 +162,7 @@ function showOverOverlay(final: number): void {
   $('#mmNewBest').classList.add('hidden');
   $('#mmRunReward').innerHTML = `<span class="mm-rr-pending">…</span>`;
   $('#mmBoardOver').innerHTML = '';
+  $('#mmCloseBtn').classList.add('hidden');
   updateActionButtons();
   overlay.classList.remove('hidden');
   overlay.setAttribute('aria-hidden', 'false');
@@ -221,12 +230,16 @@ async function submitRound(score: number, cleared: boolean, durationMs: number):
   if (res.isRecord) bumpScoreStat();
   reward.innerHTML = `<span class="mm-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
     <span class="mm-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
+  if (typeof res.attemptsLeft === 'number') {
+    reward.innerHTML += `<span class="mm-rr-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
+  }
   const tour = getTournamentForGame(GAME_ID);
   if (tour) {
     const board = await leaderboardRemote(tour.id, 5);
     const standing = await playerStandingRemote(tour.id);
     boardOver.innerHTML = tournamentBoardHtml(board, standing);
   }
+  syncAttemptsUi();
   void refreshTournamentPanel();
 }
 
@@ -325,6 +338,7 @@ async function beginRankedRound(): Promise<void> {
     secondsLeft = ROUND_SECONDS;
     refreshStats();
     setPhase('playing');
+    syncAttemptsUi();
     playSfx('flip');
     revealAll(true);
     window.setTimeout(() => {
