@@ -162,8 +162,8 @@ function run(assets: AssetStore): void {
     const againBtn = document.querySelector<HTMLButtonElement>('#againBtn');
     const restartBtn = document.querySelector<HTMLButtonElement>('#restartBtn');
     const playLabel = left > 0
-      ? `▶ ${t('td.playTournament')} · 🎟️ ${left}`
-      : t('td.playTournament');
+      ? `▶ ${t('hub.play')} · 🎟️ ${left}`
+      : t('hub.play');
 
     if (startBtn) {
       startBtn.disabled = false;
@@ -175,7 +175,7 @@ function run(assets: AssetStore): void {
     }
     if (restartBtn) {
       restartBtn.disabled = false;
-      restartBtn.textContent = left > 0 ? t('td.restart') : t('td.playTournament');
+      restartBtn.textContent = left > 0 ? t('td.restart') : t('hub.play');
     }
   }
 

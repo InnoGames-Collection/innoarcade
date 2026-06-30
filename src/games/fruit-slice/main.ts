@@ -55,7 +55,7 @@ function attemptsLeft(): number {
 
 function tournamentPlayLabel(): string {
   const left = attemptsLeft();
-  return left > 0 ? `▶ ${t('td.playTournament')} · 🎟️ ${left}` : t('td.playTournament');
+  return left > 0 ? `▶ ${t('hub.play')} · 🎟️ ${left}` : t('hub.play');
 }
 
 function updateActionButtons(): void {
@@ -63,7 +63,7 @@ function updateActionButtons(): void {
   const playLabel = tournamentPlayLabel();
   $('#startBtn').textContent = playLabel;
   $('#againBtn').textContent = playLabel;
-  $('#restartBtn').textContent = left > 0 ? t('td.restart') : t('td.playTournament');
+  $('#restartBtn').textContent = left > 0 ? t('td.restart') : t('hub.play');
 }
 
 const overlays: Record<string, HTMLElement> = {
