@@ -1,4 +1,5 @@
 import '../../styles/base.css';
+import '../../styles/game-shell.css';
 import './style.css';
 import { applyTranslations, getLang, t } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
@@ -11,9 +12,12 @@ import { registerPwa } from '../../engine/pwa';
 import { fetchSkins, setSkinRemote, leaderboardRemote, playerStandingRemote } from '../../platform/backend';
 import { GameHost } from '../../platform/gameHost';
 import { openTournamentEntryForGame } from '../../hub/tournamentEntry';
+import { openSignIn } from '../../hub/signin';
+import { renderShellMenuTournamentHtml, tournamentBoardHtml } from '../../platform/gameTournamentPanel';
+import { getGame } from '../../platform/catalog';
 import {
   getTournamentForGame, loadTournaments, loadMyEntries, myEntry,
-  type Tournament, type LeaderEntry,
+  type Tournament,
 } from '../../platform/tournaments';
 import { balance } from '../../platform/wallet';
 import { isConfigured } from '../../platform/supabase';
@@ -99,6 +103,7 @@ function run(assets: AssetStore): void {
       updateActionButtons();
     } catch {
       showToast(t('td.signInToRank'));
+      if (isConfigured() && !(await currentUser())) openSignIn();
     }
   }
 
@@ -148,9 +153,15 @@ function run(assets: AssetStore): void {
     if (sig !== chipSig) { powerChips.innerHTML = sig; chipSig = sig; }
   }
 
-  const escHtml = (s: string): string =>
-    s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-  const medal = (rank: number): string => ['🥇', '🥈', '🥉'][rank - 1] ?? `${rank}`;
+  function gameTitle(): string {
+    const g = getGame(GAME_ID);
+    if (!g) return 'Ethiorunner';
+    return getLang() === 'am' ? g.nameAm : g.nameEn;
+  }
+
+  function gameIcon(): string {
+    return getGame(GAME_ID)?.icon ?? '🏃';
+  }
 
   function attemptsLeft(): number {
     return tourney ? (myEntry(tourney.id)?.left ?? 0) : 0;
@@ -184,16 +195,6 @@ function run(assets: AssetStore): void {
     else await onEnter();
   }
 
-  function boardHtml(rows: LeaderEntry[]): string {
-    if (!rows.length) return `<p class="rb-empty">${t('td.noBoard')}</p>`;
-    return rows.map((r) => `
-      <div class="rb-row${r.isPlayer ? ' me' : ''}">
-        <span class="rb-rank">${medal(r.rank)}</span>
-        <span class="rb-name">${escHtml(r.isPlayer ? t('td.you') : r.name)}</span>
-        <span class="rb-score">${r.score.toLocaleString()}</span>
-      </div>`).join('');
-  }
-
   async function refreshTourney(): Promise<void> {
     if (!isConfigured()) { $('#runnerTourney').innerHTML = ''; return; }
     await currentUser();
@@ -208,18 +209,11 @@ function run(assets: AssetStore): void {
     serverBest = standing?.score ?? 0;
     game.best = serverBest;
 
-    const entry = myEntry(tourney.id);
-    const left = entry?.left ?? 0;
-    const title = getLang() === 'am' ? tourney.titleAm : tourney.titleEn;
+    const left = myEntry(tourney.id)?.left ?? 0;
 
-    $('#runnerTourney').innerHTML = `
-      <div class="rt-head">
-        <span class="rt-title">🏆 ${escHtml(title)}</span>
-        <span class="rt-coins">${walletCoins.toLocaleString()} 🪙</span>
-      </div>
-      <div class="rt-best">${t('td.yourBest')}: <strong>${serverBest.toLocaleString()}</strong></div>
-      ${left > 0 ? `<div class="rt-status"><span class="rt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${left}</strong></span></div>` : ''}
-      <div class="runner-board">${boardHtml(board)}</div>`;
+    $('#runnerTourney').innerHTML = renderShellMenuTournamentHtml(
+      gameTitle(), gameIcon(), walletCoins, serverBest, left, board,
+    );
 
     updateActionButtons();
   }
@@ -236,21 +230,21 @@ function run(assets: AssetStore): void {
     const reward = $('#runReward');
     const boardOver = $('#runnerBoardOver');
     if (!isConfigured()) { reward.innerHTML = ''; boardOver.innerHTML = ''; return; }
-    reward.innerHTML = `<span class="rr-pending">…</span>`;
+    reward.innerHTML = `<span class="shell-rr-pending">…</span>`;
     let res;
     try {
       res = await host.finish(score, score >= host.winScore, durationMs, { ranked: true });
     } catch {
-      reward.innerHTML = `<span class="rr-note">${t('td.signInToRank')}</span>`;
+      reward.innerHTML = `<span class="shell-rr-note">${t('td.signInToRank')}</span>`;
       return;
     }
     serverBest = res.best ?? serverBest;
     game.best = serverBest;
     $('#finalBest').textContent = String(serverBest);
     $('#newBest').classList.toggle('hidden', !res.isRecord);
-    reward.innerHTML = `<span class="rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
-      <span class="rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
-    if (tourney) boardOver.innerHTML = boardHtml(await leaderboardRemote(tourney.id, 5));
+    reward.innerHTML = `<span class="shell-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
+      <span class="shell-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
+    if (tourney) boardOver.innerHTML = tournamentBoardHtml(await leaderboardRemote(tourney.id, 5));
     void refreshTourney();
   }
 

@@ -6,6 +6,7 @@ import './style.css';
 import { applyTranslations, getLang, t } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { openTournamentEntryForGame } from '../../hub/tournamentEntry';
+import { openSignIn } from '../../hub/signin';
 import { createHost } from '../../platform/gameHost';
 import { renderShellMenuTournamentHtml, tournamentBoardHtml } from '../../platform/gameTournamentPanel';
 import { balance } from '../../platform/wallet';
@@ -322,7 +323,7 @@ async function onPlayOrEnter(): Promise<void> {
 async function beginRankedRound(): Promise<void> {
   if (starting) return;
   if (isConfigured() && !(await currentUser())) {
-    showToast(t('td.signInToRank'));
+    openSignIn();
     return;
   }
   starting = true;
@@ -349,7 +350,8 @@ async function beginRankedRound(): Promise<void> {
     }, 1000);
   } catch {
     setPhase('menu');
-    showToast(t('td.signInToRank'));
+    if (isConfigured() && !(await currentUser())) openSignIn();
+    else showToast(t('td.signInToRank'));
   } finally {
     starting = false;
   }

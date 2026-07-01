@@ -14,8 +14,12 @@
   --shell-radius: 18px;
   --grad-brand: linear-gradient(135deg, #6cc52f 0%, #4f9e16 100%);
   --game-accent: var(--shell-accent);
+  --shell-blue: #1f74e0;
+  /* Hub homescreen watermark — same tile as hub.css */
+  --hub-stars: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170' viewBox='0 0 170 170'%3E%3Cg fill='%234f9e16' fill-opacity='0.09'%3E%3Cg transform='translate(6 16) scale(1.8)'%3E%3Cpath d='M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM11 13H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5S14.67 12 15.5 12s1.5.67 1.5 1.5S16.33 15 15.5 15zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5S19.33 12 18.5 12z'/%3E%3C/g%3E%3Cg transform='translate(96 96) scale(1.8)'%3E%3Cpath d='M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM11 13H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5S14.67 12 15.5 12s1.5.67 1.5 1.5S16.33 15 15.5 15zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5S19.33 12 18.5 12z'/%3E%3C/g%3E%3Ccircle cx='132' cy='28' r='2.4'/%3E%3Ccircle cx='28' cy='140' r='2.4'/%3E%3C/g%3E%3C/svg%3E");
 }
 
+.game-shell[data-game="temple-dash"] { --game-accent: #e2563a; }
 .game-shell[data-game="orbit-blast"] { --game-accent: #5b8cff; }
 .game-shell[data-game="merge-2048"] { --game-accent: #f0a832; }
 .game-shell[data-game="candy-crunch"] { --game-accent: #e85b9c; }
@@ -173,14 +177,19 @@
   background: var(--shell-bg);
 }
 
-/* Runner-style page shell: centered game stage on dark backdrop. */
+/* Runner-style page shell: hub-themed backdrop behind the game stage. */
 body.game-shell {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100dvh;
   margin: 0;
-  background: #07090f;
+  background:
+    var(--hub-stars),
+    radial-gradient(120% 60% at 50% -10%, rgba(124, 201, 58, 0.16) 0%, transparent 55%),
+    #ffffff;
+  background-attachment: fixed;
+  color: var(--shell-text);
 }
 
 .game-shell-stage {
@@ -188,6 +197,20 @@ body.game-shell {
   overflow: hidden;
   border-radius: 10px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+.game-shell .game-overlay.hidden { display: none !important; }
+
+.game-shell .shell-over-board-wrap {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.game-shell .shell-over-board-wrap h3 {
+  font-size: 0.82rem;
+  margin: 0 0 6px;
+  color: var(--shell-muted);
+  text-align: left;
 }
 
 /* --- Overlay + panel (runner: centered menu on blurred playfield) ---------- */

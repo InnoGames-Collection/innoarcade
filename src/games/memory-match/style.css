@@ -1,4 +1,4 @@
-/* Memory Match — playfield stays dark; menu/overlays use game-shell.css (hub light). */
+/* Memory Match — hub-themed playfield; menu/overlays use game-shell.css */
 
 body.game-shell[data-game="memory-match"] {
   padding: 10px;
@@ -16,8 +16,9 @@ body.game-shell[data-game="memory-match"] {
   inset: 0;
   border-radius: inherit;
   background:
-    radial-gradient(120% 90% at 50% 20%, rgba(255, 107, 157, 0.35) 0%, transparent 55%),
-    linear-gradient(180deg, #0b1521 0%, #162436 100%);
+    var(--hub-stars),
+    radial-gradient(120% 60% at 50% -10%, rgba(124, 201, 58, 0.16) 0%, transparent 55%),
+    #ffffff;
   z-index: 0;
 }
 
@@ -30,11 +31,10 @@ body.game-shell[data-game="memory-match"] {
 }
 
 #memory-match-wrapper {
-  --pink: #ff6b9d;
-  --teal: #00d4aa;
-  --bg-solid: #0b1521;
-  --hud-bg: #162436;
-  --border-color: #2a3e56;
+  --mm-green: #4f9e16;
+  --mm-green-dark: #3d8010;
+  --mm-blue: #1f74e0;
+  --shell-line: #e6efdc;
   position: absolute;
   inset: 0;
   z-index: 4;
@@ -44,12 +44,15 @@ body.game-shell[data-game="memory-match"] {
   justify-content: center;
   padding: clamp(12px, 3vw, 20px);
   padding-top: clamp(2.5rem, 6vw, 3rem);
-  background: var(--bg-solid);
+  background:
+    var(--hub-stars),
+    radial-gradient(120% 60% at 50% -10%, rgba(124, 201, 58, 0.12) 0%, transparent 55%),
+    #ffffff;
   border-radius: inherit;
   font-family: inherit;
-  color: #fff;
+  color: var(--shell-text, #14271a);
   box-sizing: border-box;
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--shell-line);
 }
 #memory-match-wrapper * { box-sizing: border-box; }
 
@@ -90,36 +93,37 @@ body.game-shell[data-game="memory-match"] {
   min-height: 52px;
   padding: 8px 4px;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(22, 36, 54, 0.95) 0%, rgba(15, 26, 40, 0.98) 100%);
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  border: 1px solid var(--shell-line);
   text-align: center;
+  box-shadow: var(--shell-shadow-sm, 0 2px 8px rgba(20, 45, 14, 0.08));
 }
 .mm-stat-score {
-  border-color: rgba(255, 107, 157, 0.45);
-  background: linear-gradient(180deg, rgba(255, 107, 157, 0.12) 0%, rgba(22, 36, 54, 0.95) 100%);
+  border-color: rgba(31, 116, 224, 0.35);
+  background: linear-gradient(180deg, rgba(31, 116, 224, 0.08) 0%, #ffffff 100%);
 }
 .mm-stat-label {
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--shell-muted, #5f7262);
   line-height: 1.1;
 }
 .mm-stat-value {
   font-size: clamp(0.95rem, 3.2vw, 1.15rem);
   font-weight: 900;
-  color: var(--pink);
+  color: var(--mm-blue);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
-.mm-stat-score .mm-stat-value { color: #ffd700; }
+.mm-stat-score .mm-stat-value { color: var(--mm-blue); }
 .mm-stat-score.mm-score-bump .mm-stat-value {
   animation: mm-score-pop 0.55s ease;
 }
 @keyframes mm-score-pop {
   0% { transform: scale(1); }
-  40% { transform: scale(1.12); color: #fff; }
+  40% { transform: scale(1.12); color: var(--mm-green); }
   100% { transform: scale(1); }
 }
 .mm-stat-value { transition: color 0.2s; }
@@ -132,7 +136,8 @@ body.game-shell[data-game="memory-match"] {
 .mm-card {
   width: clamp(50px, 13vw, 62px);
   height: clamp(50px, 13vw, 62px);
-  background: var(--pink);
+  background: var(--mm-green);
+  color: #fff;
   border-radius: clamp(10px, 3vw, 14px);
   cursor: pointer;
   display: flex;
@@ -140,12 +145,13 @@ body.game-shell[data-game="memory-match"] {
   justify-content: center;
   font-size: clamp(1.6rem, 5.5vw, 2.1rem);
   transition: all 0.2s;
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--mm-green-dark);
+  font-weight: 900;
 }
 .mm-card.flipped, .mm-card.matched {
   background: #fff;
-  color: #0a1628;
-  border-color: var(--teal);
+  color: #14271a;
+  border-color: var(--mm-green);
 }
 .mm-card.matched { opacity: 0.75; cursor: default; animation: mm-match-pop 0.4s ease; }
 @keyframes mm-match-pop {
@@ -153,7 +159,12 @@ body.game-shell[data-game="memory-match"] {
   50% { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
-.mm-card:hover:not(.matched) { transform: translateY(-2px); background: #fff; border-color: #fff; color: var(--bg-solid); }
+.mm-card:hover:not(.matched) {
+  transform: translateY(-2px);
+  background: var(--mm-green-dark);
+  border-color: var(--mm-green-dark);
+  color: #fff;
+}
 .mm-grid.mm-paused { opacity: 0.45; pointer-events: none; filter: saturate(0.7); }
 .mm-actions {
   display: flex;
@@ -164,9 +175,9 @@ body.game-shell[data-game="memory-match"] {
   margin-top: clamp(0.75rem, 2vw, 1rem);
 }
 .mm-action-btn {
-  background: var(--teal);
-  color: #0a1628;
-  border: 2px solid var(--teal);
+  background: var(--mm-green);
+  color: #fff;
+  border: 2px solid var(--mm-green-dark);
   padding: clamp(10px, 2.5vw, 14px) clamp(24px, 6vw, 40px);
   font-size: clamp(0.85rem, 2.8vw, 1.05rem);
   font-weight: 900;
@@ -178,13 +189,18 @@ body.game-shell[data-game="memory-match"] {
   letter-spacing: 0.06em;
   min-width: 8.5rem;
 }
-.mm-action-btn:hover:not(:disabled) { transform: translateY(-2px); background: #fff; border-color: #fff; }
+.mm-action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--mm-green-dark);
+  border-color: var(--mm-green-dark);
+  color: #fff;
+}
 .mm-action-btn:active:not(:disabled) { transform: scale(0.97); }
 .mm-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .mm-peek {
-  background: rgba(255, 107, 157, 0.12);
-  border: 1px solid var(--pink);
-  color: var(--pink);
+  background: rgba(31, 116, 224, 0.1);
+  border: 1px solid var(--mm-blue);
+  color: var(--mm-blue);
 }
 
 .mm-over-final {
@@ -236,8 +252,8 @@ body.game-shell[data-game="memory-match"] {
   left: 50%;
   bottom: max(26px, env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
-  background: rgba(20, 24, 44, 0.95);
-  border: 1px solid rgba(0, 212, 170, 0.45);
+  background: rgba(20, 39, 26, 0.92);
+  border: 1px solid rgba(79, 158, 22, 0.45);
   color: #fff;
   padding: 10px 18px;
   border-radius: 999px;
@@ -246,7 +262,7 @@ body.game-shell[data-game="memory-match"] {
   max-width: min(92vw, 420px);
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   animation: mm-toast-in 0.3s ease;
   z-index: 60;
   pointer-events: none;
@@ -254,11 +270,19 @@ body.game-shell[data-game="memory-match"] {
 @keyframes mm-toast-in {
   from { transform: translate(-50%, 12px); opacity: 0; }
 }
-.mm-peek:hover:not(:disabled) { background: #fff !important; border-color: #fff !important; color: #0b1521 !important; }
-.mm-pause-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--border-color);
-  color: #fff;
+.mm-peek:hover:not(:disabled) {
+  background: var(--mm-blue) !important;
+  border-color: var(--mm-blue) !important;
+  color: #fff !important;
 }
-.mm-pause-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); border-color: #fff; color: #fff; }
+.mm-pause-btn {
+  background: #ffffff;
+  border-color: var(--shell-line);
+  color: var(--mm-blue);
+}
+.mm-pause-btn:hover:not(:disabled) {
+  background: rgba(31, 116, 224, 0.08);
+  border-color: var(--mm-blue);
+  color: var(--mm-blue);
+}
 .hidden { display: none !important; }

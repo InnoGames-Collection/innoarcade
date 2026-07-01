@@ -574,6 +574,33 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .howto-chip { background: var(--soft, #f1f5ea); font-size: 0.78rem; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 999px; }
 .howto-chip.reward { color: var(--accent); }
 .howto-scores { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+.howto-card-rules {
+  padding: 1.4rem 1.3rem 1.2rem !important;
+  gap: 0.65rem;
+  overflow: visible;
+}
+
+.howto-card-rules .howto-x {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line, #e6efdc);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted, #5f7262);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.howto-card-rules .howto-name {
+  font-size: 1.2rem;
+  margin: 0.2rem 0 0;
+  color: var(--text, #14271a);
+}
 .hs-cell { background: var(--soft, #f1f5ea); border-radius: 12px; padding: 0.5rem 0.7rem; display: flex; flex-direction: column; gap: 0.1rem; }
 .hs-lbl { font-size: 0.7rem; color: var(--muted); font-weight: 700; }
 .hs-cell strong { font-size: 1.1rem; }

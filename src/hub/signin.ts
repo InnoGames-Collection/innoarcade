@@ -226,18 +226,19 @@ function injectStyles(): void {
     .auth-promo { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.32); color: #fff;
       border-radius: 14px; padding: .7rem 1rem; text-align: center; font-weight: 800; font-size: .95rem; }
     #timer { color: var(--muted); font-weight: 700; }
-    .auth-card { position: relative; width: 100%; background: #fff; color: var(--text);
+    .auth-card { position: relative; width: 100%; background: #fff; color: #14271a;
       border-radius: 18px; padding: 28px 26px; box-shadow: 0 24px 60px rgba(8,12,34,.45); display: flex; flex-direction: column; gap: 11px; }
-    .auth-card h3 { font-size: 1.3rem; margin-bottom: 2px; }
-    .auth-card label { font-size: 0.8rem; color: var(--muted); }
-    .auth-input { width: 100%; padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 1rem; }
-    .auth-input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+    .auth-card h3 { font-size: 1.3rem; margin-bottom: 2px; color: #14271a; font-weight: 800; }
+    .auth-card label { font-size: 0.8rem; color: #5f7262; }
+    .auth-input { width: 100%; padding: 0.7rem 0.8rem; border: 1px solid #e6efdc; border-radius: 10px;
+      font: inherit; font-size: 1rem; color: #14271a; background: #fff; }
+    .auth-input:focus { outline: 2px solid var(--accent, #e2563a); border-color: var(--accent, #e2563a); }
     .auth-primary { margin-top: 4px; background: var(--accent); color: #fff; border: none; border-radius: 10px;
       padding: 0.7rem; font: inherit; font-weight: 700; cursor: pointer; }
     .auth-primary:disabled { opacity: .6; cursor: default; }
     .auth-link { background: none; border: none; color: var(--muted); font: inherit; cursor: pointer; padding: 4px; }
     .auth-link.danger { color: var(--accent-2); }
-    .auth-hint { font-size: 0.82rem; color: var(--muted); }
+    .auth-hint { font-size: 0.82rem; color: #5f7262; }
     .auth-demo { font-size: 0.86rem; color: #1f6f43; background: #e9f8ef; border: 1px solid #bce8cf;
       border-radius: 8px; padding: 6px 10px; margin: 0; }
     .auth-demo strong { font-size: 1.05rem; letter-spacing: 2px; }

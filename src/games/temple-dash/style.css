@@ -4,18 +4,15 @@ body {
   overflow: hidden;
 }
 
-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100dvh;
-  background: #07090f;
+body.game-shell[data-game="temple-dash"] {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
-#stage {
+.td-stage {
   position: relative;
 }
 

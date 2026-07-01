@@ -6,7 +6,7 @@ import { openAccount } from './account';
 import { mountWallet, openStore } from './wallet';
 import { onAuthChange, currentUser, signOut, authAvailable } from '../platform/auth';
 import { sfx } from '../engine/audio';
-import { leaderboardRemote, fetchWallets, fetchUnlocks, unlockGameRemote, fetchTournamentPeriodWinners, claimDailyLogin, mergedLeaderboard, playerStandingRemote } from '../platform/backend';
+import { leaderboardRemote, fetchWallets, fetchUnlocks, unlockGameRemote, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote } from '../platform/backend';
 import { orderedCatalog, getGame, type GameMeta, type TournamentCadence } from '../platform/catalog';
 import {
   activeTournaments, tournamentGame, getTournamentForGame, getLiveTournamentByCadence,
@@ -270,52 +270,23 @@ function gameCard(g: GameMeta): string {
 
 // "How to play" modal, opened by the ℹ️ button on a card. The button lives inside
 // the card's <a>, so we stop the click from navigating.
-// The live tournament whose game is `g`, if any (reverse of tournamentGame).
-function tournamentForGame(g: GameMeta): ReturnType<typeof activeTournaments>[number] | undefined {
-  return activeTournaments().find((tr) => tournamentGame(tr)?.id === g.id);
-}
-
-// Game/tournament intro: cover, description, rules, entry cost + reward, and —
-// for tournament games — the live top score and the player's best, before they
-// play. The Play button carries the entry economy through the game host as usual.
 function openHowTo(g: GameMeta): void {
   document.querySelector('.howto-modal')?.remove();
-  const tour = tournamentForGame(g);
-  const fee = tour ? tour.entryFeeCoins : 0;
   const m = document.createElement('div');
   m.className = 'howto-modal';
   m.innerHTML = `<div class="howto-scrim"></div>
-    <div class="howto-card">
-      <div class="howto-cover">${g.cover ? `<img src="${g.cover}" alt="" />` : `<span class="howto-icon">${g.icon}</span>`}
-        <span class="howto-mode ${g.mode}">${g.mode === 'tournament' ? `🏆 ${t('hub.tournament')}` : t('arc.free')}</span></div>
-      <h3 class="howto-name">${escapeHtml(name(g))}</h3>
-      <p class="howto-cat">${escapeHtml(category(g))}</p>
-      <div class="howto-econ">
-        <span class="howto-chip">${fee > 0 ? `${t('hub.entry')}: ${fee} 🪙` : '🆓'}</span>
-        <span class="howto-chip reward">${t('hub.reward')}: ⭐</span>
-      </div>
-      ${tour ? `<div class="howto-scores" id="howtoScores"><span class="hs-load">…</span></div>` : ''}
-      <p class="howto-sub">📖 ${t('hub.rules')}</p>
+    <div class="howto-card howto-card-rules">
+      <button type="button" class="howto-x" aria-label="${t('hub.cancel')}">✕</button>
+      <h3 class="howto-name">${g.icon} ${escapeHtml(name(g))}</h3>
+      <p class="howto-sub">📖 ${t('hub.howToPlay')}</p>
       <p class="howto-body">${escapeHtml(howTo(g))}</p>
-      <a class="btn primary howto-play" href="${g.route}">▶ ${tour ? t('hub.register') + (fee > 0 ? ` · ${fee} 🪙` : '') : t('hub.play')}</a>
-      <button class="btn ghost howto-close">${t('hub.cancel')}</button>
+      <button type="button" class="btn ghost howto-close">${t('hub.cancel')}</button>
     </div>`;
   document.body.appendChild(m);
   const close = (): void => m.remove();
   m.querySelector('.howto-scrim')!.addEventListener('click', close);
   m.querySelector('.howto-close')!.addEventListener('click', close);
-  // Fill the your-best-vs-top row from the authoritative server leaderboard.
-  if (tour) {
-    void mergedLeaderboard(tour.id).then((board) => {
-      const el = m.querySelector('#howtoScores');
-      if (!el) return;
-      const top = board[0];
-      const mine = board.find((r) => r.isPlayer);
-      el.innerHTML = `
-        <div class="hs-cell"><span class="hs-lbl">🏆 ${t('hub.topScore')}</span><strong>${top ? top.score.toLocaleString() : '—'}</strong></div>
-        <div class="hs-cell"><span class="hs-lbl">👤 ${t('hub.yourBest')}</span><strong>${mine ? mine.score.toLocaleString() : '—'}</strong></div>`;
-    });
-  }
+  m.querySelector('.howto-x')!.addEventListener('click', close);
 }
 
 // Browse state: the top segmented menu filters by tag (all / tournament / free).

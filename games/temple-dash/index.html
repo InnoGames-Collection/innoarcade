@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#0a0d18" />
+    <meta name="theme-color" content="#ffffff" />
     <link rel="manifest" href="../../manifest.webmanifest" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏃</text></svg>" />
     <title>Ethiorunner — GoPlay</title>
   </head>
-  <body>
-    <div id="stage">
+  <body class="game-shell" data-game="temple-dash">
+    <div id="stage" class="td-stage game-shell-stage">
       <canvas id="game"></canvas>
 
       <button id="closeBtn" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
@@ -30,17 +30,16 @@
         <div class="hud-powerups" id="powerChips"></div>
       </div>
 
-      <div id="menuOverlay" class="overlay">
-        <div class="panel panel-clean">
+      <div id="menuOverlay" class="game-overlay">
+        <div class="game-panel panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
-          <div class="runner-tourney" id="runnerTourney"></div>
-
+          <div class="shell-tourney" id="runnerTourney" aria-live="polite"></div>
           <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
         </div>
       </div>
 
-      <div id="pauseOverlay" class="overlay hidden">
-        <div class="panel">
+      <div id="pauseOverlay" class="game-overlay hidden">
+        <div class="game-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.paused">Paused</h2>
           <button id="resumeBtn" class="btn primary" data-i18n="td.resume">Resume</button>
@@ -48,19 +47,19 @@
         </div>
       </div>
 
-      <div id="overOverlay" class="overlay hidden">
-        <div class="panel">
+      <div id="overOverlay" class="game-overlay is-scroll hidden">
+        <div class="game-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
-          <div class="final">
-            <div class="stat"><span data-i18n="td.score">Score</span><strong id="finalScore">0</strong></div>
-            <div class="stat"><span data-i18n="td.best">Best</span><strong id="finalBest">0</strong></div>
+          <div class="shell-over-final">
+            <div class="shell-over-stat"><span data-i18n="td.score">Score</span><strong id="finalScore">0</strong></div>
+            <div class="shell-over-stat"><span data-i18n="td.best">Best</span><strong id="finalBest">0</strong></div>
           </div>
-          <div class="run-reward" id="runReward"></div>
-          <div class="runner-board-wrap">
+          <div class="shell-run-reward" id="runReward"></div>
+          <div class="shell-over-board-wrap">
             <h3 data-i18n="td.leaderboard">Leaderboard</h3>
-            <div class="runner-board" id="runnerBoardOver"></div>
+            <div id="runnerBoardOver"></div>
           </div>
           <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
         </div>
