@@ -133,7 +133,7 @@ const en = {
   'hub.games': 'Games',
   'hub.tournaments': 'Tournaments',
   'hub.featured': 'Featured tournament',
-  'hub.freeGames': 'Free games',
+  'hub.freeGames': 'Free Games',
   'hub.allGames': 'All games',
   'hub.enterNow': 'Enter now',
   'hub.playFree': 'Play free',

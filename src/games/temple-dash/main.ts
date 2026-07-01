@@ -6,7 +6,6 @@ import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
 import { Viewport } from '../../engine/viewport';
 import { AssetStore } from '../../engine/assets';
-import { Preloader } from '../../ui/preloader';
 import { SettingsPanel } from '../../ui/settingsPanel';
 import { registerPwa } from '../../engine/pwa';
 import { fetchSkins, setSkinRemote, leaderboardRemote, playerStandingRemote } from '../../platform/backend';
@@ -33,14 +32,12 @@ registerPwa();
 void boot();
 
 async function boot(): Promise<void> {
-  const pre = new Preloader('Ethiorunner');
   const assets = new AssetStore();
-  await assets.load(sheetDefs(), (p) => pre.set(p));
-  pre.done();
-  run(assets);
+  const assetsReady = assets.load(sheetDefs()).catch(() => {});
+  run(assets, assetsReady);
 }
 
-function run(assets: AssetStore): void {
+function run(assets: AssetStore, assetsReady: Promise<void>): void {
   const canvas = $('#game') as unknown as HTMLCanvasElement;
   const vp = new Viewport(canvas, W, H);
   const ctx = vp.ctx;
@@ -96,7 +93,14 @@ function run(assets: AssetStore): void {
       await onEnter();
       return;
     }
+    const startBtn = document.querySelector<HTMLButtonElement>('#startBtn');
+    const againBtn = document.querySelector<HTMLButtonElement>('#againBtn');
+    const restartBtn = document.querySelector<HTMLButtonElement>('#restartBtn');
+    for (const b of [startBtn, againBtn, restartBtn]) {
+      if (b) { b.disabled = true; b.dataset.prevLabel = b.textContent ?? ''; b.textContent = '…'; }
+    }
     try {
+      await assetsReady;
       await host.startRound();
       game.best = serverBest;
       game.start();
@@ -104,6 +108,8 @@ function run(assets: AssetStore): void {
     } catch {
       showToast(t('td.signInToRank'));
       if (isConfigured() && !(await currentUser())) openSignIn();
+    } finally {
+      updateActionButtons();
     }
   }
 
