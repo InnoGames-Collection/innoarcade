@@ -6,6 +6,7 @@
 // 100% server-backed — there is no offline/demo data path.
 
 import { getSupabase, isConfigured } from './supabase';
+import { userId } from './auth';
 import { patchConfigCache, type AppConfig } from './config';
 import { type Order } from './payments';
 import {
@@ -42,7 +43,7 @@ export async function isAdmin(): Promise<boolean> {
   if (!isConfigured()) return false;
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) return false;
     const { data } = await sb.from('profiles').select('role').eq('id', me).maybeSingle();
     return data?.role === 'admin';

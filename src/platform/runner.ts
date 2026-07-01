@@ -9,7 +9,7 @@
 //   • Score     — per-tournament raw best; ranks on the runner leaderboard.
 
 import { isConfigured, getSupabase } from './supabase';
-import { currentUser } from './auth';
+import { currentUser, userId } from './auth';
 import { startRoundRemote } from './backend';
 import { SignInRequiredError } from './payments';
 import { levelFor } from './config';
@@ -100,7 +100,7 @@ export async function getMyEntry(tournamentId: string): Promise<RunnerEntry | nu
   if (!isConfigured()) return null;
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) return null;
     const { data } = await sb
       .from('runner_entries')
@@ -132,7 +132,7 @@ export async function getMyBest(tournamentId: string): Promise<number> {
   if (!isConfigured()) return 0;
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) return 0;
     const { data } = await sb
       .from('runner_scores').select('best')
@@ -148,7 +148,7 @@ export async function getMyXp(): Promise<RunnerXp> {
   if (!isConfigured()) return { xp: 0, xpSeason: 0, level: 1 };
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) return { xp: 0, xpSeason: 0, level: 1 };
     const { data } = await sb.from('profiles').select('xp_lifetime, xp_season').eq('id', me).maybeSingle();
     const xp = Number(data?.xp_lifetime ?? 0);
@@ -161,7 +161,7 @@ export async function runnerLeaderboard(tournamentId: string, limit = 10): Promi
   if (!isConfigured()) return [];
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     const { data } = await sb
       .from('runner_leaderboard')
       .select('rank, name, score, user_id')
@@ -179,7 +179,7 @@ export async function runnerSeasonLeaderboard(limit = 10): Promise<RunnerSeasonR
   if (!isConfigured()) return [];
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     const { data } = await sb
       .from('runner_season_leaderboard')
       .select('rank, name, xp_season, user_id')

@@ -8,6 +8,7 @@
 // in-memory cache (NO localStorage) hydrated by loadSubscription().
 
 import { isConfigured, getSupabase } from './supabase';
+import { userId } from './auth';
 import { type PayMethod } from './payments';
 
 export type SubPeriod = 'daily' | 'weekly' | 'monthly';
@@ -73,7 +74,7 @@ export async function loadSubscription(): Promise<Subscription | null> {
   if (!isConfigured()) { cache = null; trialUsed = false; emit(); return null; }
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) { cache = null; trialUsed = false; emit(); return null; }
     const { data } = await sb
       .from('subscriptions')

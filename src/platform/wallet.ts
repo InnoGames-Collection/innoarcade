@@ -8,6 +8,7 @@
 // in-memory cache holds the last server value for instant synchronous rendering.
 
 import { getSupabase, isConfigured } from './supabase';
+import { userId } from './auth';
 
 export interface LedgerEntry {
   id: string;
@@ -46,7 +47,7 @@ export async function balance(): Promise<number> {
   if (!isConfigured()) { cached = 0; emit(); return 0; }
   try {
     const sb = await getSupabase();
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) { cached = 0; emit(); return 0; }
     const { data } = await sb.from('profiles').select('coins').eq('id', me).maybeSingle();
     cached = Number(data?.coins ?? 0);
@@ -60,7 +61,7 @@ export async function ledger(limit = 20): Promise<LedgerEntry[]> {
   if (!isConfigured()) return [];
   try {
     const sb = await getSupabase();
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) return [];
     const { data } = await sb
       .from('wallet_ledger')

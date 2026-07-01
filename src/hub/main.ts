@@ -86,6 +86,8 @@ function setupPromo(): void {
 
 // --- Live tournament leaderboards (daily / weekly / monthly) ----------------
 let liveCadence: TournamentCadence = 'daily';
+/** Set when #topPlayers enters the viewport — gates the initial leaderboard fetch. */
+let liveBoardSeen = false;
 
 function tourLbRow(r: LeaderEntry): string {
   const medal = ['🥇', '🥈', '🥉'];
@@ -98,7 +100,7 @@ function tourLbRow(r: LeaderEntry): string {
     </div>`;
 }
 
-function renderLiveBoard(): void {
+function renderLiveBoard(opts?: { fetch?: boolean }): void {
   const host = document.querySelector('#globalBoard');
   const banner = document.querySelector('#liveBoardBanner');
   if (!host) return;
@@ -118,6 +120,8 @@ function renderLiveBoard(): void {
       </div>
       <span class="sb-meta">${t('hub.rankedByRp')}</span>`;
   }
+  const mayFetch = opts?.fetch ?? liveBoardSeen;
+  if (!mayFetch) return;
   void Promise.all([leaderboardRemote(tour.id, 10), playerStandingRemote(tour.id)]).then(([rows, me]) => {
     const playerInBoard = rows.some((r) => r.isPlayer);
     let html = rows.length
@@ -136,7 +140,7 @@ function setupLiveBoardTabs(): void {
       liveCadence = (b.dataset.cadence as TournamentCadence) ?? 'daily';
       document.querySelectorAll('#liveBoardSeg .seg-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
-      renderLiveBoard();
+      renderLiveBoard({ fetch: true });
     });
   });
 }
@@ -352,6 +356,8 @@ function renderDraws(): void {
 
 // Winners tab: Daily / Weekly / Monthly ETB prizes for the latest tournament window.
 let winnerCadence: WinnerCadence = 'daily';
+/** Set when #winners enters the viewport — gates the initial winners fetch. */
+let winnersSeen = false;
 
 function formatEtbPrize(amount: number): string {
   if (lang() === 'am' && amount >= 1000) {
@@ -368,9 +374,11 @@ function winnerPrizeForRank(cadence: WinnerCadence, rank: number): string {
   return etb > 0 ? formatEtbPrize(etb) : '—';
 }
 
-function renderWinners(): void {
+function renderWinners(opts?: { fetch?: boolean }): void {
   const tbody = document.querySelector('#winnerList');
   if (!tbody) return;
+  const mayFetch = opts?.fetch ?? winnersSeen;
+  if (!mayFetch) return;
 
   void fetchTournamentPeriodWinners(winnerCadence, 10).then((rows) => {
     if (!rows.length) {
@@ -396,7 +404,7 @@ function setupWinnersTabs(): void {
       winnerCadence = (b.dataset.cadence as WinnerCadence) ?? 'daily';
       document.querySelectorAll('#winnersSeg .seg-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
-      renderWinners();
+      renderWinners({ fetch: true });
     });
   });
 }
@@ -432,8 +440,8 @@ function renderAll(): void {
   wireEntryCtas();
   renderGames();
   renderDraws();
-  renderLiveBoard();
-  renderWinners();
+  renderLiveBoard({ fetch: liveBoardSeen });
+  renderWinners({ fetch: winnersSeen });
   applyTranslations();
   const search = document.querySelector<HTMLInputElement>('#gameSearch');
   if (search) search.placeholder = t('hub.searchGames');
@@ -446,7 +454,7 @@ async function refreshData(): Promise<void> {
   await Promise.all([loadTournaments(), loadMyEntries()]);
   wireEntryCtas();
   renderGames();
-  renderLiveBoard();
+  renderLiveBoard({ fetch: liveBoardSeen });
 }
 
 function syncLangButtons(): void {
@@ -538,6 +546,28 @@ function mountSignInGate(): void {
   const hide = (): void => document.getElementById('signinGate')?.remove();
   void currentUser().then((u) => (u ? hide() : show()));
   onAuthChange((u) => (u ? hide() : show()));
+}
+
+function setupDeferredSections(): void {
+  const arm = (id: string, onSeen: () => void): void => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!('IntersectionObserver' in window)) { onSeen(); return; }
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      onSeen();
+    }, { rootMargin: '100px 0px' });
+    io.observe(el);
+  };
+  arm('topPlayers', () => {
+    liveBoardSeen = true;
+    renderLiveBoard({ fetch: true });
+  });
+  arm('winners', () => {
+    winnersSeen = true;
+    renderWinners({ fetch: true });
+  });
 }
 
 // Nav active-state on scroll (top nav + mobile bottom nav).
@@ -665,6 +695,7 @@ onCurrencyChange(renderMyStats);
 setupBrowse();
 setupLiveBoardTabs();
 setupWinnersTabs();
+setupDeferredSections();
 syncNavActive();
 mountSettings();
 mountSignInGate();
@@ -690,7 +721,7 @@ function hydratePointsAfterBootstrap(boot: HubBootstrapResult): void {
     });
   }
   void loadDraws().then(() => hydrateTickets()).then(() => renderDraws());
-  renderWinners();
+  if (winnersSeen) renderWinners({ fetch: true });
   if (boot.ok && boot.hadUser) {
     unlockedSet.clear();
     boot.unlocks.forEach((id) => unlockedSet.add(id));
@@ -712,7 +743,7 @@ async function runBackendHydration(): Promise<void> {
   }
   wireEntryCtas();
   renderGames();
-  renderLiveBoard();
+  renderLiveBoard({ fetch: liveBoardSeen });
   hydratePointsAfterBootstrap(boot);
 }
 
@@ -738,7 +769,7 @@ onAuthChange(() => {
     } else {
       wireEntryCtas();
       renderGames();
-      renderLiveBoard();
+      renderLiveBoard({ fetch: liveBoardSeen });
     }
     hydratePointsAfterBootstrap(boot);
   })();

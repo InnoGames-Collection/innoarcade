@@ -16,7 +16,7 @@
 
 import { getSupabase } from './supabase';
 import { packageById, economyNeedsAuth } from './config';
-import { currentUser } from './auth';
+import { currentUser, userId } from './auth';
 
 /** Thrown when a purchase is attempted signed-out. Coins are account-bound, so
  *  this is the platform-level backstop ensuring coins can never be bought without
@@ -87,7 +87,7 @@ export async function pollOrder(orderId: string): Promise<Order> {
 // The signed-in player's recent orders (admin sees all via admin.ts).
 export async function myOrders(limit = 20): Promise<Order[]> {
   const sb = await getSupabase();
-  const me = (await sb.auth.getUser()).data.user?.id;
+  const me = await userId();
   if (!me) return [];
   const { data } = await sb
     .from('payment_orders')

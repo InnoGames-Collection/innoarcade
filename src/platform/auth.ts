@@ -51,8 +51,32 @@ export async function fetchDevOtp(phone: string): Promise<string | null> {
 // server path only for authenticated users (anonymous players stay on the local
 // guest wallet, even when Supabase is configured) without an async hop.
 let cachedUser: AuthUser | null = null;
+/** True after currentUser() or onAuthStateChange has resolved auth at least once. */
+let authPrimed = false;
+
 export function isSignedIn(): boolean {
   return cachedUser !== null;
+}
+
+/** Last-known user id — synchronous when auth has been primed. */
+export function userIdSync(): string | null {
+  return cachedUser?.id ?? null;
+}
+
+/** Cached user id — at most one getUser() until auth state changes. */
+export async function userId(): Promise<string | null> {
+  if (cachedUser) return cachedUser.id;
+  if (authPrimed) return null;
+  return (await currentUser())?.id ?? null;
+}
+
+function applySessionUser(u: { id: string; phone?: string | null; user_metadata?: Record<string, unknown> } | null): void {
+  cachedUser = u ? {
+    id: u.id,
+    phone: u.phone ?? '',
+    name: (u.user_metadata?.name as string) || maskPhone(u.phone ?? ''),
+  } : null;
+  authPrimed = true;
 }
 
 // Normalize to E.164-ish (Ethiopia default +251) so users can type 09… locally.
@@ -95,11 +119,11 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthUser> 
   if (error) throw error;
   const u = data.user!;
   const ph = u.phone ?? normalizePhone(phone);
-  const displayName = maskPhone(ph);
+  applySessionUser(u);
   return {
     id: u.id,
     phone: ph,
-    name: (u.user_metadata?.name as string) || displayName,
+    name: (u.user_metadata?.name as string) || maskPhone(ph),
   };
 }
 
@@ -107,12 +131,7 @@ export async function currentUser(): Promise<AuthUser | null> {
   if (!isConfigured()) return null;
   const sb = await getSupabase();
   const { data } = await sb.auth.getUser();
-  const u = data.user;
-  cachedUser = u ? {
-    id: u.id,
-    phone: u.phone ?? '',
-    name: (u.user_metadata?.name as string) || maskPhone(u.phone ?? ''),
-  } : null;
+  applySessionUser(data.user);
   return cachedUser;
 }
 
@@ -124,6 +143,7 @@ export async function setDisplayName(name: string): Promise<void> {
 
 export async function signOut(): Promise<void> {
   if (isConfigured()) await (await getSupabase()).auth.signOut();
+  applySessionUser(null);
 }
 
 // Subscribe to sign-in/out; returns an unsubscribe function.
@@ -134,12 +154,7 @@ export function onAuthChange(fn: (user: AuthUser | null) => void): () => void {
   void getSupabase().then((sb) => {
     if (disposed) return;
     const { data } = sb.auth.onAuthStateChange((_e, session) => {
-      const u = session?.user;
-      cachedUser = u ? {
-        id: u.id,
-        phone: u.phone ?? '',
-        name: (u.user_metadata?.name as string) || maskPhone(u.phone ?? ''),
-      } : null;
+      applySessionUser(session?.user ?? null);
       fn(cachedUser);
     });
     unsub = () => data.subscription.unsubscribe();

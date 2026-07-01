@@ -16,6 +16,7 @@
 
 import { getGame, tournamentGames, type GameMeta, type TournamentCadence } from './catalog';
 import { isConfigured, getSupabase } from './supabase';
+import { userId } from './auth';
 import { config, economyNeedsAuth } from './config';
 import { SignInRequiredError } from './payments';
 
@@ -413,7 +414,7 @@ export async function myEntries(): Promise<TournamentEntry[]> {
   if (!isConfigured()) return [];
   try {
     const sb = (await getSupabase());
-    const me = (await sb.auth.getUser()).data.user?.id;
+    const me = await userId();
     if (!me) { applyEntryRows([]); return []; }
     const { data } = await sb
       .from('tournament_entries')

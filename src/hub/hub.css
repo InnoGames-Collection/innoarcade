@@ -417,17 +417,12 @@ body {
   padding: 0.42rem 0.9rem;
   font: inherit;
   font-size: 0.86rem;
-  flex: 1 1 0;
-  min-width: 0;
-  width: auto;
+  flex: 0 0 auto;
+  width: min(200px, 38vw);
+  max-width: 220px;
   color: var(--text);
 }
 .game-search:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
-
-@media (min-width: 721px) {
-  .games-head { justify-content: space-between; }
-  .game-search { flex: 0 1 220px; }
-}
 
 /* Light-green game cards: a soft green cover with a white "app icon" tile, so
    every game reads as one cohesive bright set. The cover is the dominant image
@@ -554,7 +549,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .hub-main { padding-bottom: 4.5rem; }
   .games-head { gap: 0.4rem; }
   .games-head .seg-btn { padding: 0.3rem 0.5rem; font-size: 0.72rem; }
-  .game-search { padding: 0.34rem 0.65rem; font-size: 0.78rem; }
+  .game-search { width: min(168px, 34vw); padding: 0.34rem 0.65rem; font-size: 0.78rem; }
 }
 
 /* ---- how-to-play ℹ️ button on cards ---- */
