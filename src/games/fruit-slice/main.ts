@@ -14,7 +14,7 @@ import { applyTranslations, getLang, t } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
 import { sfx } from '../../engine/audio';
-import { FruitSlice, W, H, type GameState, type GameOverReason } from './game';
+import { FruitSlice, W, H, type GameState } from './game';
 
 const GAME_ID = 'fruit-slice';
 const host = new GameHost(GAME_ID);
@@ -34,15 +34,24 @@ function resizeCanvas(): void {
   canvas.height = Math.round(h * dpr);
 }
 
-function renderFrame(): void {
+function canvasLayout(): { scale: number; offX: number; offY: number } {
   const wrap = canvas.parentElement!;
   const cw = wrap.clientWidth;
   const ch = wrap.clientHeight;
+  const scale = Math.min(cw / W, ch / H);
+  return {
+    scale,
+    offX: (cw - W * scale) / 2,
+    offY: (ch - H * scale) / 2,
+  };
+}
+
+function renderFrame(): void {
+  const { scale, offX, offY } = canvasLayout();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const sx = (cw / W) * dpr;
-  const sy = (ch / H) * dpr;
-  ctx.setTransform(sx, 0, 0, sy, 0, 0);
+  const s = scale * dpr;
+  ctx.setTransform(s, 0, 0, s, offX * dpr, offY * dpr);
   game.render(ctx);
   if (game.state === 'playing' || game.state === 'paused') updatePlayHud();
 }
@@ -154,29 +163,27 @@ async function refreshTournamentPanel(): Promise<void> {
 
   mount.innerHTML = renderShellMenuTournamentHtml(
     gameTitle(), '🍉', walletCoins, serverBest, left, board,
-    { cadence: 'monthly', hint: t('fs.scoringHint') },
+    { cadence: 'monthly' },
   );
 
   updateActionButtons();
 }
 
-function showGameOverOverlay(score: number, reason: GameOverReason): void {
+function showGameOverOverlay(score: number): void {
   $('#fsFinalScore').textContent = score.toLocaleString();
   $('#fsFinalBest').textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
   $('#newBest').classList.add('hidden');
-  $('#fsStrongRun').classList.toggle('hidden', score < host.winScore);
-  $('#fsOverReason').textContent = reason === 'time' ? t('fs.timeUp') : t('fs.outOfLives');
-  $('#fsRunReward').innerHTML = `<span class="fs-rr-pending">…</span>`;
+  $('#fsRunReward').innerHTML = `<span class="shell-rr-pending">…</span>`;
   $('#fsBoardOver').innerHTML = '';
   updateActionButtons();
 }
 
 async function failRankedSubmit(reward: HTMLElement): Promise<void> {
   if (await promptIfSessionExpired(showToast)) {
-    reward.innerHTML = `<span class="fs-rr-note">${t('td.sessionExpired')}</span>`;
+    reward.innerHTML = `<span class="shell-rr-note">${t('td.sessionExpired')}</span>`;
     return;
   }
-  reward.innerHTML = `<span class="fs-rr-note">${t('td.submitFailed')}</span>`;
+  reward.innerHTML = `<span class="shell-rr-note">${t('td.submitFailed')}</span>`;
   showToast(t('td.submitFailed'));
 }
 
@@ -189,7 +196,7 @@ async function submitRun(score: number, durationMs: number, isWin: boolean): Pro
     $('#fsFinalBest').textContent = score.toLocaleString();
     return;
   }
-  reward.innerHTML = `<span class="fs-rr-pending">…</span>`;
+  reward.innerHTML = `<span class="shell-rr-pending">…</span>`;
   const res = await host.finish(score, isWin, durationMs, { ranked: rankedThisRun });
   if (rankedThisRun && res.rank == null) {
     await failRankedSubmit(reward);
@@ -198,10 +205,10 @@ async function submitRun(score: number, durationMs: number, isWin: boolean): Pro
   serverBest = res.best ?? serverBest;
   $('#fsFinalBest').textContent = serverBest.toLocaleString();
   $('#newBest').classList.toggle('hidden', !res.isRecord);
-  reward.innerHTML = `<span class="fs-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
-    <span class="fs-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
+  reward.innerHTML = `<span class="shell-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
+    <span class="shell-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
   if (typeof res.attemptsLeft === 'number') {
-    reward.innerHTML += `<span class="fs-rr-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
+    reward.innerHTML += `<span class="shell-rr-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
   }
   const tour = getTournamentForGame(GAME_ID);
   if (tour) {
@@ -213,8 +220,8 @@ async function submitRun(score: number, durationMs: number, isWin: boolean): Pro
   void refreshTournamentPanel();
 }
 
-game.onGameOver = (score, durationMs, reason) => {
-  showGameOverOverlay(score, reason);
+game.onGameOver = (score, durationMs) => {
+  showGameOverOverlay(score);
   void submitRun(score, durationMs, score >= host.winScore);
 };
 
@@ -256,10 +263,10 @@ input.onAction((a) => game.handleAction(a));
 
 function pointerPos(e: PointerEvent): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
-  return {
-    x: (e.clientX - rect.left) / (rect.width / W),
-    y: (e.clientY - rect.top) / (rect.height / H),
-  };
+  const { scale, offX, offY } = canvasLayout();
+  const x = (e.clientX - rect.left - offX) / scale;
+  const y = (e.clientY - rect.top - offY) / scale;
+  return { x, y };
 }
 
 let isSlicing = false;

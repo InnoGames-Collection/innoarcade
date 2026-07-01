@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍉</text></svg>" />
     <title>Fruit Slice — GoPlay</title>
-    <script type="module" crossorigin src="../../assets/fruitSlice-FjG1BLXB.js"></script>
+    <script type="module" crossorigin src="../../assets/fruitSlice-DfbfsVos.js"></script>
     <link rel="modulepreload" crossorigin href="../../assets/index-CJBH1zFq.js">
     <link rel="modulepreload" crossorigin href="../../assets/tournaments-BbHGW7zJ.js">
     <link rel="modulepreload" crossorigin href="../../assets/audio-Bon9Vp3W.js">
@@ -16,7 +16,7 @@
     <link rel="modulepreload" crossorigin href="../../assets/input-DF-0NnhL.js">
     <link rel="stylesheet" crossorigin href="../../assets/audio-DmlIPLOZ.css">
     <link rel="stylesheet" crossorigin href="../../assets/sessionAuth-CdtBVGxN.css">
-    <link rel="stylesheet" crossorigin href="../../assets/fruitSlice-IqlkDn-G.css">
+    <link rel="stylesheet" crossorigin href="../../assets/fruitSlice-DOvxTBAA.css">
   </head>
   <body class="game-shell" data-game="fruit-slice">
     <div id="stage" class="fs-stage game-shell-stage">
@@ -43,7 +43,6 @@
         <div class="game-panel panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <div class="shell-tourney" id="fsTourney" aria-live="polite"></div>
-          <p class="fs-attempts-note" data-i18n="fs.attemptsNote">Lives = missed fruit in a run · 🎟️ = paid tournament attempts</p>
           <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
         </div>
       </div>
@@ -58,20 +57,18 @@
       </div>
 
       <div id="overOverlay" class="game-overlay is-scroll hidden">
-        <div class="game-panel fs-over-panel">
+        <div class="game-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
-          <p id="fsOverReason" class="fs-over-reason"></p>
-          <p id="fsStrongRun" class="new-best hidden" data-i18n="fs.strongRun">Strong run!</p>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
-          <div class="fs-over-final">
-            <div class="fs-over-stat"><span data-i18n="td.score">Score</span><strong id="fsFinalScore">0</strong></div>
-            <div class="fs-over-stat"><span data-i18n="td.best">Best</span><strong id="fsFinalBest">0</strong></div>
+          <div class="shell-over-final">
+            <div class="shell-over-stat"><span data-i18n="td.score">Score</span><strong id="fsFinalScore">0</strong></div>
+            <div class="shell-over-stat"><span data-i18n="td.best">Best</span><strong id="fsFinalBest">0</strong></div>
           </div>
-          <div class="fs-run-reward" id="fsRunReward"></div>
-          <div class="fs-over-board-wrap">
+          <div class="shell-run-reward" id="fsRunReward"></div>
+          <div class="shell-over-board-wrap">
             <h3 data-i18n="td.leaderboard">Leaderboard</h3>
-            <div class="fs-over-board" id="fsBoardOver"></div>
+            <div id="fsBoardOver"></div>
           </div>
           <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
         </div>

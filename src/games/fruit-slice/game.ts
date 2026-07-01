@@ -16,6 +16,7 @@ const COMBO_BONUS_CAP = 9;
 const FRUIT_RADIUS = 18;
 const BOMB_RADIUS = 16;
 const SPAWN_RATE = 1.2;
+const SPAWN_MARGIN = FRUIT_RADIUS + 8;
 const FRUIT_TYPES = ['apple', 'banana', 'cherry', 'orange', 'peach'] as const;
 
 interface Fruit {
@@ -65,7 +66,7 @@ export class FruitSlice {
   lastEndReason: GameOverReason = 'lives';
 
   onStateChange: (s: GameState) => void = () => {};
-  onGameOver: (score: number, durationMs: number, reason: GameOverReason) => void = () => {};
+  onGameOver: (score: number, durationMs: number) => void = () => {};
 
   private time = 0;
   // Difficulty ramp: spawn rate + object speed scale up with elapsed time, so the
@@ -165,7 +166,15 @@ export class FruitSlice {
     if (this.state !== 'playing') return;
     this.lastEndReason = reason;
     this.setState('gameOver');
-    this.onGameOver(this.score, Math.floor(this.time * 1000), reason);
+    this.onGameOver(this.score, Math.floor(this.time * 1000));
+  }
+
+  private bounceInBounds(x: number, vx: number): { x: number; vx: number } {
+    const min = SPAWN_MARGIN;
+    const max = W - SPAWN_MARGIN;
+    if (x < min) return { x: min, vx: Math.abs(vx) * 0.85 };
+    if (x > max) return { x: max, vx: -Math.abs(vx) * 0.85 };
+    return { x, vx };
   }
 
   private sliceFruit(fruit: Fruit): void {
@@ -247,6 +256,9 @@ export class FruitSlice {
         fruit.x += fruit.vx * dt;
         fruit.y += fruit.vy * dt;
         fruit.vy += grav * dt;
+        const bounced = this.bounceInBounds(fruit.x, fruit.vx);
+        fruit.x = bounced.x;
+        fruit.vx = bounced.vx;
       } else {
         fruit.sliceTime += dt;
       }
@@ -257,6 +269,9 @@ export class FruitSlice {
         bomb.x += bomb.vx * dt;
         bomb.y += bomb.vy * dt;
         bomb.vy += grav * dt;
+        const bounced = this.bounceInBounds(bomb.x, bomb.vx);
+        bomb.x = bounced.x;
+        bomb.vx = bounced.vx;
       }
     }
 
@@ -285,8 +300,8 @@ export class FruitSlice {
   private spawnFruit(): void {
     if (this.state !== 'playing') return;
     const isBomb = Math.random() < 0.15;
-    const x = 40 + Math.random() * (W - 80);
-    const vx = (Math.random() - 0.5) * 200 * this.speedMul;
+    const x = SPAWN_MARGIN + Math.random() * (W - SPAWN_MARGIN * 2);
+    const vx = (Math.random() - 0.5) * 140 * this.speedMul;
     const vy = -(200 + Math.random() * 150) * this.speedMul;
 
     if (isBomb) {
@@ -345,6 +360,11 @@ export class FruitSlice {
     ctx.lineTo(W, H);
     ctx.closePath();
     ctx.fill();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, H);
+    ctx.clip();
 
     for (const bomb of this.bombs) {
       ctx.fillStyle = '#333';
@@ -411,6 +431,8 @@ export class FruitSlice {
       ctx.arc(p.x, p.y, p.size * Math.max(0, 1 - p.life / p.maxLife), 0, Math.PI * 2);
       ctx.fill();
     }
+
+    ctx.restore();
 
     ctx.restore();
   }

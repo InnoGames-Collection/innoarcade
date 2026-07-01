@@ -31,7 +31,6 @@
         <div class="game-panel panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <div class="shell-tourney" id="fsTourney" aria-live="polite"></div>
-          <p class="fs-attempts-note" data-i18n="fs.attemptsNote">Lives = missed fruit in a run · 🎟️ = paid tournament attempts</p>
           <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
         </div>
       </div>
@@ -46,20 +45,18 @@
       </div>
 
       <div id="overOverlay" class="game-overlay is-scroll hidden">
-        <div class="game-panel fs-over-panel">
+        <div class="game-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
-          <p id="fsOverReason" class="fs-over-reason"></p>
-          <p id="fsStrongRun" class="new-best hidden" data-i18n="fs.strongRun">Strong run!</p>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
-          <div class="fs-over-final">
-            <div class="fs-over-stat"><span data-i18n="td.score">Score</span><strong id="fsFinalScore">0</strong></div>
-            <div class="fs-over-stat"><span data-i18n="td.best">Best</span><strong id="fsFinalBest">0</strong></div>
+          <div class="shell-over-final">
+            <div class="shell-over-stat"><span data-i18n="td.score">Score</span><strong id="fsFinalScore">0</strong></div>
+            <div class="shell-over-stat"><span data-i18n="td.best">Best</span><strong id="fsFinalBest">0</strong></div>
           </div>
-          <div class="fs-run-reward" id="fsRunReward"></div>
-          <div class="fs-over-board-wrap">
+          <div class="shell-run-reward" id="fsRunReward"></div>
+          <div class="shell-over-board-wrap">
             <h3 data-i18n="td.leaderboard">Leaderboard</h3>
-            <div class="fs-over-board" id="fsBoardOver"></div>
+            <div id="fsBoardOver"></div>
           </div>
           <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
         </div>

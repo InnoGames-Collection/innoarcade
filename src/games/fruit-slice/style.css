@@ -123,21 +123,6 @@ body.game-shell[data-game="fruit-slice"] {
   color: #d4593a;
 }
 
-.fs-attempts-note {
-  margin: 0;
-  font-size: 0.72rem;
-  line-height: 1.4;
-  color: var(--shell-muted, #5f7262);
-  text-align: center;
-  max-width: 100%;
-}
-
-.fs-over-reason {
-  margin: 0;
-  font-size: 0.88rem;
-  color: var(--shell-muted);
-}
-
 .fs-canvas-wrap {
   position: relative;
   width: 100%;
@@ -206,66 +191,6 @@ body.game-shell[data-game="fruit-slice"] {
 .hidden {
   display: none !important;
 }
-
-/* --- Game-over panel extras (shell base from game-shell.css) ---------------- */
-.fs-over-panel {
-  align-items: stretch;
-  gap: 11px;
-  width: min(360px, 94vw);
-  max-height: min(86dvh, 680px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.fs-over-panel .btn.primary {
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.fs-over-final {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-}
-
-.fs-over-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.82rem;
-  color: var(--shell-muted);
-}
-
-.fs-over-stat strong {
-  font-size: 1.35rem;
-  color: var(--shell-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.fs-run-reward {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  justify-content: center;
-  align-items: center;
-  margin: 4px 0;
-  font-size: 0.86rem;
-  min-height: 1.2em;
-}
-
-.fs-rr-stat b { color: var(--shell-muted); font-weight: 600; margin-right: 3px; }
-.fs-rr-note { color: var(--shell-muted); font-size: 0.82rem; }
-.fs-rr-pending { color: var(--shell-muted); }
-
-.fs-over-board-wrap { width: 100%; margin-top: 2px; }
-.fs-over-board-wrap h3 {
-  font-size: 0.82rem;
-  margin: 0 0 6px;
-  color: var(--shell-muted);
-  text-align: left;
-}
-
-.fs-over-board { display: flex; flex-direction: column; gap: 3px; }
 
 .toast {
   position: fixed;
