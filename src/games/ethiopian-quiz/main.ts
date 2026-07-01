@@ -16,51 +16,13 @@ import {
 import { promptIfSessionExpired } from '../../platform/sessionAuth';
 import { isConfigured } from '../../platform/supabase';
 import { freeGameBestRemote } from '../../platform/backend';
+import { QUIZ_BANK, type QuizQuestion } from './bank';
 
 const GAME_ID = 'ethiopian-quiz';
 const host = createHost(GAME_ID);
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
 type Phase = 'menu' | 'playing' | 'paused' | 'over';
-
-interface Q { en: string; am: string; opts: [string, string][]; answer: number; d: 1 | 2 | 3 }
-
-const BANK: Q[] = [
-  { en: 'What is the capital city of Ethiopia?', am: 'የኢትዮጵያ ዋና ከተማ ማን ናት?',
-    opts: [['Addis Ababa', 'አዲስ አበባ'], ['Adama', 'አዳማ'], ['Bahir Dar', 'ባህር ዳር'], ['Mekelle', 'መቀለ']], answer: 0, d: 1 },
-  { en: 'Which river is known as the source of the Blue Nile?', am: 'የጥቁር ዓባይ ምንጭ የሚባለው የትኛው ነው?',
-    opts: [['Lake Tana', 'ጣና ሐይቅ'], ['Lake Abaya', 'አባያ ሐይቅ'], ['Awash', 'አዋሽ'], ['Omo', 'ኦሞ']], answer: 0, d: 1 },
-  { en: 'How many days are in the Ethiopian month of Pagumē?', am: 'ጳጉሜ ስንት ቀናት አሉት?',
-    opts: [['5 or 6', '5 ወይም 6'], ['7', '7'], ['10', '10'], ['30', '30']], answer: 0, d: 1 },
-  { en: 'Which Ethiopian runner is famous for winning a marathon barefoot?', am: 'ባዶ እግሩን ማራቶን በማሸነፍ የሚታወቀው ኢትዮጵያዊ ሯጭ ማን ነው?',
-    opts: [['Abebe Bikila', 'አበበ ቢቂላ'], ['Haile Gebrselassie', 'ኃይሌ ገብረሥላሴ'], ['Kenenisa Bekele', 'ቀነኒሳ በቀለ'], ['Derartu Tulu', 'ደራርቱ ቱሉ']], answer: 0, d: 1 },
-  { en: 'What is the staple flatbread of Ethiopian cuisine?', am: 'የኢትዮጵያ ምግብ ዋና ዳቦ ምንድን ነው?',
-    opts: [['Injera', 'እንጀራ'], ['Dabo', 'ዳቦ'], ['Kita', 'ቂጣ'], ['Ambasha', 'አምባሻ']], answer: 0, d: 1 },
-  { en: 'What is the name of Ethiopia’s currency?', am: 'የኢትዮጵያ ገንዘብ ስም ምንድን ነው?',
-    opts: [['Birr', 'ብር'], ['Shilling', 'ሺሊንግ'], ['Nakfa', 'ናቕፋ'], ['Dinar', 'ዲናር']], answer: 0, d: 1 },
-  { en: 'Which ancient city is home to the famous rock-hewn churches?', am: 'ታዋቂዎቹ ከአለት የተፈለፈሉ አብያተ ክርስቲያናት የት ይገኛሉ?',
-    opts: [['Lalibela', 'ላሊበላ'], ['Axum', 'አክሱም'], ['Gondar', 'ጎንደር'], ['Harar', 'ሐረር']], answer: 0, d: 2 },
-  { en: 'Coffee is believed to have originated in which Ethiopian region?', am: 'ቡና የመነጨው ከየትኛው የኢትዮጵያ አካባቢ ነው ተብሎ ይታመናል?',
-    opts: [['Kaffa', 'ካፋ'], ['Wollo', 'ወሎ'], ['Sidama', 'ሲዳማ'], ['Gojjam', 'ጎጃም']], answer: 0, d: 2 },
-  { en: 'Which empire/queen is linked to Ethiopia in ancient tradition?', am: 'በጥንታዊ ወግ ከኢትዮጵያ ጋር የሚገናኘው ንግሥት ማን ናት?',
-    opts: [['Queen of Sheba', 'ንግሥተ ሳባ'], ['Cleopatra', 'ክሊዮፓትራ'], ['Nefertiti', 'ኔፈርቲቲ'], ['Boudica', 'ቡዲካ']], answer: 0, d: 2 },
-  { en: 'Which mountain is the highest peak in Ethiopia?', am: 'በኢትዮጵያ ከፍተኛው ተራራ የትኛው ነው?',
-    opts: [['Ras Dashen', 'ራስ ዳሸን'], ['Mount Bale', 'ባሌ ተራራ'], ['Mount Choke', 'ጮቄ ተራራ'], ['Mount Guna', 'ጉና ተራራ']], answer: 0, d: 2 },
-  { en: 'In which year (Gregorian) did the Battle of Adwa take place?', am: 'የዓድዋ ጦርነት በየትኛው ዓመት (እ.አ.አ.) ተካሄደ?',
-    opts: [['1896', '1896'], ['1886', '1886'], ['1900', '1900'], ['1935', '1935']], answer: 0, d: 2 },
-  { en: 'What is the largest lake in Ethiopia?', am: 'በኢትዮጵያ ትልቁ ሐይቅ የትኛው ነው?',
-    opts: [['Lake Tana', 'ጣና ሐይቅ'], ['Lake Abaya', 'አባያ ሐይቅ'], ['Lake Ziway', 'ዝዋይ ሐይቅ'], ['Lake Langano', 'ላንጋኖ ሐይቅ']], answer: 0, d: 2 },
-  { en: 'Which script is used to write Amharic?', am: 'አማርኛ የሚጻፍበት ፊደል የትኛው ነው?',
-    opts: [['Ge’ez (Fidäl)', 'ግዕዝ (ፊደል)'], ['Latin', 'ላቲን'], ['Arabic', 'ዓረብኛ'], ['Coptic', 'ቅብጢ']], answer: 0, d: 3 },
-  { en: 'The Danakil Depression, one of Earth’s hottest places, lies in which region?', am: 'ከምድር ሙቅ ቦታዎች አንዱ የሆነው የዳናክል ቆላ የት ይገኛል?',
-    opts: [['Afar', 'አፋር'], ['Tigray', 'ትግራይ'], ['Somali', 'ሶማሌ'], ['Oromia', 'ኦሮሚያ']], answer: 0, d: 3 },
-  { en: 'Which Ethiopian emperor moved the capital to Addis Ababa in the 1880s?', am: 'በ1880ዎቹ ዋና ከተማን ወደ አዲስ አበባ ያዛወረው ንጉሠ ነገሥት ማን ነው?',
-    opts: [['Menelik II', 'ዳግማዊ ምኒልክ'], ['Haile Selassie I', 'ቀዳማዊ ኃይለ ሥላሴ'], ['Tewodros II', 'ዳግማዊ ቴዎድሮስ'], ['Yohannes IV', 'ራብዓዊ ዮሐንስ']], answer: 0, d: 3 },
-  { en: '“Lucy” (Dinkinesh), the famous hominid fossil, belongs to which species?', am: '“ሉሲ” (ድንቅነሽ) የተባለው ታዋቂ ቅሪተ አካል የየትኛው ዝርያ ነው?',
-    opts: [['Australopithecus afarensis', 'አውስትራሎፒተክስ አፋረንሲስ'], ['Homo erectus', 'ሆሞ ኤሬክተስ'], ['Homo habilis', 'ሆሞ ሃቢሊስ'], ['Paranthropus', 'ፓራንትሮፐስ']], answer: 0, d: 3 },
-  { en: 'How many years behind the Gregorian calendar is the Ethiopian calendar (roughly)?', am: 'የኢትዮጵያ ዘመን አቆጣጠር ከግሪጎሪያን በግምት ስንት ዓመት ወደ ኋላ ነው?',
-    opts: [['7–8 years', '7–8 ዓመት'], ['5 years', '5 ዓመት'], ['10 years', '10 ዓመት'], ['3 years', '3 ዓመት']], answer: 0, d: 3 },
-];
 
 const ROUND = 5;
 const PER_Q_SECONDS = 10;
@@ -71,7 +33,7 @@ let starting = false;
 let serverBest = 0;
 let toastT = 0;
 
-let round: Q[] = [];
+let round: QuizQuestion[] = [];
 let idx = 0;
 let correct = 0;
 let locked = false;
@@ -149,16 +111,16 @@ function updateStats(): void {
   $('#eqStatScore').textContent = String(score);
 }
 
-function pickRound(): Q[] {
-  const byTier = (d: 1 | 2 | 3): Q[] => shuffle(BANK.filter((q) => q.d === d));
+function pickRound(): QuizQuestion[] {
+  const byTier = (d: 1 | 2 | 3): QuizQuestion[] => shuffle(QUIZ_BANK.filter((q) => q.d === d));
   const want: (1 | 2 | 3)[] = [1, 1, 2, 2, 3];
   const pool = { 1: byTier(1), 2: byTier(2), 3: byTier(3) };
-  const picked: Q[] = [];
+  const picked: QuizQuestion[] = [];
   for (const d of want) {
     const q = pool[d].pop() ?? pool[3].pop() ?? pool[2].pop() ?? pool[1].pop();
     if (q && !picked.includes(q)) picked.push(q);
   }
-  for (const q of shuffle(BANK)) {
+  for (const q of shuffle(QUIZ_BANK)) {
     if (picked.length >= ROUND) break;
     if (!picked.includes(q)) picked.push(q);
   }
@@ -209,11 +171,10 @@ function showQuestion(): void {
   locked = false;
   elMsg.textContent = '';
   const q = round[idx];
-  const am = getLang() === 'am';
-  elQ.textContent = am ? q.am : q.en;
-  const order = shuffle(q.opts.map((_, i) => i));
+  elQ.textContent = q.question;
+  const order = shuffle([0, 1, 2, 3]);
   elOpts.innerHTML = order.map((oi) =>
-    `<button type="button" class="eq-opt" data-i="${oi}">${am ? q.opts[oi][1] : q.opts[oi][0]}</button>`,
+    `<button type="button" class="eq-opt" data-i="${oi}">${q.opts[oi]}</button>`,
   ).join('');
   elOpts.querySelectorAll<HTMLButtonElement>('.eq-opt').forEach((b) => {
     b.addEventListener('click', () => answer(Number(b.dataset.i), b));
@@ -242,12 +203,12 @@ function answer(choice: number, btn: HTMLButtonElement): void {
     correct++;
     btn.classList.add('ok');
     sfx.coin();
+    elMsg.textContent = t('eq.correct');
   } else {
     btn.classList.add('bad');
     sfx.click();
-    elOpts.querySelector<HTMLButtonElement>(`.eq-opt[data-i="${q.answer}"]`)?.classList.add('ok');
+    elMsg.textContent = t('eq.wrong');
   }
-  elMsg.textContent = right ? t('eq.correct') : t('eq.wrong');
   updateStats();
   setTimeout(() => advanceQuestion(), 1100);
 }
@@ -307,8 +268,8 @@ async function submitRun(
   refreshMenu();
 }
 
-async function onPlayOrEnter(): Promise<void> {
-  if (starting || phase === 'playing' || phase === 'paused') return;
+async function beginFreeRound(): Promise<void> {
+  if (starting) return;
   starting = true;
   try {
     clearQTimer();
@@ -318,6 +279,11 @@ async function onPlayOrEnter(): Promise<void> {
   } finally {
     starting = false;
   }
+}
+
+async function onPlayOrEnter(): Promise<void> {
+  if (starting || phase === 'playing' || phase === 'paused') return;
+  await beginFreeRound();
 }
 
 function pauseQuiz(): void {
@@ -339,7 +305,7 @@ function resumeQuiz(): void {
 async function restartFromPause(): Promise<void> {
   if (phase !== 'paused') return;
   hideOverOverlay();
-  await onPlayOrEnter();
+  await beginFreeRound();
 }
 
 $('#startBtn').addEventListener('click', () => void onPlayOrEnter());

@@ -270,6 +270,11 @@ body.game-shell {
   margin: 0;
 }
 
+/* Game-over overlay sits above playfield (memory-match pattern). */
+.game-shell #overOverlay.game-overlay {
+  z-index: 12;
+}
+
 .game-shell .game-panel h2 {
   margin: 0;
   font-size: 1.25rem;

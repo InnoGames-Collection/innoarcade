@@ -3,6 +3,7 @@
 // attempt gating.
 
 import { GameHost, type FinishResult } from './gameHost';
+import { freeGameBestRemote } from './backend';
 import { getLang, t } from '../i18n';
 import { isConfigured } from './supabase';
 import { promptIfSessionExpired } from './sessionAuth';
@@ -185,6 +186,8 @@ export async function paintInlineReward(
   return res;
 }
 
+type ShellPhase = 'menu' | 'playing' | 'paused' | 'over';
+
 export interface FreeEngineBindings {
   host: GameHost;
   overlays: Record<string, HTMLElement>;
@@ -217,60 +220,153 @@ export interface FreeEngineShell {
   refreshMenu: () => void;
   play: () => Promise<void>;
   showForState: (state: string) => void;
-  handleGameOver: (score: number, isRecord: boolean) => Promise<void>;
+  handleGameOver: (score: number, isRecord: boolean) => void;
 }
 
 /** Wire menu/pause/over overlays + free play flow for canvas engine games. */
 export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
   const toast = ensureToast(`${b.host.meta.id}-toast`);
+  let phase: ShellPhase = 'menu';
   let starting = false;
   let serverBest = 0;
 
+  const overOverlay = b.overlays.over ?? b.overlays.gameOver;
+  if (!overOverlay) throw new Error('wireFreeEngineMain: overlays.over required');
+
+  const shellOverlays: Record<string, HTMLElement> = {};
+  for (const [key, el] of Object.entries(b.overlays)) {
+    if (key !== 'over' && key !== 'gameOver') shellOverlays[key] = el;
+  }
+
   const refreshMenu = (): void => {
-    if (b.freeMenu) b.freeMenu.innerHTML = renderFreeMenuHtml(b.host, Math.max(b.game.best, serverBest));
+    if (b.freeMenu) {
+      b.freeMenu.innerHTML = renderFreeMenuHtml(b.host, Math.max(b.game.best, serverBest));
+    }
+  };
+
+  const hideOverOverlay = (): void => {
+    overOverlay.classList.add('hidden');
+    overOverlay.setAttribute('aria-hidden', 'true');
+  };
+
+  const showOverOverlay = (score: number, isRecord: boolean): void => {
+    b.finalScore.textContent = b.formatScore ? b.formatScore(score) : score.toLocaleString();
+    b.finalBest.textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
+    b.newBest.classList.toggle('hidden', !isRecord);
+    b.runReward.innerHTML = '<span class="shell-rr-pending">…</span>';
+    b.closeBtn?.classList.add('hidden');
+    overOverlay.classList.remove('hidden');
+    overOverlay.setAttribute('aria-hidden', 'false');
+  };
+
+  const setPhase = (next: ShellPhase): void => {
+    phase = next;
+    if (next === 'menu') {
+      wireOverlayVisibility(shellOverlays, 'menu', { hud: b.hud, close: b.closeBtn, playing: false });
+      hideOverOverlay();
+      return;
+    }
+    if (next === 'paused') {
+      wireOverlayVisibility(shellOverlays, 'paused', { hud: b.hud, close: b.closeBtn, playing: false });
+      hideOverOverlay();
+      return;
+    }
+    if (next === 'over') {
+      for (const el of Object.values(shellOverlays)) el.classList.add('hidden');
+      b.hud?.classList.remove('hidden');
+      b.closeBtn?.classList.add('hidden');
+      return;
+    }
+    // playing
+    for (const el of Object.values(shellOverlays)) el.classList.add('hidden');
+    hideOverOverlay();
+    b.hud?.classList.remove('hidden');
+    b.closeBtn?.classList.remove('hidden');
   };
 
   const showForState = (state: string): void => {
+    if (state === 'gameOver' || state === 'over') return;
     const key = b.stateOverlay(state);
     if (key == null) {
-      for (const el of Object.values(b.overlays)) el.classList.add('hidden');
-      b.hud?.classList.remove('hidden');
-      b.closeBtn?.classList.remove('hidden');
+      setPhase('playing');
       return;
     }
-    wireOverlayVisibility(b.overlays, key, { hud: b.hud, close: b.closeBtn, playing: false });
+    if (key === 'over') return;
+    if (key === 'menu') setPhase('menu');
+    else if (key === 'paused') setPhase('paused');
+    else {
+      wireOverlayVisibility(shellOverlays, key, { hud: b.hud, close: b.closeBtn, playing: true });
+      phase = 'playing';
+      hideOverOverlay();
+    }
   };
 
-  const play = async (): Promise<void> => {
-    if (starting || b.game.state === 'playing' || b.game.state === 'paused') return;
+  const submitRunBackground = async (
+    score: number,
+    isRecord: boolean,
+    durationMs: number,
+  ): Promise<void> => {
+    const res = await submitFreeRun(b.host, score, score >= b.host.winScore, durationMs);
+    if (!res) {
+      b.finalBest.textContent = Math.max(b.game.best, serverBest).toLocaleString();
+      b.newBest.classList.toggle('hidden', !isRecord);
+      if (await promptIfSessionExpired(toast)) {
+        b.runReward.innerHTML = `<span class="shell-rr-note">${t('td.sessionExpired')}</span>`;
+      } else if (isConfigured()) {
+        b.runReward.innerHTML = `<span class="shell-rr-note">${t('td.submitFailed')}</span>`;
+      } else {
+        b.runReward.innerHTML = '';
+      }
+      return;
+    }
+    if (typeof res.best === 'number') serverBest = Math.max(serverBest, res.best);
+    b.finalBest.textContent = serverBest.toLocaleString();
+    b.newBest.classList.toggle('hidden', !isRecord && !res.isRecord);
+    b.runReward.innerHTML = renderRunRewardHtml(res);
+    refreshMenu();
+  };
+
+  const beginFreeRound = async (): Promise<void> => {
+    if (starting) return;
     starting = true;
     try {
       if (!(await startFreeRound(b.host, toast))) return;
+      hideOverOverlay();
       b.game.start();
     } finally {
       starting = false;
     }
   };
 
-  wirePlayButtons([b.startBtn.id, b.againBtn.id, b.restartBtn.id], play);
-  b.resumeBtn.addEventListener('click', () => b.game.resume());
-
-  const handleGameOver = async (score: number, isRecord: boolean): Promise<void> => {
-    const durationMs = b.getDurationMs?.() ?? 0;
-    const res = await paintGameOver(
-      b.host,
-      { reward: b.runReward, finalScore: b.finalScore, finalBest: b.finalBest, newBest: b.newBest },
-      score,
-      b.game.best,
-      isRecord,
-      durationMs,
-      b.formatScore,
-    );
-    if (res?.best) serverBest = Math.max(serverBest, res.best);
-    refreshMenu();
+  const onPlayOrEnter = async (): Promise<void> => {
+    if (starting || phase === 'playing' || phase === 'paused') return;
+    await beginFreeRound();
   };
 
-  return { toast, refreshMenu, play, showForState, handleGameOver };
+  const restartFromPause = async (): Promise<void> => {
+    if (phase !== 'paused') return;
+    hideOverOverlay();
+    await beginFreeRound();
+  };
+
+  wirePlayButtons([b.startBtn.id, b.againBtn.id], onPlayOrEnter);
+  b.restartBtn.addEventListener('click', () => void restartFromPause());
+  b.resumeBtn.addEventListener('click', () => b.game.resume());
+
+  const handleGameOver = (score: number, isRecord: boolean): void => {
+    const durationMs = b.getDurationMs?.() ?? 0;
+    if (isRecord) serverBest = Math.max(serverBest, score);
+    setPhase('over');
+    showOverOverlay(score, isRecord);
+    void submitRunBackground(score, isRecord, durationMs);
+  };
+
+  void freeGameBestRemote(b.host.meta.id).then((best) => {
+    serverBest = best;
+    refreshMenu();
+  });
+
+  return { toast, refreshMenu, play: onPlayOrEnter, showForState, handleGameOver };
 }
 
 /** Standard overlay key mapper for games with menu / paused / gameOver states. */
