@@ -1,10 +1,18 @@
 import '../../styles/base.css';
+import '../../styles/game-shell.css';
+import { GameHost } from '../../platform/gameHost';
+import {
+  standardStateOverlay, wireFreeEngineMain, wireMutePause,
+} from '../../platform/freeGameShell';
 import './style.css';
-import { applyTranslations, getLang, setLang, type Lang } from '../../i18n';
+import { applyTranslations, getLang } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
 import { sfx } from '../../engine/audio';
-import { Merge2048, W, H, type GameState, type Dir } from './game';
+import { Merge2048, W, H, type Dir } from './game';
+
+const GAME_ID = 'merge-2048';
+const host = new GameHost(GAME_ID);
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
@@ -19,54 +27,38 @@ const game = new Merge2048();
 
 const scoreVal = $('#scoreVal');
 const bestVal = $('#bestVal');
-const overlays: Record<string, HTMLElement> = {
-  menu: $('#menuOverlay'),
-  over: $('#overOverlay'),
-};
 
-function showOverlay(state: GameState): void {
-  for (const [key, el] of Object.entries(overlays)) {
-    el.classList.toggle('hidden', key !== state);
-  }
-}
-game.onStateChange = showOverlay;
+const shell = wireFreeEngineMain({
+  host,
+  overlays: { menu: $('#menuOverlay'), paused: $('#pauseOverlay'), over: $('#overOverlay') },
+  stateOverlay: standardStateOverlay,
+  hud: $('#hud'),
+  closeBtn: $('#closeBtn'),
+  freeMenu: $('#freeMenu'),
+  startBtn: $('#startBtn'),
+  againBtn: $('#againBtn'),
+  restartBtn: $('#restartBtn'),
+  resumeBtn: $('#resumeBtn'),
+  finalScore: $('#finalScore'),
+  finalBest: $('#finalBest'),
+  newBest: $('#newBest'),
+  runReward: $('#runReward'),
+  game,
+});
+
+game.onStateChange = shell.showForState;
 game.onScore = (s) => { scoreVal.textContent = String(s); };
-game.onGameOver = (score, record) => {
-  $('#finalScore').textContent = String(score);
-  $('#finalBest').textContent = String(game.best);
-  $('#newBest').classList.toggle('hidden', !record);
-};
+game.onGameOver = (score, record) => { void shell.handleGameOver(score, record); };
 
 const input = new Input(document.body);
 input.onAction((a) => {
-  if (a === 'tap') {
-    if (game.state !== 'playing') game.start();
-    return;
-  }
+  if (a === 'tap') return;
   if (a === 'left' || a === 'right' || a === 'up' || a === 'down') {
     game.handleAction(a as Dir);
   }
 });
 
-$('#startBtn').addEventListener('click', () => game.start());
-$('#againBtn').addEventListener('click', () => game.start());
-
-const muteBtn = $('#muteBtn');
-muteBtn.textContent = sfx.muted ? '🔇' : '🔊';
-muteBtn.addEventListener('click', () => {
-  muteBtn.textContent = sfx.toggleMute() ? '🔇' : '🔊';
-});
-
-const langEn = $('#langEn');
-const langAm = $('#langAm');
-function syncLangButtons(): void {
-  const lang = getLang();
-  langEn.classList.toggle('active', lang === 'en');
-  langAm.classList.toggle('active', lang === 'am');
-}
-function pick(lang: Lang): void { setLang(lang); syncLangButtons(); }
-langEn.addEventListener('click', () => pick('en'));
-langAm.addEventListener('click', () => pick('am'));
+wireMutePause($('#muteBtn'), null, game, sfx);
 
 const loop = new GameLoop(
   (dt) => game.update(dt),
@@ -78,6 +70,6 @@ const loop = new GameLoop(
 
 document.documentElement.lang = getLang();
 applyTranslations();
-syncLangButtons();
-showOverlay('menu');
+shell.refreshMenu();
+shell.showForState('menu');
 loop.start();

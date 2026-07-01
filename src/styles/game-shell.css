@@ -16,6 +16,15 @@
   --game-accent: var(--shell-accent);
 }
 
+.game-shell[data-game="orbit-blast"] { --game-accent: #5b8cff; }
+.game-shell[data-game="merge-2048"] { --game-accent: #f0a832; }
+.game-shell[data-game="candy-crunch"] { --game-accent: #e85b9c; }
+.game-shell[data-game="dice-roll"] { --game-accent: #d18a04; }
+.game-shell[data-game="lucky-box"] { --game-accent: #c77dff; }
+.game-shell[data-game="spin-wheel"] { --game-accent: #d18a04; }
+.game-shell[data-game="luckyslot"] { --game-accent: #d18a04; }
+.game-shell[data-game="crash-game"] { --game-accent: #d18a04; }
+.game-shell[data-game="ethiopian-quiz"] { --game-accent: #3f9e16; }
 .game-shell[data-game="memory-match"] { --game-accent: #ff6b9d; }
 .game-shell[data-game="fruit-slice"] { --game-accent: #46c05a; }
 .game-shell[data-game="metro-rush"] { --game-accent: #36b3a8; }

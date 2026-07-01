@@ -1,17 +1,22 @@
-// Spin Wheel — a chance game a built-in GoPlay game (tournament mode).
+// Spin Wheel — a chance game a built-in GoPlay game.
 // Hold to charge spin speed, release to spin. The landing segment is decided by
 // a CSPRNG at the configured win rate; the wheel animation is steered to match.
-// Entry fee is charged once per window; wins accumulate to the leaderboard.
 
 import '../../styles/base.css';
+import '../../styles/game-shell.css';
 import './style.css';
-import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
+import { applyTranslations, getLang, t } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
+import { ensureToast, paintInlineReward, renderFreeHudHtml, startFreeRound } from '../../platform/freeGameShell';
 
 const host = createHost('spin-wheel');
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
+
+const freeHud = $('#freeHud');
+const runReward = $('#runReward');
+const toast = ensureToast('spin-wheel-toast');
 
 function chance(ratePct: number): boolean {
   const buf = new Uint32Array(1);
@@ -47,20 +52,9 @@ let currentRotation = 0;
 let isHolding = false;
 let spinSpeed = 0;
 let spinInterval: ReturnType<typeof setInterval> | null = null;
-let sessionPoints = 0;
 
-function setHUD(): void {
-  $('#sw-hud-cost').textContent = host.costCoins > 0 ? `${host.costCoins} 🪙` : t('arc.free');
-  $('#sw-hud-win').textContent = `+${host.winPoints} ${t('arc.pts')}`;
-}
-
-function renderTournament(): void {
-  const strip = $('#sw-tourney');
-  if (!host.isTournament || !host.tournament) { strip.style.display = 'none'; return; }
-  const title = getLang() === 'am' ? host.tournament.titleAm : host.tournament.titleEn;
-  $('#sw-t-name').textContent = `${title} · ${t('arc.endsIn')} ${host.countdownText()}`;
-  const standing = host.standing();
-  $('#sw-rank').textContent = standing ? `#${standing.rank}` : '#—';
+function mountFreeHud(): void {
+  freeHud.innerHTML = renderFreeHudHtml(host);
 }
 
 function drawWheel(): void {
@@ -125,13 +119,8 @@ function drawWheel(): void {
 async function startHolding(e: Event): Promise<void> {
   if (isSpinning || isHolding) return;
   e.preventDefault();
-  // Charge into the tournament before the first spin of the window.
-  const begin = await host.begin();
-  if (!begin.ok) {
-    message.textContent = begin.reason === 'auth' ? t('arc.signIn') : t('arc.needCoins');
-    return;
-  }
-  setHUD();
+  if (!(await startFreeRound(host, toast))) return;
+  runReward.innerHTML = '';
   isHolding = true;
   spinSpeed = 0;
   sfx.click();
@@ -182,7 +171,6 @@ function spin(speed: number): void {
       setTimeout(() => {
         canvas.style.transition = '';
         if (isWin) {
-          sessionPoints += host.winPoints;
           message.textContent = t('sw.won').replace('{p}', String(host.winPoints));
           message.style.color = '#D18A04';
           sfx.coin();
@@ -191,9 +179,7 @@ function spin(speed: number): void {
           message.style.color = '#ffffff';
           sfx.crash();
         }
-        void host.finish(sessionPoints, isWin).then((res) => {
-      if (host.isTournament && res.rank) $('#sw-rank').textContent = `#${res.rank}`;
-    });
+        void paintInlineReward(host, runReward, isWin ? 1 : 0, isWin);
         isSpinning = false;
         spinBtn.disabled = false;
         spinSpeed = 0;
@@ -210,30 +196,9 @@ spinBtn.addEventListener('touchstart', (e) => void startHolding(e), { passive: f
 window.addEventListener('mouseup', releaseSpin);
 window.addEventListener('touchend', releaseSpin);
 
-// --- Language switch --------------------------------------------------------
-const langEn = $('#langEn');
-const langAm = $('#langAm');
-function syncLangButtons(): void {
-  const lang = getLang();
-  langEn.classList.toggle('active', lang === 'en');
-  langAm.classList.toggle('active', lang === 'am');
-  setHUD();
-  renderTournament();
-  void host.refreshBoard().then(renderTournament); // real server standing, no simulation
-}
-function pick(lang: Lang): void {
-  setLang(lang);
-  applyTranslations();
-  if (!isSpinning && !isHolding) message.textContent = t('sw.holdStart');
-  syncLangButtons();
-}
-langEn.addEventListener('click', () => pick('en'));
-langAm.addEventListener('click', () => pick('am'));
-
 document.documentElement.lang = getLang();
 applyTranslations();
+mountFreeHud();
 message.textContent = t('sw.holdStart');
-syncLangButtons();
-setHUD();
 drawWheel();
 window.addEventListener('resize', drawWheel);

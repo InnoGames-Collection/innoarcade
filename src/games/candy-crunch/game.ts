@@ -73,6 +73,10 @@ export class CandyCrunch {
   private candiesCollected: Record<string, number> = {};
 
   start(): void {
+    if (this.state === 'levelClear') {
+      this.nextLevel();
+      return;
+    }
     this.levelNumber = 1;
     this.level = this.levelAt(this.levelNumber);
     this.score = 0;
@@ -212,7 +216,6 @@ export class CandyCrunch {
       const bonus = (this.level.movesAllowed - this.movesUsed) * 50;
       this.score += bonus;
       this.onGameOver(this.score, this.levelNumber, setHighScore('candy-crunch', this.score));
-      this.nextLevel();
       return;
     }
 

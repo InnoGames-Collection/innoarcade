@@ -1,15 +1,17 @@
 import '../../styles/base.css';
+import '../../styles/game-shell.css';
+import { GameHost } from '../../platform/gameHost';
+import {
+  wireFreeEngineMain, wireMutePause,
+} from '../../platform/freeGameShell';
 import './style.css';
-import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
+import { applyTranslations, getLang } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
 import { sfx } from '../../engine/audio';
-import { OrbitBlast, W, H, type GameState } from './game';
-import {
-  featuredTournament, tournamentGame,
-  countdown, type LeaderEntry,
-} from '../../platform/tournaments';
-import { backendReady, submitPlayRemote, leaderboardRemote, startRoundRemote } from '../../platform/backend';
-import { currentUser } from '../../platform/auth';
+import { OrbitBlast, W, H } from './game';
+
+const GAME_ID = 'orbit-blast';
+const host = new GameHost(GAME_ID);
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
@@ -25,83 +27,39 @@ const game = new OrbitBlast();
 const scoreVal = $('#scoreVal');
 const ballsVal = $('#ballsVal');
 const bestVal = $('#bestVal');
-const overlays: Record<string, HTMLElement> = {
-  menu: $('#menuOverlay'),
-  over: $('#overOverlay'),
-};
 
-function showOverlay(state: GameState): void {
-  // 'ready' and 'firing' are both in-play — no overlay.
-  const key = state === 'menu' ? 'menu' : state === 'over' ? 'over' : '';
-  for (const [k, el] of Object.entries(overlays)) el.classList.toggle('hidden', k !== key);
+function orbitStateOverlay(state: string): string | null {
+  if (state === 'menu') return 'menu';
+  if (state === 'over') return 'over';
+  if (state === 'ready' || state === 'firing') return null;
+  return state;
 }
-game.onStateChange = showOverlay;
+
+const shell = wireFreeEngineMain({
+  host,
+  overlays: { menu: $('#menuOverlay'), paused: $('#pauseOverlay'), over: $('#overOverlay') },
+  stateOverlay: orbitStateOverlay,
+  hud: $('#hud'),
+  closeBtn: $('#closeBtn'),
+  freeMenu: $('#freeMenu'),
+  startBtn: $('#startBtn'),
+  againBtn: $('#againBtn'),
+  restartBtn: $('#restartBtn'),
+  resumeBtn: $('#resumeBtn'),
+  finalScore: $('#finalScore'),
+  finalBest: $('#finalBest'),
+  newBest: $('#newBest'),
+  runReward: $('#runReward'),
+  game,
+});
+
+game.onStateChange = shell.showForState;
 game.onScore = (s, balls) => {
   scoreVal.textContent = String(s);
   ballsVal.textContent = '×' + balls;
 };
+game.onGameOver = (score, record) => { void shell.handleGameOver(score, record); };
 
-// --- Tournament wiring ------------------------------------------------------
-const tourney = featuredTournament();
-const tourneyGame = tourney ? tournamentGame(tourney) : undefined;
-
-function renderTournamentBadge(): void {
-  if (!tourney) return;
-  const c = countdown(tourney.endsAt);
-  $('#tEnds').textContent = `${c.days}d ${c.hours}h ${c.minutes}m`;
-}
-
-function renderLeaderboard(rows: LeaderEntry[], listSel = '#leaderList'): void {
-  const list = $(listSel);
-  list.innerHTML = '';
-  for (const r of rows) {
-    const li = document.createElement('li');
-    li.className = 'leader-row' + (r.isPlayer ? ' me' : '');
-    li.innerHTML =
-      `<span class="lr-rank">${r.rank}</span>` +
-      `<span class="lr-name">${escapeHtml(r.name)}</span>` +
-      `<span class="lr-score">${r.score.toLocaleString()}</span>`;
-    list.appendChild(li);
-  }
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-}
-
-game.onGameOver = (score, record) => {
-  $('#finalScore').textContent = String(score);
-  $('#finalBest').textContent = String(game.best);
-  $('#newBest').classList.toggle('hidden', !record);
-  if (tourney) {
-    $('#overTournament').classList.remove('hidden');
-    // Persist the authoritative score to the server and render the real board.
-    void syncRemoteScore(tourney.id, score);
-  }
-};
-
-// Submit the score through the validated Edge Function and, on success, replace
-// the local standing with the real server leaderboard. No-ops (keeping the local
-// view) when the backend is off or the player isn't signed in.
-async function syncRemoteScore(tournamentId: string, score: number): Promise<void> {
-  if (!backendReady() || !(await currentUser())) return;
-  try {
-    const { token } = await startRoundRemote('orbit-blast');
-    const res = await submitPlayRemote('orbit-blast', score, score >= 1000, true, token);
-    if (res.rank) $('#rankVal').textContent = `#${res.rank}`;
-    if (res.total) $('#rankTotal').textContent = `/ ${res.total}`;
-    const board = await leaderboardRemote(tournamentId);
-    if (board.length) {
-      const meIdx = board.findIndex((e) => e.isPlayer);
-      const startN = Math.max(0, Math.min(meIdx - 2, board.length - 5));
-      renderLeaderboard(board.slice(startN, startN + 5), '#leaderList2');
-    }
-  } catch {
-    /* network/auth hiccup — the local standing stays on screen */
-  }
-}
-
-// --- Pointer aiming ---------------------------------------------------------
 function toCanvas(e: PointerEvent): [number, number] {
   const rect = canvas.getBoundingClientRect();
   return [
@@ -129,35 +87,7 @@ canvas.addEventListener('pointerup', () => {
   game.release();
 });
 
-$('#startBtn').addEventListener('click', () => game.start());
-$('#againBtn').addEventListener('click', () => game.start());
-
-const muteBtn = $('#muteBtn');
-muteBtn.textContent = sfx.muted ? '🔇' : '🔊';
-muteBtn.addEventListener('click', () => {
-  muteBtn.textContent = sfx.toggleMute() ? '🔇' : '🔊';
-});
-
-const langEn = $('#langEn');
-const langAm = $('#langAm');
-function syncLangButtons(): void {
-  const lang = getLang();
-  langEn.classList.toggle('active', lang === 'en');
-  langAm.classList.toggle('active', lang === 'am');
-  renderTournamentBadge();
-}
-function pick(lang: Lang): void { setLang(lang); syncLangButtons(); }
-langEn.addEventListener('click', () => pick('en'));
-langAm.addEventListener('click', () => pick('am'));
-
-// Populate the menu's tournament strip (real server board, async).
-if (tourney && tourneyGame) {
-  $('#tName').textContent = `${t('hub.monthly')} · ${getLang() === 'am' ? tourneyGame.nameAm : tourneyGame.nameEn}`;
-  renderTournamentBadge();
-  void leaderboardRemote(tourney.id, 3).then((rows) => renderLeaderboard(rows)).catch(() => {});
-} else {
-  $('#menuTournament').classList.add('hidden');
-}
+wireMutePause($('#muteBtn'), null, game, sfx);
 
 const loop = new GameLoop(
   (dt) => game.update(dt),
@@ -169,6 +99,6 @@ const loop = new GameLoop(
 
 document.documentElement.lang = getLang();
 applyTranslations();
-syncLangButtons();
-showOverlay('menu');
+shell.refreshMenu();
+shell.showForState('menu');
 loop.start();

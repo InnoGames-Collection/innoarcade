@@ -6,34 +6,22 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>" />
     <title>Crash Game — GoPlay</title>
   </head>
-  <body>
+  <body class="game-shell" data-game="crash-game">
     <div id="stage">
       <header class="topbar">
         <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         <span class="game-name" data-i18n="cg.title">Crash Game</span>
-        <div class="lang-switch" role="group" aria-label="Language">
-          <button id="langEn" class="lang-btn">EN</button>
-          <button id="langAm" class="lang-btn">አማ</button>
-        </div>
       </header>
 
       <div id="crash-game-wrapper">
-        <div class="cg-hud">
-          <div class="cg-hud-item"><span>🪙</span><div><div class="cg-hud-sub" data-i18n="arc.cost">Cost</div><div class="cg-hud-val" id="cg-hud-cost">…</div></div></div>
-          <div class="cg-hud-title">🚀 <span data-i18n="cg.title">Crash Game</span></div>
-          <div class="cg-hud-item r"><div style="text-align:right"><div class="cg-hud-sub" data-i18n="cg.maxWin">Max Win</div><div class="cg-hud-val gold" id="cg-hud-win">…</div></div><span>⭐</span></div>
-        </div>
-
-        <div class="cg-tourney" id="cg-tourney">
-          <span class="cg-t-name" id="cg-t-name">—</span>
-          <span class="cg-t-rank"><span data-i18n="arc.yourRank">Your rank</span> <strong id="cg-rank">#—</strong></span>
-        </div>
+        <div id="freeHud"></div>
 
         <div class="cg-multiplier" id="cg-multiplier">1.00x</div>
         <div class="cg-chart-container" id="cg-chart">
           <canvas id="cg-canvas"></canvas>
         </div>
         <div class="cg-message" id="cg-message"></div>
+        <div class="shell-run-reward" id="runReward"></div>
 
         <div class="cg-control-row">
           <label for="cg-auto-cashout" data-i18n="cg.autoCashout">🎯 Auto Cashout</label>

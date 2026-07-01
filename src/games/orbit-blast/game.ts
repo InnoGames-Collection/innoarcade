@@ -98,6 +98,10 @@ export class OrbitBlast {
     this.onScore(this.score, this.ballCount);
   }
 
+  pause(): void {}
+
+  resume(): void {}
+
   private setState(s: GameState): void {
     this.state = s;
     this.onStateChange(s);

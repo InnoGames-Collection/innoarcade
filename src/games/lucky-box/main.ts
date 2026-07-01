@@ -1,18 +1,23 @@
-// Lucky Boxes — a chance game a built-in GoPlay game (tournament mode).
+// Lucky Boxes — a chance game a built-in GoPlay game.
 // Pick a box; a win opens a double-or-nothing chest stage (take the win, or
-// gamble for double / lose it). Outcomes use a CSPRNG; the entry fee is charged
-// once per tournament window and points accumulate to the leaderboard.
+// gamble for double / lose it). Outcomes use a CSPRNG.
 
 import '../../styles/base.css';
+import '../../styles/game-shell.css';
 import './style.css';
-import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
+import { applyTranslations, getLang, t } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
+import { ensureToast, paintInlineReward, renderFreeHudHtml, startFreeRound } from '../../platform/freeGameShell';
 
 const host = createHost('lucky-box');
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const inner = (el: Element): HTMLElement => el.querySelector('.lb-box-inner') as HTMLElement;
+
+const freeHud = $('#freeHud');
+const runReward = $('#runReward');
+const toast = ensureToast('lucky-box-toast');
 
 function chance(ratePct: number): boolean {
   const buf = new Uint32Array(1);
@@ -41,27 +46,13 @@ let prizes = ['🎉', '😔', '😔'];
 let gamePlayed = false;
 let isGambleStage = false;
 let gambleResolved = false;
-let sessionPoints = 0;
 
-function setHUD(): void {
-  $('#lb-hud-cost').textContent = host.costCoins > 0 ? `${host.costCoins} 🪙` : t('arc.free');
-  $('#lb-hud-win').textContent = `+${host.winPoints} ${t('arc.pts')}`;
+function mountFreeHud(): void {
+  freeHud.innerHTML = renderFreeHudHtml(host);
 }
 
-function renderTournament(): void {
-  const strip = $('#lb-tourney');
-  if (!host.isTournament || !host.tournament) { strip.style.display = 'none'; return; }
-  const title = getLang() === 'am' ? host.tournament.titleAm : host.tournament.titleEn;
-  $('#lb-t-name').textContent = `${title} · ${t('arc.endsIn')} ${host.countdownText()}`;
-  const standing = host.standing();
-  $('#lb-rank').textContent = standing ? `#${standing.rank}` : '#—';
-}
-
-function submit(points: number, isWin: boolean): void {
-  if (isWin) sessionPoints += points;
-  void host.finish(sessionPoints, isWin).then((res) => {
-      if (host.isTournament && res.rank) $('#lb-rank').textContent = `#${res.rank}`;
-    });
+async function submit(points: number, isWin: boolean): Promise<void> {
+  await paintInlineReward(host, runReward, isWin ? points : 0, isWin);
 }
 
 function initGame(): void {
@@ -69,6 +60,7 @@ function initGame(): void {
   gamePlayed = false;
   message.textContent = t('lb.pick');
   message.style.color = '';
+  runReward.innerHTML = '';
   boxes.forEach((box) => {
     box.classList.remove('opened');
     inner(box).textContent = '📦';
@@ -85,14 +77,9 @@ function initGame(): void {
 
 async function openBox(box: HTMLElement, index: number): Promise<void> {
   if (gamePlayed) return;
-  // Charge into the tournament on the first pick of a round.
-  const begin = await host.begin();
-  if (!begin.ok) {
-    message.textContent = begin.reason === 'auth' ? t('arc.signIn') : t('arc.needCoins');
-    return;
-  }
+  if (!(await startFreeRound(host, toast))) return;
+  runReward.innerHTML = '';
   gamePlayed = true;
-  setHUD();
 
   const isWin = chance(host.winRate);
   prizes = ['😔', '😔', '😔'];
@@ -127,7 +114,7 @@ async function openBox(box: HTMLElement, index: number): Promise<void> {
       message.textContent = t('lb.wrong');
       message.style.color = '#c77dff';
       sfx.crash();
-      submit(0, false);
+      void submit(0, false);
     }
   }, 750);
 }
@@ -156,11 +143,11 @@ function pickGamble(chest: HTMLElement, gidx: number): void {
     if (doubleWin) {
       message.textContent = t('lb.double').replace('{p}', String(host.winPoints * 2));
       message.style.color = '#ffd700';
-      submit(host.winPoints * 2, true);
+      void submit(host.winPoints * 2, true);
     } else {
       message.textContent = t('lb.boom');
       message.style.color = '#ff6b6b';
-      submit(0, false);
+      void submit(0, false);
     }
   }, 1400);
 }
@@ -173,7 +160,7 @@ cashoutBtn.addEventListener('click', () => {
   resetBtn.style.display = 'inline-block';
   message.textContent = t('lb.cashedOut').replace('{p}', String(host.winPoints));
   message.style.color = '#ffd700';
-  submit(host.winPoints, true);
+  void submit(host.winPoints, true);
 });
 
 boxes.forEach((box) => {
@@ -184,28 +171,7 @@ gambleChests.forEach((chest) => {
 });
 resetBtn.addEventListener('click', () => { sfx.click(); initGame(); });
 
-// --- Language switch --------------------------------------------------------
-const langEn = $('#langEn');
-const langAm = $('#langAm');
-function syncLangButtons(): void {
-  const lang = getLang();
-  langEn.classList.toggle('active', lang === 'en');
-  langAm.classList.toggle('active', lang === 'am');
-  setHUD();
-  renderTournament();
-  void host.refreshBoard().then(renderTournament); // real server standing, no simulation
-}
-function pick(lang: Lang): void {
-  setLang(lang);
-  applyTranslations();
-  if (!gamePlayed) message.textContent = t('lb.pick');
-  syncLangButtons();
-}
-langEn.addEventListener('click', () => pick('en'));
-langAm.addEventListener('click', () => pick('am'));
-
 document.documentElement.lang = getLang();
 applyTranslations();
-syncLangButtons();
-setHUD();
+mountFreeHud();
 initGame();

@@ -1,17 +1,22 @@
-// Lucky Slot — a 3-reel slot a built-in GoPlay game (tournament mode).
+// Lucky Slot — a 3-reel slot a built-in GoPlay game.
 // The outcome is decided by a CSPRNG at the configured win rate, and the reels
-// are filled to land on a matching/non-matching result accordingly. Entry fee
-// is charged once per window; wins accumulate to the leaderboard.
+// are filled to land on a matching/non-matching result accordingly.
 
 import '../../styles/base.css';
+import '../../styles/game-shell.css';
 import './style.css';
-import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
+import { applyTranslations, getLang, t } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
+import { ensureToast, paintInlineReward, renderFreeHudHtml, startFreeRound } from '../../platform/freeGameShell';
 
 const host = createHost('luckyslot');
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
+
+const freeHud = $('#freeHud');
+const runReward = $('#runReward');
+const toast = ensureToast('luckyslot-toast');
 
 function chance(ratePct: number): boolean {
   const buf = new Uint32Array(1);
@@ -34,20 +39,9 @@ const machineElement = $('#slot-machine-body');
 
 let isSpinning = false;
 let slotTickInterval: ReturnType<typeof setInterval> | undefined;
-let sessionPoints = 0;
 
-function setHUD(): void {
-  $('#slot-hud-cost').textContent = host.costCoins > 0 ? `${host.costCoins} 🪙` : t('arc.free');
-  $('#slot-hud-win').textContent = `+${host.winPoints} ${t('arc.pts')}`;
-}
-
-function renderTournament(): void {
-  const strip = $('#slot-tourney');
-  if (!host.isTournament || !host.tournament) { strip.style.display = 'none'; return; }
-  const title = getLang() === 'am' ? host.tournament.titleAm : host.tournament.titleEn;
-  $('#slot-t-name').textContent = `${title} · ${t('arc.endsIn')} ${host.countdownText()}`;
-  const standing = host.standing();
-  $('#slot-rank').textContent = standing ? `#${standing.rank}` : '#—';
+function mountFreeHud(): void {
+  freeHud.innerHTML = renderFreeHudHtml(host);
 }
 
 function initReels(): void {
@@ -63,12 +57,8 @@ function initReels(): void {
 
 async function runSpinLogic(): Promise<void> {
   if (isSpinning) return;
-  const begin = await host.begin();
-  if (!begin.ok) {
-    messageDisplay.textContent = begin.reason === 'auth' ? t('arc.signIn') : t('arc.needCoins');
-    return;
-  }
-  setHUD();
+  if (!(await startFreeRound(host, toast))) return;
+  runReward.innerHTML = '';
   isSpinning = true;
   spinBtn.disabled = true;
   machineElement.classList.remove('slot-win-glow');
@@ -122,13 +112,13 @@ async function runSpinLogic(): Promise<void> {
       strip.innerHTML = `<div class="slot-symbol">${targetSymbol}</div>`;
       if (index === 2) {
         clearInterval(slotTickInterval);
-        evaluateWin(results);
+        void evaluateWin(results);
       }
     }, 1700 + index * 550);
   });
 }
 
-function evaluateWin(results: string[]): void {
+async function evaluateWin(results: string[]): Promise<void> {
   isSpinning = false;
   spinBtn.disabled = false;
   const [r1, r2, r3] = results;
@@ -146,37 +136,13 @@ function evaluateWin(results: string[]): void {
     messageDisplay.textContent = t('sl.tryAgain');
     sfx.crash();
   }
-  if (isWin) sessionPoints += host.winPoints;
-  void host.finish(sessionPoints, isWin).then((res) => {
-      if (host.isTournament && res.rank) $('#slot-rank').textContent = `#${res.rank}`;
-    });
+  await paintInlineReward(host, runReward, isWin ? 1 : 0, isWin);
 }
 
 spinBtn.addEventListener('click', () => void runSpinLogic());
 
-// --- Language switch --------------------------------------------------------
-const langEn = $('#langEn');
-const langAm = $('#langAm');
-function syncLangButtons(): void {
-  const lang = getLang();
-  langEn.classList.toggle('active', lang === 'en');
-  langAm.classList.toggle('active', lang === 'am');
-  setHUD();
-  renderTournament();
-  void host.refreshBoard().then(renderTournament); // real server standing, no simulation
-}
-function pick(lang: Lang): void {
-  setLang(lang);
-  applyTranslations();
-  if (!isSpinning) messageDisplay.textContent = t('sl.tapSpin');
-  syncLangButtons();
-}
-langEn.addEventListener('click', () => pick('en'));
-langAm.addEventListener('click', () => pick('am'));
-
 document.documentElement.lang = getLang();
 applyTranslations();
+mountFreeHud();
 messageDisplay.textContent = t('sl.tapSpin');
-syncLangButtons();
-setHUD();
 initReels();

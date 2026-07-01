@@ -11,16 +11,12 @@ import { ScreenFx } from '../../engine/fx';
 import { Tweens, Ease } from '../../engine/tween';
 import { sfx } from '../../engine/audio';
 import { settings } from '../../engine/settings';
-import { recordEnginePlay } from '../../platform/gameHost';
-
 export const W = 480;
 export const H = 480;
 export const SIZE = 4;
 const PAD = 16;
 const GAP = 14;
 export const CELL = (W - PAD * 2 - GAP * (SIZE - 1)) / SIZE;
-
-const GAME_ID = 'merge-2048';
 
 export type GameState = 'menu' | 'playing' | 'over';
 export type Dir = 'left' | 'right' | 'up' | 'down';
@@ -96,6 +92,10 @@ export class Merge2048 {
     this.setState('playing');
     this.onScore(this.score);
   }
+
+  pause(): void {}
+
+  resume(): void {}
 
   private setState(s: GameState): void {
     this.state = s;
@@ -247,7 +247,6 @@ export class Merge2048 {
   private gameOver(): void {
     const record = this.score > this.best;
     if (record) this.best = this.score;
-    void recordEnginePlay(GAME_ID, this.score);
     this.fx.shake(8, 0.3);
     this.setState('over');
     this.onGameOver(this.score, record);

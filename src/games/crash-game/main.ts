@@ -1,20 +1,24 @@
-// Crash Game — a built-in GoPlay game (tournament mode).
+// Crash Game — a built-in GoPlay game.
 //
 // A rocket climbs a rising multiplier; cash out before it crashes. The crash
-// point is decided up-front by a CSPRNG at the configured win rate (the old
-// build trusted a forgeable server flag). The reward scales with the multiplier
-// the player banks — points = round(winPoints × cashout) — and accumulates to
-// the leaderboard. Entry fee is charged once per tournament window.
+// point is decided up-front by a CSPRNG at the configured win rate. The reward
+// scales with the multiplier the player banks.
 
 import '../../styles/base.css';
+import '../../styles/game-shell.css';
 import './style.css';
-import { applyTranslations, getLang, setLang, t, type Lang } from '../../i18n';
+import { applyTranslations, getLang, t } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
+import { ensureToast, paintInlineReward, renderFreeHudHtml, startFreeRound } from '../../platform/freeGameShell';
 
 const host = createHost('crash-game');
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
+
+const freeHud = $('#freeHud');
+const runReward = $('#runReward');
+const toast = ensureToast('crash-game-toast');
 
 function chance(ratePct: number): boolean {
   const buf = new Uint32Array(1);
@@ -54,20 +58,9 @@ let isExploding = false;
 let animationFrameId: number | null = null;
 let crashHistory = [1.45, 2.84, 1.08, 4.12, 1.67];
 let cashoutMultiplier = 1.0;
-let sessionPoints = 0;
 
-function setHUD(): void {
-  $('#cg-hud-cost').textContent = host.costCoins > 0 ? `${host.costCoins} 🪙` : t('arc.free');
-  $('#cg-hud-win').textContent = `+${host.winPoints} ${t('arc.pts')}`;
-}
-
-function renderTournament(): void {
-  const strip = $('#cg-tourney');
-  if (!host.isTournament || !host.tournament) { strip.style.display = 'none'; return; }
-  const title = getLang() === 'am' ? host.tournament.titleAm : host.tournament.titleEn;
-  $('#cg-t-name').textContent = `${title} · ${t('arc.endsIn')} ${host.countdownText()}`;
-  const standing = host.standing();
-  $('#cg-rank').textContent = standing ? `#${standing.rank}` : '#—';
+function mountFreeHud(): void {
+  freeHud.innerHTML = renderFreeHudHtml(host);
 }
 
 function drawHistory(): void {
@@ -279,13 +272,8 @@ async function startGame(): Promise<void> {
     cashOut();
     return;
   }
-  // Enter the tournament (charge entry once per window) before takeoff.
-  const begin = await host.begin();
-  if (!begin.ok) {
-    message.textContent = begin.reason === 'auth' ? t('arc.signIn') : t('arc.needCoins');
-    return;
-  }
-  setHUD();
+  if (!(await startFreeRound(host, toast))) return;
+  runReward.innerHTML = '';
 
   isPlaying = true;
   hasCashedOut = false;
@@ -334,7 +322,7 @@ async function startGame(): Promise<void> {
   }, 75);
 }
 
-function cashOut(): void {
+async function cashOut(): Promise<void> {
   if (!isPlaying || hasCashedOut) return;
   hasCashedOut = true;
   cashoutMultiplier = multiplier;
@@ -347,7 +335,6 @@ function cashOut(): void {
 
   sfx.coin();
   const points = Math.round(host.winPoints * cashoutMultiplier);
-  sessionPoints += points;
   message.textContent = t('cg.cashedOut')
     .replace('{m}', multiplier.toFixed(2))
     .replace('{p}', String(points));
@@ -356,12 +343,10 @@ function cashOut(): void {
   btn.textContent = t('arc.playAgain');
   btn.classList.remove('cashout');
 
-  void host.finish(sessionPoints, true).then((res) => {
-      if (host.isTournament && res.rank) $('#cg-rank').textContent = `#${res.rank}`;
-    });
+  await paintInlineReward(host, runReward, points, true);
 }
 
-function crash(): void {
+async function crash(): Promise<void> {
   clearInterval(gameInterval);
   isPlaying = false;
   isExploding = true;
@@ -392,7 +377,7 @@ function crash(): void {
     });
   }
 
-  host.finish(sessionPoints, false);
+  await paintInlineReward(host, runReward, 0, false);
 }
 
 btn.addEventListener('click', () => void startGame());
@@ -401,34 +386,11 @@ window.addEventListener('resize', () => {
   initStars();
 });
 
-// --- Language switch --------------------------------------------------------
-const langEn = $('#langEn');
-const langAm = $('#langAm');
-function syncLangButtons(): void {
-  const lang = getLang();
-  langEn.classList.toggle('active', lang === 'en');
-  langAm.classList.toggle('active', lang === 'am');
-  setHUD();
-  renderTournament();
-  void host.refreshBoard().then(renderTournament); // real server standing, no simulation
-}
-function pick(lang: Lang): void {
-  setLang(lang);
-  applyTranslations();
-  if (!isPlaying) {
-    message.textContent = t('cg.instr');
-    btn.textContent = t('cg.start');
-  }
-  syncLangButtons();
-}
-langEn.addEventListener('click', () => pick('en'));
-langAm.addEventListener('click', () => pick('am'));
-
 document.documentElement.lang = getLang();
 applyTranslations();
+mountFreeHud();
 message.textContent = t('cg.instr');
-syncLangButtons();
-setHUD();
+btn.textContent = t('cg.start');
 resizeCanvas();
 initStars();
 drawHistory();
