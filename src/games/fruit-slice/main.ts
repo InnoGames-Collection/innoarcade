@@ -70,7 +70,6 @@ let rankedThisRun = false;
 let serverBest = 0;
 let starting = false;
 let toastT = 0;
-let submitPromise: Promise<void> = Promise.resolve();
 
 function gameTitle(): string {
   return getLang() === 'am' ? host.meta.nameAm : host.meta.nameEn;
@@ -100,7 +99,8 @@ function updateActionButtons(): void {
   const startBtn = $('#startBtn') as HTMLButtonElement;
   startBtn.textContent = playLabel;
   againBtn.textContent = playLabel;
-  againBtn.disabled = starting;
+  againBtn.disabled = false;
+  startBtn.disabled = false;
   $('#restartBtn').textContent = attemptsLeft() > 0 ? t('td.restart') : t('hub.play');
 }
 
@@ -194,8 +194,6 @@ async function failRankedSubmit(reward: HTMLElement): Promise<void> {
 async function submitRun(score: number, durationMs: number, isWin: boolean): Promise<void> {
   const reward = $('#fsRunReward');
   const boardOver = $('#fsBoardOver');
-  const againBtn = $('#againBtn') as HTMLButtonElement;
-  againBtn.disabled = true;
   if (!isConfigured()) {
     reward.innerHTML = '';
     boardOver.innerHTML = '';
@@ -203,52 +201,53 @@ async function submitRun(score: number, durationMs: number, isWin: boolean): Pro
     return;
   }
   reward.innerHTML = `<span class="shell-rr-pending">…</span>`;
-  const res = await host.finish(score, isWin, durationMs, { ranked: rankedThisRun });
-  if (rankedThisRun && res.rank == null) {
+  try {
+    const res = await host.finish(score, isWin, durationMs, { ranked: rankedThisRun });
+    if (rankedThisRun && res.rank == null) {
+      await failRankedSubmit(reward);
+      return;
+    }
+    serverBest = res.best ?? serverBest;
+    $('#fsFinalBest').textContent = serverBest.toLocaleString();
+    $('#newBest').classList.toggle('hidden', !res.isRecord);
+    reward.innerHTML = `<span class="shell-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
+      <span class="shell-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
+    if (typeof res.attemptsLeft === 'number') {
+      reward.innerHTML += `<span class="shell-rr-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
+    }
+    const tour = getTournamentForGame(GAME_ID);
+    if (tour) {
+      const board = await leaderboardRemote(tour.id, 5);
+      const standing = await playerStandingRemote(tour.id);
+      boardOver.innerHTML = tournamentBoardHtml(board, standing);
+    }
+    syncAttemptsUi();
+    void refreshTournamentPanel();
+  } catch {
     await failRankedSubmit(reward);
-    return;
   }
-  serverBest = res.best ?? serverBest;
-  $('#fsFinalBest').textContent = serverBest.toLocaleString();
-  $('#newBest').classList.toggle('hidden', !res.isRecord);
-  reward.innerHTML = `<span class="shell-rr-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
-    <span class="shell-rr-stat"><b>${t('td.best')}</b> ${serverBest.toLocaleString()}</span>`;
-  if (typeof res.attemptsLeft === 'number') {
-    reward.innerHTML += `<span class="shell-rr-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
-  }
-  const tour = getTournamentForGame(GAME_ID);
-  if (tour) {
-    const board = await leaderboardRemote(tour.id, 5);
-    const standing = await playerStandingRemote(tour.id);
-    boardOver.innerHTML = tournamentBoardHtml(board, standing);
-  }
-  syncAttemptsUi();
-  void refreshTournamentPanel();
-  againBtn.disabled = false;
 }
 
 game.onGameOver = (score, durationMs) => {
   showGameOverOverlay(score);
-  submitPromise = submitRun(score, durationMs, score >= host.winScore);
+  void submitRun(score, durationMs, score >= host.winScore);
 };
+
+async function onPlayOrEnter(): Promise<void> {
+  if (starting) return;
+  if (game.state === 'playing' || game.state === 'paused') return;
+  if (attemptsLeft() <= 0) {
+    await onEnter();
+    return;
+  }
+  await beginRankedRound();
+}
 
 async function onEnter(): Promise<void> {
   openTournamentEntryForGame(GAME_ID, {
     onEntered: () => { void refreshTournamentPanel(); },
     onPlay: () => { void onPlayOrEnter(); },
   });
-}
-
-async function onPlayOrEnter(): Promise<void> {
-  if (starting) return;
-  if (game.state === 'playing' || game.state === 'paused') return;
-  await submitPromise;
-  await loadMyEntries();
-  if (attemptsLeft() <= 0) {
-    await onEnter();
-    return;
-  }
-  await beginRankedRound();
 }
 
 async function beginRankedRound(): Promise<void> {
