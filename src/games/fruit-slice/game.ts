@@ -6,6 +6,12 @@ import type { Action } from '../../engine/input';
 
 export const W = 480;
 export const H = 720;
+/** Ranked monthly attempts last this many seconds (fair RP window). */
+export const ROUND_SECONDS = 90;
+
+const FRUIT_BASE = 10;
+const COMBO_BONUS = 2;
+const COMBO_BONUS_CAP = 9;
 
 const FRUIT_RADIUS = 18;
 const BOMB_RADIUS = 16;
@@ -48,14 +54,18 @@ interface Slice {
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameOver';
 
+export type GameOverReason = 'lives' | 'time';
+
 export class FruitSlice {
   state: GameState = 'menu';
   score = 0;
   combo = 0;
   lives = 3;
+  /** Why the last run ended (set before gameOver). */
+  lastEndReason: GameOverReason = 'lives';
 
   onStateChange: (s: GameState) => void = () => {};
-  onGameOver: (score: number, durationMs: number) => void = () => {};
+  onGameOver: (score: number, durationMs: number, reason: GameOverReason) => void = () => {};
 
   private time = 0;
   // Difficulty ramp: spawn rate + object speed scale up with elapsed time, so the
@@ -74,6 +84,7 @@ export class FruitSlice {
     this.combo = 0;
     this.lives = 3;
     this.time = 0;
+    this.lastEndReason = 'lives';
     this.speedMul = 1;
     this.fruits = [];
     this.bombs = [];
@@ -140,18 +151,35 @@ export class FruitSlice {
     }
   }
 
+  /** Seconds remaining in the ranked round (counts down while playing). */
+  secondsLeft(): number {
+    return Math.max(0, Math.ceil(ROUND_SECONDS - this.time));
+  }
+
+  private fruitPoints(): number {
+    const streak = Math.max(0, this.combo - 1);
+    return FRUIT_BASE + Math.min(streak, COMBO_BONUS_CAP) * COMBO_BONUS;
+  }
+
+  private endRun(reason: GameOverReason): void {
+    if (this.state !== 'playing') return;
+    this.lastEndReason = reason;
+    this.setState('gameOver');
+    this.onGameOver(this.score, Math.floor(this.time * 1000), reason);
+  }
+
   private sliceFruit(fruit: Fruit): void {
     if (fruit.sliced) return;
     fruit.sliced = true;
     this.combo += 1;
-    this.score += 10; // +10 per fruit sliced
+    this.score += this.fruitPoints();
     sfx.click();
     this.burstFruit(fruit.x, fruit.y, this.getFruitColor(fruit.type));
     this.screenShake = 0.1;
   }
 
-  // Slicing a bomb costs 10 points (floored at 0). It does NOT end the run — the
-  // game is endless; you fail only by letting fruit fall (lives).
+  // Slicing a bomb costs 10 points (floored at 0). It does NOT end the run —
+  // you fail when lives reach 0 or the round timer hits zero.
   private hitBomb(bomb: Bomb): void {
     if (bomb.hit) return;
     bomb.hit = true;
@@ -192,8 +220,14 @@ export class FruitSlice {
   }
 
   update(dt: number): void {
-    this.time += dt;
     if (this.state !== 'playing') return;
+
+    this.time += dt;
+
+    if (this.time >= ROUND_SECONDS) {
+      this.endRun('time');
+      return;
+    }
 
     this.screenShake = Math.max(0, this.screenShake - dt * 8);
 
@@ -242,8 +276,7 @@ export class FruitSlice {
       this.lives -= 1;
       this.combo = 0;
       if (this.lives <= 0) {
-        this.setState('gameOver');
-        this.onGameOver(this.score, Math.floor(this.time * 1000));
+        this.endRun('lives');
       }
     }
     this.fruits = this.fruits.filter((f) => f.y <= H || f.sliced);

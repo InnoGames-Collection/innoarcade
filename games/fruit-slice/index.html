@@ -13,6 +13,7 @@
       <div id="fsPlayFrame" class="fs-playframe hidden">
         <button id="closeBtn" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         <div class="fs-stats">
+          <div class="fs-stat fs-stat-time"><span class="fs-stat-label" data-i18n="fs.time">Time</span><span class="fs-stat-value" id="fsTime">1:30</span></div>
           <div class="fs-stat"><span class="fs-stat-label" data-i18n="td.score">Score</span><span class="fs-stat-value" id="fsScore">0</span></div>
           <div class="fs-stat"><span class="fs-stat-label" data-i18n="fs.combo">Combo</span><span class="fs-stat-value" id="fsCombo">—</span></div>
           <div class="fs-stat fs-stat-lives"><span class="fs-stat-label" data-i18n="fs.lives">Lives</span><span class="fs-stat-value" id="fsLives">3</span></div>
@@ -30,6 +31,7 @@
         <div class="game-panel panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <div class="shell-tourney" id="fsTourney" aria-live="polite"></div>
+          <p class="fs-attempts-note" data-i18n="fs.attemptsNote">Lives = missed fruit in a run · 🎟️ = paid tournament attempts</p>
           <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
         </div>
       </div>
@@ -47,6 +49,8 @@
         <div class="game-panel fs-over-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
+          <p id="fsOverReason" class="fs-over-reason"></p>
+          <p id="fsStrongRun" class="new-best hidden" data-i18n="fs.strongRun">Strong run!</p>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
           <div class="fs-over-final">
             <div class="fs-over-stat"><span data-i18n="td.score">Score</span><strong id="fsFinalScore">0</strong></div>

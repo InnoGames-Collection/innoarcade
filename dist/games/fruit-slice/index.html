@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍉</text></svg>" />
     <title>Fruit Slice — GoPlay</title>
-    <script type="module" crossorigin src="../../assets/fruitSlice-VHUJ6gOQ.js"></script>
-    <link rel="modulepreload" crossorigin href="../../assets/index-D3YYtEp9.js">
+    <script type="module" crossorigin src="../../assets/fruitSlice-FjG1BLXB.js"></script>
+    <link rel="modulepreload" crossorigin href="../../assets/index-CJBH1zFq.js">
     <link rel="modulepreload" crossorigin href="../../assets/tournaments-BbHGW7zJ.js">
-    <link rel="modulepreload" crossorigin href="../../assets/audio-Ct7bP7Pc.js">
-    <link rel="modulepreload" crossorigin href="../../assets/sessionAuth-xcfcWus6.js">
-    <link rel="modulepreload" crossorigin href="../../assets/tournamentEntry-aN_i0rL-.js">
-    <link rel="modulepreload" crossorigin href="../../assets/gameTournamentPanel-ChIafcsL.js">
+    <link rel="modulepreload" crossorigin href="../../assets/audio-Bon9Vp3W.js">
+    <link rel="modulepreload" crossorigin href="../../assets/sessionAuth-By2TFXKv.js">
+    <link rel="modulepreload" crossorigin href="../../assets/tournamentEntry-CHxVICYj.js">
+    <link rel="modulepreload" crossorigin href="../../assets/gameTournamentPanel-DN_dx3OS.js">
     <link rel="modulepreload" crossorigin href="../../assets/loop-BDek7L7e.js">
     <link rel="modulepreload" crossorigin href="../../assets/input-DF-0NnhL.js">
     <link rel="stylesheet" crossorigin href="../../assets/audio-DmlIPLOZ.css">
-    <link rel="stylesheet" crossorigin href="../../assets/sessionAuth-DhAGoIcW.css">
-    <link rel="stylesheet" crossorigin href="../../assets/fruitSlice-DJOFPBDC.css">
+    <link rel="stylesheet" crossorigin href="../../assets/sessionAuth-CdtBVGxN.css">
+    <link rel="stylesheet" crossorigin href="../../assets/fruitSlice-IqlkDn-G.css">
   </head>
   <body class="game-shell" data-game="fruit-slice">
     <div id="stage" class="fs-stage game-shell-stage">
@@ -25,6 +25,7 @@
       <div id="fsPlayFrame" class="fs-playframe hidden">
         <button id="closeBtn" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
         <div class="fs-stats">
+          <div class="fs-stat fs-stat-time"><span class="fs-stat-label" data-i18n="fs.time">Time</span><span class="fs-stat-value" id="fsTime">1:30</span></div>
           <div class="fs-stat"><span class="fs-stat-label" data-i18n="td.score">Score</span><span class="fs-stat-value" id="fsScore">0</span></div>
           <div class="fs-stat"><span class="fs-stat-label" data-i18n="fs.combo">Combo</span><span class="fs-stat-value" id="fsCombo">—</span></div>
           <div class="fs-stat fs-stat-lives"><span class="fs-stat-label" data-i18n="fs.lives">Lives</span><span class="fs-stat-value" id="fsLives">3</span></div>
@@ -42,6 +43,7 @@
         <div class="game-panel panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <div class="shell-tourney" id="fsTourney" aria-live="polite"></div>
+          <p class="fs-attempts-note" data-i18n="fs.attemptsNote">Lives = missed fruit in a run · 🎟️ = paid tournament attempts</p>
           <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
         </div>
       </div>
@@ -59,6 +61,8 @@
         <div class="game-panel fs-over-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
+          <p id="fsOverReason" class="fs-over-reason"></p>
+          <p id="fsStrongRun" class="new-best hidden" data-i18n="fs.strongRun">Strong run!</p>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
           <div class="fs-over-final">
             <div class="fs-over-stat"><span data-i18n="td.score">Score</span><strong id="fsFinalScore">0</strong></div>

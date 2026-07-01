@@ -7,10 +7,24 @@ import { leaderboardRemote, playerStandingRemote } from './backend';
 import { balance } from './wallet';
 import { isConfigured } from './supabase';
 import { currentUser } from './auth';
+import { type TournamentCadence } from './catalog';
 import {
   getTournamentForGame, loadMyEntries, loadTournaments, myEntry,
   type LeaderEntry, type Tournament,
 } from './tournaments';
+
+export interface ShellMenuTournamentOpts {
+  cadence?: TournamentCadence;
+  /** Short scoring / rules line under the best-score row. */
+  hint?: string;
+}
+
+function cadenceBadgeHtml(cadence: TournamentCadence): string {
+  const label = t(
+    cadence === 'daily' ? 'td.daily' : cadence === 'weekly' ? 'td.weekly' : 'td.monthly',
+  );
+  return `<span class="gt-cadence"><span class="gt-cadence-badge gt-cadence-${cadence}">${label}</span> · ${t('hub.tournament')}</span>`;
+}
 
 export interface TournamentPanelSnapshot {
   tourney?: Tournament;
@@ -59,13 +73,20 @@ export function renderShellMenuTournamentHtml(
   serverBest: number,
   attemptsLeft: number,
   board: LeaderEntry[],
+  opts?: ShellMenuTournamentOpts,
 ): string {
+  const cadenceRow = opts?.cadence ? cadenceBadgeHtml(opts.cadence) : '';
+  const hintRow = opts?.hint
+    ? `<div class="gt-hint">${escHtml(opts.hint)}</div>`
+    : '';
   return `
     <div class="gt-head">
       <span class="gt-title">${gameIcon} ${escHtml(gameTitle)}</span>
       <span class="gt-coins">${walletCoins.toLocaleString()} 🪙</span>
     </div>
+    ${cadenceRow}
     <div class="gt-best">${t('td.yourBest')}: <strong>${serverBest.toLocaleString()}</strong></div>
+    ${hintRow}
     ${attemptsLeft > 0 ? `<div class="gt-status"><span class="gt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${attemptsLeft}</strong></span></div>` : ''}
     <div class="gt-board">${tournamentBoardHtml(board)}</div>`;
 }

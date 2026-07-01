@@ -372,6 +372,48 @@ body.game-shell {
   font-size: 1rem;
 }
 
+.game-shell .shell-tourney .gt-cadence {
+  width: 100%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--shell-muted);
+  text-align: center;
+}
+
+.game-shell .shell-tourney .gt-cadence-badge {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.game-shell .shell-tourney .gt-cadence-daily {
+  color: #1a5fa8;
+  background: #e3f0ff;
+}
+
+.game-shell .shell-tourney .gt-cadence-weekly {
+  color: #8a5a00;
+  background: #fff3d0;
+}
+
+.game-shell .shell-tourney .gt-cadence-monthly {
+  color: #157a47;
+  background: #e6f7ee;
+}
+
+.game-shell .shell-tourney .gt-hint {
+  width: 100%;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--shell-muted);
+  text-align: center;
+  padding: 0 0.2rem;
+}
+
 .game-shell .shell-tourney .gt-status {
   font-size: 0.82rem;
   color: var(--shell-text);

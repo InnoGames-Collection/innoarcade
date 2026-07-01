@@ -14,7 +14,7 @@ import { applyTranslations, getLang, t } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
 import { sfx } from '../../engine/audio';
-import { FruitSlice, W, H, type GameState } from './game';
+import { FruitSlice, W, H, type GameState, type GameOverReason } from './game';
 
 const GAME_ID = 'fruit-slice';
 const host = new GameHost(GAME_ID);
@@ -93,7 +93,17 @@ function syncAttemptsUi(): void {
   updateActionButtons();
 }
 
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${m}:${ss.toString().padStart(2, '0')}`;
+}
+
 function updatePlayHud(): void {
+  const left = game.secondsLeft();
+  const timeEl = $('#fsTime');
+  timeEl.textContent = fmtTime(left);
+  timeEl.closest('.fs-stat-time')?.classList.toggle('fs-stat-urgent', left > 0 && left <= 10);
   $('#fsScore').textContent = String(game.score);
   $('#fsLives').textContent = String(game.lives);
   $('#fsCombo').textContent = game.combo > 1 ? `${game.combo}×` : '—';
@@ -144,15 +154,18 @@ async function refreshTournamentPanel(): Promise<void> {
 
   mount.innerHTML = renderShellMenuTournamentHtml(
     gameTitle(), '🍉', walletCoins, serverBest, left, board,
+    { cadence: 'monthly', hint: t('fs.scoringHint') },
   );
 
   updateActionButtons();
 }
 
-function showGameOverOverlay(score: number): void {
+function showGameOverOverlay(score: number, reason: GameOverReason): void {
   $('#fsFinalScore').textContent = score.toLocaleString();
   $('#fsFinalBest').textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
   $('#newBest').classList.add('hidden');
+  $('#fsStrongRun').classList.toggle('hidden', score < host.winScore);
+  $('#fsOverReason').textContent = reason === 'time' ? t('fs.timeUp') : t('fs.outOfLives');
   $('#fsRunReward').innerHTML = `<span class="fs-rr-pending">…</span>`;
   $('#fsBoardOver').innerHTML = '';
   updateActionButtons();
@@ -200,8 +213,8 @@ async function submitRun(score: number, durationMs: number, isWin: boolean): Pro
   void refreshTournamentPanel();
 }
 
-game.onGameOver = (score, durationMs) => {
-  showGameOverOverlay(score);
+game.onGameOver = (score, durationMs, reason) => {
+  showGameOverOverlay(score, reason);
   void submitRun(score, durationMs, score >= host.winScore);
 };
 

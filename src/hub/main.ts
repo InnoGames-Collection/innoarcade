@@ -216,8 +216,8 @@ const HOWTO: Record<string, { en: string; am: string }> = {
   'dot-link': { en: 'Drag to connect dots of the same colour without crossing lines. Fill the board to clear it.', am: 'ተመሳሳይ ቀለም ያላቸውን ነጥቦች ሳያቋርጡ ያገናኙ።' },
   'brick-blitz': { en: 'Move the paddle to bounce the ball and break every brick. Don’t let the ball fall.', am: 'ኳሷን ለመመለስና ሁሉንም ጡቦች ለመስበር ፓዱን ያንቀሳቅሱ።' },
   'fruit-slice': {
-    en: 'Monthly tournament: enter with coins for attempts, then swipe to slice flying fruit (+10 each). Bombs cost 10 points but do not end the run. Miss 3 fruits (lives) and the run ends — your best score ranks on the monthly leaderboard.',
-    am: 'ወርሃዊ ውድድር፦ ለሙከራዎች በሳንቲም ግቡ፣ ከዚያ የሚበሩ ፍራፍሬዎችን በመንሸራተት ይቁረጡ (+10 እያንዳንዱ)። ቦምቦች 10 ነጥብ ይቀንሳሉ ነገር ግን ጨዋታው አይቆምም። 3 ፍራፍሬ ካመለጡ (ሕይወት) ጨዋታው ያበቃል — ምርጥ ነጥብዎ በወርሃዊ ደረጃ ላይ ይሰላል።',
+    en: 'Monthly tournament: enter with coins for attempts, then slice as many fruits as you can in 90 seconds. +10 per fruit, +2 bonus per combo streak, bombs −10. Three missed fruits ends the run early. Score 30+ for a strong run — your best ranks on the monthly leaderboard.',
+    am: 'ወርሃዊ ውድድር፦ በሳንቲም ለሙከራዎች ግቡ፣ ከዚያ በ90 ሰከንድ ብዙ ፍራፍሬ ይቁረጡ። +10 በፍራፍሬ፣ +2 ኮምቦ ቦነስ፣ ቦምብ −10። 3 ፍራፍሬ ካመለጡ ጨዋታው ቀደም ተልቷል። 30+ ነጥብ ጠንካራ ውጤት — ምርጥ ውጤትዎ በወርሃዊ ደረጃ ላይ ይሰላል።',
   },
   'sky-hopper': { en: 'Tap to hop upward from platform to platform. Climb as high as you can without falling.', am: 'ከመድረክ ወደ መድረክ ለመዝለል ይንኩ። ሳይወድቁ ከፍ ብለው ይውጡ።' },
   'bubble-pop': { en: 'Aim and shoot bubbles to group 3+ of a colour and pop them. Clear the board to win.', am: '3+ ተመሳሳይ ቀለም ለማሰባሰብ አረፋዎችን ይተኩሱ።' },
@@ -239,7 +239,9 @@ function isLocked(g: GameMeta): boolean {
 
 function gameCard(g: GameMeta): string {
   const modeTag = g.mode === 'tournament'
-    ? `<span class="gc-tag tournament">🏆 ${t('hub.tournament')}</span>`
+    ? `<span class="gc-tag tournament gc-cadence-${g.tournament ?? 'monthly'}">🏆 ${t(
+      g.tournament === 'daily' ? 'td.daily' : g.tournament === 'weekly' ? 'td.weekly' : 'td.monthly',
+    )}</span>`
     : `<span class="gc-tag free">${t('arc.free')}</span>`;
   // A tournament game with a live window gets the pulsing "Live" badge on its art.
   const tour = g.mode === 'tournament' ? getTournamentForGame(g.id) : undefined;
