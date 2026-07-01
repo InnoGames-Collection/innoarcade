@@ -2,8 +2,11 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, finishLQRound, mulberry32, randInt, sound, mountLQ } from '../_lq/lq';
+import { multiPuzzleScore, multiScoreSummary } from '../_lq/scoring';
+import { createHost } from '../../platform/gameHost';
 
 const TARGET = 24, ROUNDS = 5, EPS = 1e-9;
+const host = createHost('target24');
 
 function solve(nums: number[], exprs?: string[]): string | null {
   exprs = exprs || nums.map(String);
@@ -42,6 +45,7 @@ function render(mount: HTMLElement): void {
   function startRound(seed: number): () => void {
     const rnd = mulberry32(seed);
     let round = 0, solvedCount = 0;
+    const t0 = Date.now();
     let nums: Num[] = [];
     let history: Num[][] = [];
     let selIdx = -1;
@@ -150,12 +154,14 @@ function render(mount: HTMLElement): void {
     }
 
     function finish(): void {
-      const won = solvedCount >= Math.ceil(ROUNDS * 0.6);
+      const elapsedMs = Date.now() - t0;
+      const score = multiPuzzleScore(solvedCount, elapsedMs, { budgetSec: 180 });
+      const won = score >= host.winScore;
       sound(won ? 'win' : 'bad');
       const summary = solvedCount === ROUNDS
         ? '🎯 Perfect round!'
-        : `You solved ${solvedCount} of ${ROUNDS}`;
-      finishLQRound(solvedCount, won, summary);
+        : multiScoreSummary(solvedCount, ROUNDS, elapsedMs, score);
+      finishLQRound(score, won, summary, elapsedMs);
     }
 
     return () => {};

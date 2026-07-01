@@ -2,6 +2,8 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, finishLQRound, mulberry32, shuffled, sound, mountLQ } from '../_lq/lq';
+import { puzzleCompletionScore, puzzleScoreSummary } from '../_lq/scoring';
+import { createHost } from '../../platform/gameHost';
 
 const N = 6, BR = 2, BC = 3;
 function boxOf(r: number, c: number): number { return Math.floor(r / BR) * (N / BC) + Math.floor(c / BC); }
@@ -56,6 +58,8 @@ function makePuzzle(rnd: () => number, removals: number): { puzzle: number[][]; 
   }
   return { puzzle, solution };
 }
+
+const host = createHost('sudoku');
 
 function render(mount: HTMLElement): void {
   let cleanup: (() => void) | null = null;
@@ -150,11 +154,11 @@ function render(mount: HTMLElement): void {
     async function checkDone(): Promise<void> {
       for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (board[r][c] !== solution[r][c]) return;
       over = true;
-      const secs = Math.round((Date.now() - t0) / 1000);
+      const elapsedMs = Date.now() - t0;
       sound('win');
-      const score = Math.max(1, 30 - Math.floor(secs / 30));
-      const timeStr = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-      finishLQRound(score, true, `Solved ${difficulty} in ${timeStr}`, Date.now() - t0);
+      const score = puzzleCompletionScore(elapsedMs, 0, { budgetSec: 600 });
+      const summary = puzzleScoreSummary(elapsedMs, score);
+      finishLQRound(score, score >= host.winScore, summary, elapsedMs);
     }
 
     function physicalKey(e: KeyboardEvent): void {

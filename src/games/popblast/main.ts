@@ -1,23 +1,16 @@
-// Pop Blast — a match-3 a built-in GoPlay game (free mode).
-// The board/match logic is faithful to the original; the external mixkit audio
-// is replaced with the engine's synthesised SFX, and the run score is recorded
-// through the host (win threshold mirrors the original: score > 20).
+// Pop Blast — match-3 with hub casual shell.
 
 import '../../styles/base.css';
 import '../../styles/game-shell.css';
+import '../_casual/style.css';
 import './style.css';
-import { applyTranslations, getLang } from '../../i18n';
+import { applyTranslations, getLang, t } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
-import { ensureToast, paintInlineReward, renderFreeHudHtml, startFreeRound } from '../../platform/freeGameShell';
+import { wireFreeCasualShell } from '../../platform/freeGameShell';
 
 const host = createHost('popblast');
-
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
-
-const freeHud = $('#freeHud');
-const runReward = $('#runReward');
-const toast = ensureToast('popblast-toast');
 
 const board = $('#board');
 const scoreDisplay = $('#score');
@@ -34,10 +27,7 @@ let startX = 0;
 let startY = 0;
 let draggedId = 0;
 let gameEnded = false;
-
-function mountFreeHud(): void {
-  freeHud.innerHTML = renderFreeHudHtml(host);
-}
+let runStart = 0;
 
 function play(type: 'flip' | 'match' | 'pop' | 'nomatch' | 'click'): void {
   switch (type) {
@@ -48,9 +38,7 @@ function play(type: 'flip' | 'match' | 'pop' | 'nomatch' | 'click'): void {
   }
 }
 
-async function createBoard(): Promise<void> {
-  if (!(await startFreeRound(host, toast))) return;
-  runReward.innerHTML = '';
+function resetBoard(): void {
   board.innerHTML = '';
   squares = [];
   score = 0;
@@ -58,7 +46,10 @@ async function createBoard(): Promise<void> {
   gameEnded = false;
   scoreDisplay.textContent = String(score);
   movesDisplay.textContent = String(moves);
+}
 
+function initBoard(): void {
+  resetBoard();
   for (let i = 0; i < 64; i++) {
     const tile = document.createElement('div');
     tile.setAttribute('id', String(i));
@@ -78,6 +69,13 @@ async function createBoard(): Promise<void> {
     moveDown();
     scoreDisplay.textContent = String(score);
   }, 100);
+}
+
+const shell = wireFreeCasualShell(host, beginPlay);
+
+async function beginPlay(): Promise<void> {
+  runStart = Date.now();
+  initBoard();
 }
 
 function touchStart(this: HTMLElement, e: TouchEvent): void {
@@ -143,7 +141,7 @@ function swapTiles(from: number, to: number): void {
       moves++;
       movesDisplay.textContent = String(moves);
     }
-    if (moves <= 0 && !gameEnded) void endGame();
+    if (moves <= 0 && !gameEnded) endGame();
   }, 150);
 }
 
@@ -228,16 +226,13 @@ function moveDown(): void {
   }, 120);
 }
 
-async function endGame(): Promise<void> {
+function endGame(): void {
   if (gameEnded) return;
   gameEnded = true;
-  const isWin = score > 20;
-  setTimeout(() => void paintInlineReward(host, runReward, score, isWin), 300);
+  const isWin = score >= host.winScore;
+  const summary = `${score} ${t('pb.score').toLowerCase()} · ${moves <= 0 ? '0' : moves} ${t('pb.moves').toLowerCase()} left`;
+  shell.finishPlay(score, isWin, summary, Date.now() - runStart);
 }
-
-$('#popblast-restart').addEventListener('click', () => void createBoard());
 
 document.documentElement.lang = getLang();
 applyTranslations();
-mountFreeHud();
-void createBoard();

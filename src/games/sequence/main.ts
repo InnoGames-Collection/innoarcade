@@ -2,8 +2,11 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, keypad, finishLQRound, mulberry32, randInt, sound, mountLQ } from '../_lq/lq';
+import { multiPuzzleScore, multiScoreSummary } from '../_lq/scoring';
+import { createHost } from '../../platform/gameHost';
 
 const ROUNDS = 8;
+const host = createHost('sequence');
 
 interface Term { terms: number[]; next: number; rule: string; }
 function fromFn(f: (i: number) => number, rule: string): Term {
@@ -51,6 +54,7 @@ function render(mount: HTMLElement): void {
   function startRound(seed: number): () => void {
     const rnd = mulberry32(seed);
     let round = 0, score = 0, typed = '', locked = false;
+    const t0 = Date.now();
     let item: Term = GENERATORS[0].make(rnd);
 
     const sub = el('p', { class: 'sub center' });
@@ -115,12 +119,14 @@ function render(mount: HTMLElement): void {
     }
 
     function finish(): void {
-      const won = score >= Math.ceil(ROUNDS * 0.6);
+      const elapsedMs = Date.now() - t0;
+      const finalScore = multiPuzzleScore(score, elapsedMs, { budgetSec: 240 });
+      const won = finalScore >= host.winScore;
       sound(won ? 'win' : 'bad');
       const summary = score === ROUNDS
         ? '🔢 Pattern master!'
-        : `You solved ${score} of ${ROUNDS}`;
-      finishLQRound(score, won, summary);
+        : multiScoreSummary(score, ROUNDS, elapsedMs, finalScore, 240);
+      finishLQRound(finalScore, won, summary, elapsedMs);
     }
 
     function physicalKey(e: KeyboardEvent): void {

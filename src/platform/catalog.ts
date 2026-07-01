@@ -310,9 +310,12 @@ for (const g of CATALOG) { if (COVERS[g.id]) g.cover = COVERS[g.id]; }
 const WIN_SCORE: Record<string, number> = {
   'orbit-blast': 1000, 'merge-2048': 512, 'temple-dash': 300, 'metro-rush': 300,
   'candy-crunch': 100, 'dot-link': 50, 'brick-blitz': 100, 'fruit-slice': 300,
-  'sky-hopper': 30, 'bubble-pop': 100,
-  'ethiopian-quiz': 60, 'spell': 70, 'vocab': 70, 'logic': 70, 'rhyme': 30,
-  'tap-game': 5, 'crosssum': 10, 'target24': 3, 'sequence': 5,
+  'sky-hopper': 30, 'bubble-pop': 100, 'popblast': 25,
+  // Composite quiz: correct×pts + speed bonus + session time left
+  'ethiopian-quiz': 100, 'spell': 130, 'vocab': 130, 'logic': 130, 'rhyme': 80,
+  // Brain: time-based formulas in _lq/scoring.ts
+  'sudoku': 120, 'crosssum': 110, 'target24': 70, 'sequence': 80,
+  'tap-game': 5,
 };
 for (const g of CATALOG) {
   if (WIN_SCORE[g.id] != null) g.play = { ...(g.play ?? {}), winScore: WIN_SCORE[g.id] };
@@ -331,6 +334,11 @@ const GATE: Record<string, { minLevel: number; unlockCost: number }> = {
 for (const g of CATALOG) {
   const gate = GATE[g.id];
   if (gate) { g.minLevel = gate.minLevel; g.unlockCost = gate.unlockCost; }
+}
+
+// Mark shipped free games as stable v1 (tournament titles keep their own tags).
+for (const g of CATALOG) {
+  if (g.mode === 'free' && !g.stable) g.stable = 'v1';
 }
 
 // Display order for the flat catalog:

@@ -2,6 +2,10 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, finishLQRound, mulberry32, shuffled, sound, mountLQ } from '../_lq/lq';
+import { puzzleCompletionScore, puzzleScoreSummary } from '../_lq/scoring';
+import { createHost } from '../../platform/gameHost';
+
+const host = createHost('crosssum');
 
 function render(mount: HTMLElement): void {
   let cleanup: (() => void) | null = null;
@@ -23,6 +27,8 @@ function render(mount: HTMLElement): void {
     const board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     let sel: [number, number] | null = null;
     let over = false;
+    let mistakes = 0;
+    const t0 = Date.now();
 
     const gridEl = el('div', { class: 'sudoku', role: 'grid', style: 'grid-template-columns: repeat(4, auto);' });
     const cellEls: HTMLElement[][] = [];
@@ -87,9 +93,13 @@ function render(mount: HTMLElement): void {
       const ok = board.every((row, r) => row.reduce((a, b) => a + b, 0) === rowSums[r]) &&
         [0, 1, 2].every((c) => board[0][c] + board[1][c] + board[2][c] === colSums[c]);
       if (ok) {
-        over = true; sound('win');
-        finishLQRound(10, true, 'All sums match!');
+        over = true;
+        sound('win');
+        const elapsedMs = Date.now() - t0;
+        const score = puzzleCompletionScore(elapsedMs, mistakes, { budgetSec: 480 });
+        finishLQRound(score, score >= host.winScore, puzzleScoreSummary(elapsedMs, score, mistakes), elapsedMs);
       } else {
+        mistakes++;
         sound('bad');
         fb.textContent = "All cells filled, but the sums don't match yet.";
         fb.className = 'quiz-feedback bad center';
