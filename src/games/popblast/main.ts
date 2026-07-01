@@ -4,7 +4,7 @@ import '../../styles/base.css';
 import '../../styles/game-shell.css';
 import '../_casual/style.css';
 import './style.css';
-import { applyTranslations, getLang, t } from '../../i18n';
+import { applyTranslations, getLang } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
 import { wireFreeCasualShell } from '../../platform/freeGameShell';
@@ -230,8 +230,7 @@ function endGame(): void {
   if (gameEnded) return;
   gameEnded = true;
   const isWin = score >= host.winScore;
-  const summary = `${score} ${t('pb.score').toLowerCase()} · ${moves <= 0 ? '0' : moves} ${t('pb.moves').toLowerCase()} left`;
-  shell.finishPlay(score, isWin, summary, Date.now() - runStart);
+  shell.finishPlay(score, isWin, '', Date.now() - runStart);
 }
 
 document.documentElement.lang = getLang();

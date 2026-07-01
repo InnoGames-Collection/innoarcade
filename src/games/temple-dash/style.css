@@ -45,6 +45,8 @@ body.game-shell[data-game="temple-dash"] {
   justify-content: space-between;
   align-items: flex-start;
   padding: 12px;
+  padding-right: 52px;
+  box-sizing: border-box;
 }
 
 .hud-stats {

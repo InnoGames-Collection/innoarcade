@@ -143,7 +143,7 @@ function evaluateWin(results: string[]): void {
     sfx.crash();
   }
   messageDisplay.textContent = summary;
-  shell.finishPlay(isWin ? host.winPoints : 0, isWin, summary, Date.now() - runStart);
+  shell.finishPlay(isWin ? host.winPoints : 0, isWin, '', Date.now() - runStart);
 }
 
 spinBtn.addEventListener('click', () => void runSpinLogic());

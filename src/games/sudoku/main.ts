@@ -2,8 +2,10 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, finishLQRound, mulberry32, shuffled, sound, mountLQ } from '../_lq/lq';
-import { puzzleCompletionScore, puzzleScoreSummary } from '../_lq/scoring';
+import { puzzleCompletionScore } from '../_lq/scoring';
+import { lqHelp } from '../_lq/help';
 import { createHost } from '../../platform/gameHost';
+import { t } from '../../i18n';
 
 const N = 6, BR = 2, BC = 3;
 function boxOf(r: number, c: number): number { return Math.floor(r / BR) * (N / BC) + Math.floor(c / BC); }
@@ -106,19 +108,14 @@ function render(mount: HTMLElement): void {
     });
 
     mount.appendChild(el('div', { class: 'game-toolbar' },
-      el('button', { class: 'btn', text: 'How to play', onclick: showHelp }),
+      el('button', { class: 'btn', text: t('hub.howToPlay'), onclick: showHelp }),
       diffBtn,
       el('button', { class: 'btn', text: 'New puzzle', onclick: () => newRound(Math.floor(Math.random() * 1e9)) })));
     mount.appendChild(gridEl);
     mount.appendChild(pad);
 
     function showHelp(): void {
-      modal({ title: 'How to play', body: `<b>Goal:</b> fill the grid so every <b>row</b>, <b>column</b>, and outlined
-        <b>2×3 box</b> contains the digits 1-6 exactly once.<br><br>
-        1. Tap an empty cell (gray ones are given clues).<br>
-        2. Tap a number — or press 1-6. ⌫ erases.<br>
-        3. A red number clashes with its row, column, or box.<br><br>
-        Every puzzle has <b>exactly one solution</b>.` });
+      modal({ title: t('hub.howToPlay'), body: lqHelp('sudoku') });
     }
 
     function conflicts(r: number, c: number, v: number): boolean {
@@ -157,8 +154,7 @@ function render(mount: HTMLElement): void {
       const elapsedMs = Date.now() - t0;
       sound('win');
       const score = puzzleCompletionScore(elapsedMs, 0, { budgetSec: 600 });
-      const summary = puzzleScoreSummary(elapsedMs, score);
-      finishLQRound(score, score >= host.winScore, summary, elapsedMs);
+      finishLQRound(score, score >= host.winScore, '', elapsedMs);
     }
 
     function physicalKey(e: KeyboardEvent): void {

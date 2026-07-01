@@ -185,7 +185,7 @@ function spin(speed: number): void {
           message.style.color = '#ffffff';
           sfx.crash();
         }
-        shell.finishPlay(isWin ? 1 : 0, isWin, summary, Date.now() - runStart);
+        shell.finishPlay(isWin ? 1 : 0, isWin, '', Date.now() - runStart);
         isSpinning = false;
         spinBtn.disabled = true;
         spinSpeed = 0;

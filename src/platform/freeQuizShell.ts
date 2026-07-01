@@ -135,18 +135,12 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     return correct * pointsPerCorrect + speedBonus + Math.max(0, runLeft);
   }
 
-  function runSummaryText(): string {
-    return t('eq.runSummary')
-      .replace('{correct}', String(correct))
-      .replace('{sessionLeft}', String(Math.max(0, runLeft)))
-      .replace('{speed}', String(speedBonus));
-  }
-
   function showOverOverlay(score: number, isRecord: boolean): void {
     const overlay = $('#overOverlay');
     $('#finalScore').textContent = score.toLocaleString();
     $('#finalBest').textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
-    $('#fqOverSummary').textContent = runSummaryText();
+    $('#fqOverSummary').textContent = '';
+    $('#fqOverSummary').classList.add('hidden');
     $('#newBest').classList.toggle('hidden', !isRecord);
     $('#runReward').innerHTML = '<span class="shell-rr-pending">…</span>';
     $('#closeBtn').classList.add('hidden');

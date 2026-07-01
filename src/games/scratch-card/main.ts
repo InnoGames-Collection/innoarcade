@@ -207,8 +207,7 @@ function checkRevealed(): void {
 function report(win: boolean): void {
   if (hasReported) return;
   hasReported = true;
-  const summary = message.textContent;
-  shell.finishPlay(win ? host.winPoints : 0, win, summary ?? '', Date.now() - runStart);
+  shell.finishPlay(win ? host.winPoints : 0, win, '', Date.now() - runStart);
 }
 
 canvas.addEventListener('mousedown', () => { if (!gameActive && !isScratched) startBlastTimer(); });

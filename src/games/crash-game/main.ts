@@ -361,7 +361,7 @@ async function cashOut(): Promise<void> {
   btn.disabled = true;
   btn.classList.remove('cashout');
 
-  shell.finishPlay(points, true, message.textContent, Date.now() - runStart);
+  shell.finishPlay(points, true, '', Date.now() - runStart);
 }
 
 async function crash(): Promise<void> {
@@ -395,7 +395,7 @@ async function crash(): Promise<void> {
     });
   }
 
-  shell.finishPlay(0, false, message.textContent, Date.now() - runStart);
+  shell.finishPlay(0, false, '', Date.now() - runStart);
 }
 
 btn.addEventListener('click', () => startGame());

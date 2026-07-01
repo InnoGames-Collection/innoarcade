@@ -207,10 +207,10 @@ let lqFinish: LQFinishFn | null = null;
 export function finishLQRound(
   score: number,
   isWin: boolean,
-  summary = '',
+  _summary = '',
   durationMs = 0,
 ): void {
-  lqFinish?.(score, isWin, summary, durationMs);
+  lqFinish?.(score, isWin, _summary, durationMs);
 }
 
 /** Boot a native LexiQuest brain game inside the free hub shell. */
@@ -222,8 +222,8 @@ export function mountLQ(gameId: string, render: (mount: HTMLElement) => void): v
     mount.innerHTML = '';
     render(mount);
   });
-  lqFinish = (score, isWin, summary, durationMs) => {
-    shell.finishPlay(score, isWin, summary, durationMs);
+  lqFinish = (score, isWin, _summary, durationMs) => {
+    shell.finishPlay(score, isWin, '', durationMs);
   };
   document.documentElement.lang = getLang();
   applyTranslations();

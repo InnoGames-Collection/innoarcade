@@ -11,16 +11,13 @@
 
 /* --- GoPlay luckyslot (scoped) -------------------------------------------- */
 #slot-game-wrapper {
-  --gold: #d18a04;
-  --dark-gold: #a11fab;
-  --hud-bg: rgba(255, 255, 255, 0.12);
+  --gold: var(--game-accent, #d18a04);
+  --dark-gold: var(--game-accent, #a11fab);
+  --hud-bg: var(--shell-card, rgba(255, 255, 255, 0.12));
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: clamp(12px, 3vw, 20px);
-  background: linear-gradient(180deg, #2f0999 0%, #a11fab 50%, #0b6655 100%);
-  border-radius: clamp(16px, 4vw, 24px); box-sizing: border-box; max-width: 520px; width: 100%; margin: 0 auto;
-  font-family: inherit; color: #fff;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-sizing: border-box; max-width: 520px; width: 100%; margin: 0 auto;
+  font-family: inherit;
 }
 #slot-game-wrapper * { box-sizing: border-box; }
 .slot-hud {

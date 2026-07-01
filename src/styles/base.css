@@ -93,9 +93,9 @@ body {
 /* Top-right corner of a panel or stage (preferred placement). */
 .gp-close-corner {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 4;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 20;
   margin: 0;
 }
 /* Overlay panels — room for the corner close control. */

@@ -126,6 +126,105 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Runner-style game-over: score + best only (no extra summary line). */
+.game-shell .fc-over-summary,
+.game-shell .fq-over-summary {
+  display: none !important;
+}
+
+/* Stage close — reserved top-right; HUD controls stay left of it. */
+.game-shell-stage > #closeBtn,
+.game-shell-stage > [id$="CloseBtn"].gp-close-corner {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.game-shell-stage header#hud,
+.game-shell-stage #hud {
+  padding-right: 52px;
+  box-sizing: border-box;
+}
+
+.game-shell-stage #hud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-shell-stage #hud #muteBtn,
+.game-shell-stage #hud #pauseBtn {
+  order: -1;
+  flex-shrink: 0;
+}
+
+.game-shell-stage #hud .scores,
+.game-shell-stage #hud .hud-stats {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-shell-stage #hud .hud-top {
+  padding-right: 52px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* LQ help modals — match hub game-panel styling */
+.game-shell .modal-back {
+  background: rgba(8, 14, 24, 0.52);
+  backdrop-filter: blur(5px);
+}
+
+.game-shell .modal {
+  position: relative;
+  border: 1px solid var(--shell-line);
+  border-radius: var(--shell-radius);
+  background: var(--shell-bg);
+  color: var(--shell-text);
+  box-shadow: var(--shell-shadow-md);
+  padding: 26px 24px;
+  padding-top: 38px;
+  max-width: min(330px, 92vw);
+}
+
+.game-shell .modal h3 {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  color: var(--shell-accent);
+}
+
+.game-shell .modal .body {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--shell-muted);
+}
+
+.game-shell .modal .actions .btn.primary {
+  background: var(--grad-brand);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* Casual game boards — light card on hub backdrop (not legacy purple gradient) */
+.game-shell #slot-game-wrapper,
+.game-shell #popblast-game-wrapper,
+.game-shell #dice-roll-wrapper,
+.game-shell #tap-game-wrapper {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: clamp(12px, 3vw, 18px);
+  background: var(--shell-bg);
+  border: 1px solid var(--shell-line);
+  border-radius: var(--shell-radius);
+  box-shadow: var(--shell-shadow-sm);
+  color: var(--shell-text);
+  box-sizing: border-box;
+}
+
 /* Inline / casual free HUD */
 .game-shell .shell-free-hud {
   display: grid;

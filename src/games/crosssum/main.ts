@@ -2,8 +2,10 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, finishLQRound, mulberry32, shuffled, sound, mountLQ } from '../_lq/lq';
-import { puzzleCompletionScore, puzzleScoreSummary } from '../_lq/scoring';
+import { puzzleCompletionScore } from '../_lq/scoring';
+import { lqHelp } from '../_lq/help';
 import { createHost } from '../../platform/gameHost';
+import { t } from '../../i18n';
 
 const host = createHost('crosssum');
 
@@ -51,7 +53,7 @@ function render(mount: HTMLElement): void {
       el('div', { class: 'kbd-row' }, [6, 7, 8, 9].map(mkKey), el('button', { class: 'key wide', text: '⌫', onclick: () => place(0) })));
 
     mount.appendChild(el('div', { class: 'game-toolbar' },
-      el('button', { class: 'btn', text: 'How to play', onclick: showHelp }),
+      el('button', { class: 'btn', text: t('hub.howToPlay'), onclick: showHelp }),
       el('button', { class: 'btn', text: 'New puzzle', onclick: () => newRound(Math.floor(Math.random() * 1e9)) })));
     mount.appendChild(gridEl);
     mount.appendChild(fb);
@@ -59,12 +61,7 @@ function render(mount: HTMLElement): void {
     paint();
 
     function showHelp(): void {
-      modal({ title: 'How to play', body: `<b>Goal:</b> place the digits <b>1-9, each exactly once</b>, so every row
-        adds to its → number and every column to its ↓ number.<br><br>
-        1. Tap a cell, then tap (or type) a digit.<br>
-        2. Placing a digit already on the board <b>moves</b> it.<br>
-        3. Fill all nine cells; any valid arrangement counts.<br><br>
-        All nine digits add to 45, so the three row sums always total 45.` });
+      modal({ title: t('hub.howToPlay'), body: lqHelp('crosssum') });
     }
 
     function paint(): void {
@@ -97,7 +94,7 @@ function render(mount: HTMLElement): void {
         sound('win');
         const elapsedMs = Date.now() - t0;
         const score = puzzleCompletionScore(elapsedMs, mistakes, { budgetSec: 480 });
-        finishLQRound(score, score >= host.winScore, puzzleScoreSummary(elapsedMs, score, mistakes), elapsedMs);
+        finishLQRound(score, score >= host.winScore, '', elapsedMs);
       } else {
         mistakes++;
         sound('bad');

@@ -44,7 +44,7 @@ let runStart = 0;
 const shell = wireFreeCasualShell(host, initGame);
 
 function finishRound(points: number, isWin: boolean): void {
-  shell.finishPlay(points, isWin, message.textContent ?? '', Date.now() - runStart);
+  shell.finishPlay(points, isWin, '', Date.now() - runStart);
 }
 
 function initGame(): void {

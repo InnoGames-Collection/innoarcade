@@ -2,8 +2,10 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, finishLQRound, mulberry32, randInt, sound, mountLQ } from '../_lq/lq';
-import { multiPuzzleScore, multiScoreSummary } from '../_lq/scoring';
+import { multiPuzzleScore } from '../_lq/scoring';
+import { lqHelp } from '../_lq/help';
 import { createHost } from '../../platform/gameHost';
+import { t } from '../../i18n';
 
 const TARGET = 24, ROUNDS = 5, EPS = 1e-9;
 const host = createHost('target24');
@@ -66,7 +68,7 @@ function render(mount: HTMLElement): void {
     }
 
     mount.appendChild(el('div', { class: 'game-toolbar' },
-      el('button', { class: 'btn', text: 'How to play', onclick: showHelp }),
+      el('button', { class: 'btn', text: t('hub.howToPlay'), onclick: showHelp }),
       el('button', { class: 'btn', text: 'Undo', onclick: undo }),
       el('button', { class: 'btn', text: 'Show solution', onclick: revealSolution }),
       el('button', { class: 'btn', text: 'New game', onclick: () => newRound(Math.floor(Math.random() * 1e9)) })));
@@ -74,12 +76,7 @@ function render(mount: HTMLElement): void {
     nextRound();
 
     function showHelp(): void {
-      modal({ title: 'How to play', body: `<b>Goal:</b> combine all four numbers into exactly <b>${TARGET}</b>.<br><br>
-        1. Tap a number — it highlights.<br>
-        2. Tap an operation (+ − × ÷), then a second number.<br>
-        3. The two numbers <b>merge into their result</b>. Keep combining until one
-        number remains — if it's ${TARGET}, you win.<br><br>
-        Aim for the factor pairs of 24 (3×8, 4×6, 2×12).` });
+      modal({ title: t('hub.howToPlay'), body: lqHelp('target24') });
     }
 
     function nextRound(): void {
@@ -158,10 +155,7 @@ function render(mount: HTMLElement): void {
       const score = multiPuzzleScore(solvedCount, elapsedMs, { budgetSec: 180 });
       const won = score >= host.winScore;
       sound(won ? 'win' : 'bad');
-      const summary = solvedCount === ROUNDS
-        ? '🎯 Perfect round!'
-        : multiScoreSummary(solvedCount, ROUNDS, elapsedMs, score);
-      finishLQRound(score, won, summary, elapsedMs);
+      finishLQRound(score, won, '', elapsedMs);
     }
 
     return () => {};

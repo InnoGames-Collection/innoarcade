@@ -2,8 +2,10 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import { el, toast, modal, keypad, finishLQRound, mulberry32, randInt, sound, mountLQ } from '../_lq/lq';
-import { multiPuzzleScore, multiScoreSummary } from '../_lq/scoring';
+import { multiPuzzleScore } from '../_lq/scoring';
+import { lqHelp } from '../_lq/help';
 import { createHost } from '../../platform/gameHost';
+import { t } from '../../i18n';
 
 const ROUNDS = 8;
 const host = createHost('sequence');
@@ -65,19 +67,14 @@ function render(mount: HTMLElement): void {
     const pad = keypad(onKey, ['-']);
 
     mount.appendChild(el('div', { class: 'game-toolbar' },
-      el('button', { class: 'btn', text: 'How to play', onclick: showHelp }),
+      el('button', { class: 'btn', text: t('hub.howToPlay'), onclick: showHelp }),
       el('button', { class: 'btn', text: 'New game', onclick: () => newRound(Math.floor(Math.random() * 1e9)) })));
     mount.appendChild(el('div', { class: 'quiz-wrap' }, card));
     mount.appendChild(pad);
     nextRound();
 
     function showHelp(): void {
-      modal({ title: 'How to play', body: `<b>Goal:</b> predict the next number in ${ROUNDS} sequences of rising difficulty.<br><br>
-        1. Study the four numbers — they follow one hidden rule.<br>
-        2. Type the number that replaces the <b>?</b> and press Enter.<br>
-        3. The rule is revealed before the next round.<br><br>
-        Check the <b>differences</b> first, then <b>ratios</b>, then squares or
-        the sum of the previous two. Solve 5 of ${ROUNDS} to win.` });
+      modal({ title: t('hub.howToPlay'), body: lqHelp('sequence') });
     }
 
     function nextRound(): void {
@@ -123,10 +120,7 @@ function render(mount: HTMLElement): void {
       const finalScore = multiPuzzleScore(score, elapsedMs, { budgetSec: 240 });
       const won = finalScore >= host.winScore;
       sound(won ? 'win' : 'bad');
-      const summary = score === ROUNDS
-        ? '🔢 Pattern master!'
-        : multiScoreSummary(score, ROUNDS, elapsedMs, finalScore, 240);
-      finishLQRound(finalScore, won, summary, elapsedMs);
+      finishLQRound(finalScore, won, '', elapsedMs);
     }
 
     function physicalKey(e: KeyboardEvent): void {

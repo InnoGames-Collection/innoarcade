@@ -41,8 +41,10 @@
 
       <div id="pauseOverlay" class="game-overlay hidden">
         <div class="game-panel">
-          <button id="resumeBtn" class="btn primary hidden" data-i18n="td.resume">Resume</button>
-          <button id="restartBtn" class="btn hidden" data-i18n="td.restart">Play again</button>
+          <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
+          <h2 data-i18n="td.paused">Paused</h2>
+          <button id="resumeBtn" class="btn primary" data-i18n="td.resume">Resume</button>
+          <button id="restartBtn" class="btn" data-i18n="td.restart">Play again</button>
         </div>
       </div>
 

@@ -124,7 +124,7 @@ function endGame(): void {
     ? '🎉 ' + t('tg.win').replace('{s}', String(score))
     : t('tg.lose').replace('{s}', String(score)).replace('{n}', String(targetScore));
   message.textContent = summary;
-  shell.finishPlay(score, isWin, summary, Date.now() - runStart);
+  shell.finishPlay(score, isWin, '', Date.now() - runStart);
 }
 
 document.documentElement.lang = getLang();

@@ -24,8 +24,7 @@ export function renderFreeMenuHtml(host: GameHost, best = 0): string {
       <span class="shell-free-icon">${icon}</span>
       <span class="shell-free-title">${title}</span>
     </div>
-    ${bestRow}
-    <div class="shell-free-tag">🆓 ${t('arc.free')} · ⭐ ${t('td.xpGained')}</div>`;
+    ${bestRow}`;
 }
 
 export function renderRunRewardHtml(res: FinishResult): string {
@@ -443,14 +442,17 @@ export function wireFreeCasualShell(
   const finishPlay = (
     score: number,
     isWin: boolean,
-    summary = '',
+    _summary = '',
     durationMs = 0,
   ): void => {
     const isRecord = score > serverBest;
     if (isRecord) serverBest = score;
     refreshMenu();
     const summaryEl = document.getElementById('fcOverSummary');
-    if (summaryEl) summaryEl.textContent = summary;
+    if (summaryEl) {
+      summaryEl.textContent = '';
+      summaryEl.classList.add('hidden');
+    }
     $('finalScore').textContent = score.toLocaleString();
     $('finalBest').textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
     $('newBest').classList.toggle('hidden', !isRecord);

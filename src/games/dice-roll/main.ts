@@ -114,7 +114,7 @@ async function rollDice(): Promise<void> {
   message.style.color = isWin ? '#ffd700' : '';
   isRolling = false;
   rollBtn.disabled = true;
-  shell.finishPlay(isWin ? 1 : 0, isWin, summary, Date.now() - runStart);
+  shell.finishPlay(isWin ? 1 : 0, isWin, '', Date.now() - runStart);
 }
 
 rollBtn.addEventListener('click', () => void rollDice());
