@@ -15,6 +15,7 @@ import {
 } from '../../platform/freeGameShell';
 import { promptIfSessionExpired } from '../../platform/sessionAuth';
 import { isConfigured } from '../../platform/supabase';
+import { freeGameBestRemote } from '../../platform/backend';
 
 const GAME_ID = 'ethiopian-quiz';
 const host = createHost(GAME_ID);
@@ -61,18 +62,13 @@ const BANK: Q[] = [
     opts: [['7–8 years', '7–8 ዓመት'], ['5 years', '5 ዓመት'], ['10 years', '10 ዓመት'], ['3 years', '3 ዓመት']], answer: 0, d: 3 },
 ];
 
-const STR = {
-  en: { correct: 'Correct! 🎉', wrong: 'Not quite.', timeup: '⏱ Time up!', of: 'of' },
-  am: { correct: 'ትክክል! 🎉', wrong: 'አልተሳካም።', timeup: '⏱ ጊዜው አለቀ!', of: 'ከ' },
-};
-
 const ROUND = 5;
 const PER_Q_SECONDS = 10;
 const WIN_CORRECT = 3;
 
 let phase: Phase = 'menu';
 let starting = false;
-let sessionBest = 0;
+let serverBest = 0;
 let toastT = 0;
 
 let round: Q[] = [];
@@ -89,8 +85,9 @@ const elQ = $('#eq-question');
 const elOpts = $('#eq-options');
 const elMsg = $('#eq-message');
 
-const lang = (): 'en' | 'am' => (getLang() === 'am' ? 'am' : 'en');
-const s = (k: keyof typeof STR.en): string => STR[lang()][k];
+function refreshMenu(): void {
+  $('#freeMenu').innerHTML = renderFreeMenuHtml(host, serverBest);
+}
 
 function showToast(msg: string): void {
   const el = $('#toast');
@@ -98,10 +95,6 @@ function showToast(msg: string): void {
   el.classList.remove('hidden');
   clearTimeout(toastT);
   toastT = window.setTimeout(() => el.classList.add('hidden'), 2800);
-}
-
-function refreshMenu(): void {
-  $('#freeMenu').innerHTML = renderFreeMenuHtml(host, sessionBest);
 }
 
 function showMenu(): void {
@@ -117,6 +110,12 @@ function showGame(): void {
   $('#eqBackdrop').classList.add('hidden');
 }
 
+function correctSummary(correctCount: number): string {
+  return t('eq.correctSummary')
+    .replace('{correct}', String(correctCount))
+    .replace('{total}', String(ROUND));
+}
+
 function setPhase(next: Phase): void {
   phase = next;
   if (next === 'menu') showMenu();
@@ -128,8 +127,8 @@ function setPhase(next: Phase): void {
 function showOverOverlay(score: number, correctCount: number, isRecord: boolean): void {
   const overlay = $('#overOverlay');
   $('#finalScore').textContent = score.toLocaleString();
-  $('#finalBest').textContent = sessionBest > 0 ? sessionBest.toLocaleString() : '—';
-  $('#eqOverSummary').textContent = `${correctCount} ${s('of')} ${ROUND}`;
+  $('#finalBest').textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
+  $('#eqOverSummary').textContent = correctSummary(correctCount);
   $('#newBest').classList.toggle('hidden', !isRecord);
   $('#runReward').innerHTML = '<span class="shell-rr-pending">…</span>';
   $('#closeBtn').classList.add('hidden');
@@ -210,10 +209,11 @@ function showQuestion(): void {
   locked = false;
   elMsg.textContent = '';
   const q = round[idx];
-  elQ.textContent = lang() === 'am' ? q.am : q.en;
+  const am = getLang() === 'am';
+  elQ.textContent = am ? q.am : q.en;
   const order = shuffle(q.opts.map((_, i) => i));
   elOpts.innerHTML = order.map((oi) =>
-    `<button type="button" class="eq-opt" data-i="${oi}">${lang() === 'am' ? q.opts[oi][1] : q.opts[oi][0]}</button>`,
+    `<button type="button" class="eq-opt" data-i="${oi}">${am ? q.opts[oi][1] : q.opts[oi][0]}</button>`,
   ).join('');
   elOpts.querySelectorAll<HTMLButtonElement>('.eq-opt').forEach((b) => {
     b.addEventListener('click', () => answer(Number(b.dataset.i), b));
@@ -227,7 +227,7 @@ function timeUp(): void {
   if (locked || phase !== 'playing') return;
   locked = true;
   clearQTimer();
-  elMsg.textContent = s('timeup');
+  elMsg.textContent = t('eq.timeup');
   updateStats();
   setTimeout(() => advanceQuestion(), 900);
 }
@@ -247,7 +247,7 @@ function answer(choice: number, btn: HTMLButtonElement): void {
     sfx.click();
     elOpts.querySelector<HTMLButtonElement>(`.eq-opt[data-i="${q.answer}"]`)?.classList.add('ok');
   }
-  elMsg.textContent = right ? s('correct') : s('wrong');
+  elMsg.textContent = right ? t('eq.correct') : t('eq.wrong');
   updateStats();
   setTimeout(() => advanceQuestion(), 1100);
 }
@@ -263,8 +263,8 @@ function finishRound(): void {
   clearQTimer();
   const score = correct * 20;
   const isWin = correct >= WIN_CORRECT;
-  const isRecord = score > sessionBest;
-  if (isRecord) sessionBest = score;
+  const isRecord = score > serverBest;
+  if (isRecord) serverBest = score;
   refreshMenu();
   const timeMs = Date.now() - roundStart;
   elQ.textContent = '';
@@ -285,13 +285,13 @@ async function submitRun(
   const reward = $('#runReward');
   if (!isConfigured()) {
     reward.innerHTML = '';
-    $('#finalBest').textContent = sessionBest.toLocaleString();
+    $('#finalBest').textContent = serverBest.toLocaleString();
     return;
   }
   reward.innerHTML = '<span class="shell-rr-pending">…</span>';
   const res = await submitFreeRun(host, score, isWin, durationMs);
   if (!res) {
-    $('#finalBest').textContent = sessionBest.toLocaleString();
+    $('#finalBest').textContent = serverBest.toLocaleString();
     $('#newBest').classList.toggle('hidden', !isRecord);
     if (await promptIfSessionExpired(showToast)) {
       reward.innerHTML = `<span class="shell-rr-note">${t('td.sessionExpired')}</span>`;
@@ -300,8 +300,8 @@ async function submitRun(
     }
     return;
   }
-  if (typeof res.best === 'number') sessionBest = Math.max(sessionBest, res.best);
-  $('#finalBest').textContent = sessionBest.toLocaleString();
+  if (typeof res.best === 'number') serverBest = Math.max(serverBest, res.best);
+  $('#finalBest').textContent = serverBest.toLocaleString();
   $('#newBest').classList.toggle('hidden', !isRecord && !res.isRecord);
   reward.innerHTML = renderRunRewardHtml(res);
   refreshMenu();
@@ -356,3 +356,8 @@ document.documentElement.lang = getLang();
 applyTranslations();
 refreshMenu();
 setPhase('menu');
+
+void freeGameBestRemote(GAME_ID).then((best) => {
+  serverBest = best;
+  refreshMenu();
+});

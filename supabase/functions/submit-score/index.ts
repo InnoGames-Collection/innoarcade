@@ -181,7 +181,17 @@ Deno.serve(async (req: Request) => {
       if (rewardable) award = Math.round(XP_BASE * difficulty);
     } catch { /* if the cap check fails, default to no award */ }
     await applyXpAndRead(award);
-    return json({ points, lifetime, xp: points, award });
+    let best = 0;
+    let isRecord = false;
+    try {
+      const { data: row } = await admin.rpc('upsert_free_game_best', {
+        p_user: user.id, p_game: gameId, p_score: score,
+      });
+      const r = Array.isArray(row) ? row[0] : row;
+      best = Number(r?.best ?? score);
+      isRecord = Boolean(r?.is_record);
+    } catch { /* best-effort */ }
+    return json({ points, lifetime, xp: points, award, best, isRecord });
   }
 
   // --- anti-cheat: leaderboard scores require a valid single-use round token ---
@@ -205,7 +215,17 @@ Deno.serve(async (req: Request) => {
       if (rewardable) award = Math.round(XP_BASE * difficulty);
     } catch { /* default no award */ }
     await applyXpAndRead(award);
-    return json({ points, lifetime, xp: points, award, ranked: false, attemptsLeft: 0 });
+    let best = 0;
+    let isRecord = false;
+    try {
+      const { data: row } = await admin.rpc('upsert_free_game_best', {
+        p_user: user.id, p_game: gameId, p_score: score,
+      });
+      const r = Array.isArray(row) ? row[0] : row;
+      best = Number(r?.best ?? score);
+      isRecord = Boolean(r?.is_record);
+    } catch { /* best-effort */ }
+    return json({ points, lifetime, xp: points, award, best, isRecord, ranked: false, attemptsLeft: 0 });
   }
 
   // Tournament gate: window must be live; attempt was consumed at start-round.

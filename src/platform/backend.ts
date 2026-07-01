@@ -35,6 +35,24 @@ export interface PlayResult {
 // computes the points via the uniform scoring matrix from {score, win, timeMs} —
 // the client cannot propose an amount. Tournament games also get their
 // authoritative leaderboard score written. Requires a session.
+export async function freeGameBestRemote(gameId: string): Promise<number> {
+  if (!isConfigured()) return 0;
+  const uid = await userId();
+  if (!uid) return 0;
+  try {
+    const sb = await getSupabase();
+    const { data } = await sb
+      .from('free_game_bests')
+      .select('best')
+      .eq('user_id', uid)
+      .eq('game_id', gameId)
+      .maybeSingle();
+    return Math.max(0, Number(data?.best ?? 0));
+  } catch {
+    return 0;
+  }
+}
+
 export async function submitPlayRemote(
   gameId: string, score: number, win: boolean, leaderboard: boolean, token = '', timeMs = 0,
 ): Promise<PlayResult> {

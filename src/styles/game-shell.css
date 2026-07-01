@@ -262,6 +262,14 @@ body.game-shell {
   padding-top: 38px;
 }
 
+.game-shell .game-panel > .gp-close-corner {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  margin: 0;
+}
+
 .game-shell .game-panel h2 {
   margin: 0;
   font-size: 1.25rem;

@@ -91,6 +91,25 @@ body.game-shell[data-game="ethiopian-quiz"] {
   border-right: 1px solid #e6efdc;
 }
 
+.eq-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  line-height: 0;
+  color: var(--game-accent);
+}
+
+.eq-stat-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.eq-stat-score .eq-stat-icon {
+  color: var(--shell-blue);
+}
+
 .eq-stat:last-child {
   border-right: none;
 }
