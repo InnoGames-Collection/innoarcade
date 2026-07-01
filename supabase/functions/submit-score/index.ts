@@ -35,7 +35,7 @@ const MAX_SCORE: Record<string, number> = {
 };
 
 // Per-game scoring config for the uniform matrix (target-based normalization).
-//   par       = a "great round" raw score → performance 1.0
+//   par       = a "great round" raw score → 100 RP when raw ≥ par (via rp_for baseline)
 //   timeWeight/parTime = speed bonus for time-relevant games (others: no time)
 //   difficulty = tier multiplier (default 1)
 // Tunable; the server is the single source of truth.
@@ -43,7 +43,7 @@ interface ScoreCfg { par: number; timeWeight?: number; parTime?: number; difficu
 const GAME_SCORING: Record<string, ScoreCfg> = {
   'orbit-blast': { par: 3000 }, 'merge-2048': { par: 5000 }, 'temple-dash': { par: 1500 },
   'metro-rush': { par: 1500 }, 'candy-crunch': { par: 300 }, 'dot-link': { par: 200 },
-  'brick-blitz': { par: 300 }, 'fruit-slice': { par: 60 }, 'sky-hopper': { par: 100 },
+  'brick-blitz': { par: 300 }, 'fruit-slice': { par: 1200 }, 'sky-hopper': { par: 100 },
   'bubble-pop': { par: 300 }, 'memory-match': { par: 3600 }, 'tap-game': { par: 50 },
   'dice-roll': { par: 300 }, 'scratch-card': { par: 100 }, 'lucky-box': { par: 300 },
   'spin-wheel': { par: 300 }, 'luckyslot': { par: 300 }, 'popblast': { par: 200 },

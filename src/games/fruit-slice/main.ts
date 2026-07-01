@@ -116,10 +116,8 @@ function fmtTime(s: number): string {
 }
 
 function updatePlayHud(): void {
-  const left = game.secondsLeft();
-  const timeEl = $('#fsTime');
-  timeEl.textContent = fmtTime(left);
-  timeEl.closest('.fs-stat-time')?.classList.toggle('fs-stat-urgent', left > 0 && left <= 10);
+  const elapsed = game.elapsedSeconds();
+  $('#fsTime').textContent = fmtTime(elapsed);
   $('#fsScore').textContent = String(game.score);
   $('#fsLives').textContent = String(game.lives);
   $('#fsCombo').textContent = game.combo > 1 ? `${game.combo}×` : '—';

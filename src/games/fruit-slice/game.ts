@@ -6,12 +6,17 @@ import type { Action } from '../../engine/input';
 
 export const W = 480;
 export const H = 720;
-/** Ranked monthly attempts last this many seconds (fair RP window). */
-export const ROUND_SECONDS = 90;
 
-const FRUIT_BASE = 10;
-const COMBO_BONUS = 2;
-const COMBO_BONUS_CAP = 9;
+/** Run ends when lives hit 0 — no countdown timer. */
+export const STARTING_LIVES = 5;
+/** Survival bonus while the run is active (points per second). */
+export const TIME_POINTS_PER_SEC = 2;
+export const FRUIT_BASE = 10;
+/** Extra points per combo step on each fruit (streak after the first slice). */
+export const COMBO_BONUS = 2;
+/** Max combo steps that add bonus on a single fruit (+18 at most). */
+export const COMBO_BONUS_CAP = 9;
+export const BOMB_PENALTY = 10;
 
 const FRUIT_RADIUS = 18;
 const BOMB_RADIUS = 16;
@@ -55,20 +60,17 @@ interface Slice {
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameOver';
 
-export type GameOverReason = 'lives' | 'time';
-
 export class FruitSlice {
   state: GameState = 'menu';
   score = 0;
   combo = 0;
-  lives = 3;
-  /** Why the last run ended (set before gameOver). */
-  lastEndReason: GameOverReason = 'lives';
+  lives = STARTING_LIVES;
 
   onStateChange: (s: GameState) => void = () => {};
   onGameOver: (score: number, durationMs: number) => void = () => {};
 
   private time = 0;
+  private timeScoreBank = 0;
   // Difficulty ramp: spawn rate + object speed scale up with elapsed time, so the
   // endless run eventually outpaces the player (no hard end — you fail by misses).
   private speedMul = 1;
@@ -83,9 +85,9 @@ export class FruitSlice {
   start(): void {
     this.score = 0;
     this.combo = 0;
-    this.lives = 3;
+    this.lives = STARTING_LIVES;
     this.time = 0;
-    this.lastEndReason = 'lives';
+    this.timeScoreBank = 0;
     this.speedMul = 1;
     this.fruits = [];
     this.bombs = [];
@@ -152,9 +154,9 @@ export class FruitSlice {
     }
   }
 
-  /** Seconds remaining in the ranked round (counts down while playing). */
-  secondsLeft(): number {
-    return Math.max(0, Math.ceil(ROUND_SECONDS - this.time));
+  /** Elapsed run time in whole seconds (timer counts up). */
+  elapsedSeconds(): number {
+    return Math.floor(this.time);
   }
 
   private fruitPoints(): number {
@@ -162,9 +164,8 @@ export class FruitSlice {
     return FRUIT_BASE + Math.min(streak, COMBO_BONUS_CAP) * COMBO_BONUS;
   }
 
-  private endRun(reason: GameOverReason): void {
+  private endRun(): void {
     if (this.state !== 'playing') return;
-    this.lastEndReason = reason;
     this.setState('gameOver');
     this.onGameOver(this.score, Math.floor(this.time * 1000));
   }
@@ -187,13 +188,12 @@ export class FruitSlice {
     this.screenShake = 0.1;
   }
 
-  // Slicing a bomb costs 10 points (floored at 0). It does NOT end the run —
-  // you fail when lives reach 0 or the round timer hits zero.
+  // Bombs cost points and reset combo; the run ends only when lives reach 0.
   private hitBomb(bomb: Bomb): void {
     if (bomb.hit) return;
     bomb.hit = true;
     this.combo = 0;
-    this.score = Math.max(0, this.score - 10);
+    this.score = Math.max(0, this.score - BOMB_PENALTY);
     sfx.jump();
     this.burstFruit(bomb.x, bomb.y, '#ff4444');
     this.screenShake = 0.2;
@@ -233,9 +233,11 @@ export class FruitSlice {
 
     this.time += dt;
 
-    if (this.time >= ROUND_SECONDS) {
-      this.endRun('time');
-      return;
+    this.timeScoreBank += TIME_POINTS_PER_SEC * dt;
+    const timeTicks = Math.floor(this.timeScoreBank);
+    if (timeTicks > 0) {
+      this.score += timeTicks;
+      this.timeScoreBank -= timeTicks;
     }
 
     this.screenShake = Math.max(0, this.screenShake - dt * 8);
@@ -291,7 +293,7 @@ export class FruitSlice {
       this.lives -= 1;
       this.combo = 0;
       if (this.lives <= 0) {
-        this.endRun('lives');
+        this.endRun();
       }
     }
     this.fruits = this.fruits.filter((f) => f.y <= H || f.sliced);

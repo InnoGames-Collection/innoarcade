@@ -216,8 +216,8 @@ const HOWTO: Record<string, { en: string; am: string }> = {
   'dot-link': { en: 'Drag to connect dots of the same colour without crossing lines. Fill the board to clear it.', am: 'ተመሳሳይ ቀለም ያላቸውን ነጥቦች ሳያቋርጡ ያገናኙ።' },
   'brick-blitz': { en: 'Move the paddle to bounce the ball and break every brick. Don’t let the ball fall.', am: 'ኳሷን ለመመለስና ሁሉንም ጡቦች ለመስበር ፓዱን ያንቀሳቅሱ።' },
   'fruit-slice': {
-    en: 'Monthly tournament: enter with coins for attempts, then slice as many fruits as you can in 90 seconds. Each fruit is +10 points; consecutive slices build a combo (+2 bonus per step, up to 9 steps). Bombs −10 and reset combo. Three missed fruits ends the run early. Score 30+ counts as a strong run on the leaderboard.',
-    am: 'ወርሃዊ ውድድር፦ በሳንቲም ለሙከራዎች ግቡ፣ ከዚያ በ90 ሰከንድ ብዙ ፍራፍሬ ይቁረጡ። +10 በፍራፍሬ፣ ተቀጥሎ ሲቁረጡ ኮምቦ (+2 ቦነስ እስከ 9 ደረጃ)፣ ቦምብ −10 እና ኮምቦ ይቀነሳል። 3 ፍራፍሬ ካመለጡ ጨዋታው ቀደም ተልቷል። 30+ ጠንካራ ውጤት ነው።',
+    en: 'Monthly tournament: enter with coins for attempts, then survive as long as you can. The timer counts up — +2 points per second alive. Slice fruit for +10 (+2 combo bonus per streak step). Bombs −10 and reset combo. Miss 5 fruits and you are out. Difficulty ramps over time. Your total score ranks on the monthly board.',
+    am: 'ወርሃዊ ውድድር፦ በሳንቲም ለሙከራዎች ግቡ፣ ከዚያ ምን ያህል ረጅም እንደሚቆዩ ይጫወቱ። ሰዓቱ ይጨምራል — በሰከንድ +2 ነጥብ። ፍራፍሬ +10 (+2 ኮምቦ ቦነስ)። ቦምብ −10። 5 ፍራፍሬ ካመለጡ ይወጣሉ። አዝነት በጊዜ ይጨምራል።',
   },
   'sky-hopper': { en: 'Tap to hop upward from platform to platform. Climb as high as you can without falling.', am: 'ከመድረክ ወደ መድረክ ለመዝለል ይንኩ። ሳይወድቁ ከፍ ብለው ይውጡ።' },
   'bubble-pop': { en: 'Aim and shoot bubbles to group 3+ of a colour and pop them. Clear the board to win.', am: '3+ ተመሳሳይ ቀለም ለማሰባሰብ አረፋዎችን ይተኩሱ።' },
