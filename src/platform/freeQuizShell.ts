@@ -77,6 +77,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
   let deckIdx = 0;
   let answered = 0;
   let correct = 0;
+  let speedBonus = 0;
   let locked = false;
   let runStart = 0;
   let runLeft = runSeconds;
@@ -130,11 +131,22 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     overlay.setAttribute('aria-hidden', 'true');
   }
 
+  function computeScore(): number {
+    return correct * pointsPerCorrect + speedBonus + Math.max(0, runLeft);
+  }
+
+  function runSummaryText(): string {
+    return t('eq.runSummary')
+      .replace('{correct}', String(correct))
+      .replace('{sessionLeft}', String(Math.max(0, runLeft)))
+      .replace('{speed}', String(speedBonus));
+  }
+
   function showOverOverlay(score: number, isRecord: boolean): void {
     const overlay = $('#overOverlay');
     $('#finalScore').textContent = score.toLocaleString();
     $('#finalBest').textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
-    $('#fqOverSummary').textContent = t('eq.correctSummary').replace('{correct}', String(correct));
+    $('#fqOverSummary').textContent = runSummaryText();
     $('#newBest').classList.toggle('hidden', !isRecord);
     $('#runReward').innerHTML = '<span class="shell-rr-pending">…</span>';
     $('#closeBtn').classList.add('hidden');
@@ -143,7 +155,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
   }
 
   function updateStats(): void {
-    const score = correct * pointsPerCorrect;
+    const score = computeScore();
     $('#fqStatQ').textContent = phase === 'playing' ? String(answered + 1) : String(answered);
     $('#fqStatSession').textContent = phase === 'playing' ? formatRunTime(runLeft) : '—';
     $('#fqStatQTime').textContent = phase === 'playing' ? `${Math.max(0, qLeft)}s` : '—';
@@ -186,6 +198,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     deckIdx = 0;
     answered = 0;
     correct = 0;
+    speedBonus = 0;
     locked = false;
     finishPending = false;
     runLeft = runSeconds;
@@ -243,6 +256,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     const right = choice === q.answer;
     if (right) {
       correct++;
+      speedBonus += Math.max(0, qLeft);
       btn.classList.add('ok');
       sfx.coin();
     } else {
@@ -259,7 +273,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     finishPending = true;
     clearRunTimer();
     locked = true;
-    const score = correct * pointsPerCorrect;
+    const score = computeScore();
     const isWin = score >= winThreshold;
     const isRecord = score > serverBest;
     if (isRecord) serverBest = score;

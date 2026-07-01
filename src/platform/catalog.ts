@@ -338,34 +338,39 @@ for (const g of CATALOG) {
 //   2. then the rest in catalog order;
 //   3. except BOTTOM games, pinned to the very end.
 const FRONT = [
-  'temple-dash',    // Ethio Runner
-  'orbit-blast',    // Ball Shooter
-  'merge-2048',     // 2048
-  'memory-match',   // Memory Match
-  'tap-game',       // Tap Game
-  'dice-roll',      // Dice Roll
-  'popblast',       // Candy Blast
-  'ethiopian-quiz', // Ethiopian Quiz
-  'fruit-slice',    // Fruit Slice
-  'spin-wheel',     // Spin Wheel
-  'sudoku',         // Sudoku
-  'brick-blitz',    // Brick Blitz
-  'sequence',       // Sequence
-  'metro-rush',     // Metro Rush
-  'luckyslot',      // Lucky Slot
-  'target24',       // Target 24
-  'lucky-box',      // Lucky Box
-  'spell',          // Spell Trivia
-  'vocab',          // Vocabulary
-  'rhyme',          // Rhyme Time
-  'crosssum',       // Cross Sum
-  'logic',          // Logic Grid
-  'scratch-card',   // Scratch Card
-  'bubble-pop',     // Bubble Pop
-  'crash-game',     // Crash Game
-  'sky-hopper',     // Sky Hopper
-  'dot-link',       // Dot Link
-  'candy-crunch',   // Candy Saga
+  // Free — quiz / trivia cluster first
+  'ethiopian-quiz',
+  'spell',
+  'vocab',
+  'rhyme',
+  'logic',
+  // Free — flagship puzzles
+  'merge-2048',
+  'sudoku',
+  // Free — level-gated
+  'luckyslot',
+  'spin-wheel',
+  'target24',
+  'crash-game',
+  'sequence',
+  // Free — other casual / brain / arcade
+  'tap-game',
+  'dice-roll',
+  'scratch-card',
+  'lucky-box',
+  'crosssum',
+  'popblast',
+  'orbit-blast',
+  'metro-rush',
+  'candy-crunch',
+  'dot-link',
+  'brick-blitz',
+  'sky-hopper',
+  'bubble-pop',
+  // Tournament (enabled titles)
+  'temple-dash',
+  'memory-match',
+  'fruit-slice',
 ];
 const BOTTOM: string[] = [];
 

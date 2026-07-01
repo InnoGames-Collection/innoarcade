@@ -1,22 +1,16 @@
-// Lucky Slot — a 3-reel slot a built-in GoPlay game.
-// The outcome is decided by a CSPRNG at the configured win rate, and the reels
-// are filled to land on a matching/non-matching result accordingly.
+// Lucky Slot — 3-reel slot with hub casual shell.
 
 import '../../styles/base.css';
 import '../../styles/game-shell.css';
+import '../_casual/style.css';
 import './style.css';
 import { applyTranslations, getLang, t } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
-import { ensureToast, paintInlineReward, renderFreeHudHtml, startFreeRound } from '../../platform/freeGameShell';
+import { wireFreeCasualShell } from '../../platform/freeGameShell';
 
 const host = createHost('luckyslot');
-
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
-
-const freeHud = $('#freeHud');
-const runReward = $('#runReward');
-const toast = ensureToast('luckyslot-toast');
 
 function chance(ratePct: number): boolean {
   const buf = new Uint32Array(1);
@@ -38,11 +32,8 @@ const messageDisplay = $('#slot-message-display');
 const machineElement = $('#slot-machine-body');
 
 let isSpinning = false;
+let runStart = 0;
 let slotTickInterval: ReturnType<typeof setInterval> | undefined;
-
-function mountFreeHud(): void {
-  freeHud.innerHTML = renderFreeHudHtml(host);
-}
 
 function initReels(): void {
   reelStrips.forEach((strip, i) => {
@@ -55,10 +46,24 @@ function initReels(): void {
   });
 }
 
+function resetSlot(): void {
+  clearInterval(slotTickInterval);
+  isSpinning = false;
+  spinBtn.disabled = false;
+  machineElement.classList.remove('slot-win-glow');
+  messageDisplay.textContent = t('sl.tapSpin');
+}
+
+const shell = wireFreeCasualShell(host, beginSpin);
+
+async function beginSpin(): Promise<void> {
+  resetSlot();
+  runStart = Date.now();
+  initReels();
+}
+
 async function runSpinLogic(): Promise<void> {
   if (isSpinning) return;
-  if (!(await startFreeRound(host, toast))) return;
-  runReward.innerHTML = '';
   isSpinning = true;
   spinBtn.disabled = true;
   machineElement.classList.remove('slot-win-glow');
@@ -112,37 +117,38 @@ async function runSpinLogic(): Promise<void> {
       strip.innerHTML = `<div class="slot-symbol">${targetSymbol}</div>`;
       if (index === 2) {
         clearInterval(slotTickInterval);
-        void evaluateWin(results);
+        evaluateWin(results);
       }
     }, 1700 + index * 550);
   });
 }
 
-async function evaluateWin(results: string[]): Promise<void> {
+function evaluateWin(results: string[]): void {
   isSpinning = false;
   spinBtn.disabled = false;
   const [r1, r2, r3] = results;
   let isWin = false;
+  let summary = '';
   if (r1 === r2 && r2 === r3) {
     isWin = true;
-    messageDisplay.textContent = t('sl.jackpot').replace('{p}', String(host.winPoints));
+    summary = t('sl.jackpot').replace('{p}', String(host.winPoints));
     machineElement.classList.add('slot-win-glow');
     sfx.coin();
   } else if (r1 === r2 || r2 === r3 || r1 === r3) {
     isWin = true;
-    messageDisplay.textContent = t('sl.twoMatch').replace('{p}', String(host.winPoints));
+    summary = t('sl.twoMatch').replace('{p}', String(host.winPoints));
     sfx.coin();
   } else {
-    messageDisplay.textContent = t('sl.tryAgain');
+    summary = t('sl.tryAgain');
     sfx.crash();
   }
-  await paintInlineReward(host, runReward, isWin ? 1 : 0, isWin);
+  messageDisplay.textContent = summary;
+  shell.finishPlay(isWin ? host.winPoints : 0, isWin, summary, Date.now() - runStart);
 }
 
 spinBtn.addEventListener('click', () => void runSpinLogic());
 
 document.documentElement.lang = getLang();
 applyTranslations();
-mountFreeHud();
 messageDisplay.textContent = t('sl.tapSpin');
 initReels();
