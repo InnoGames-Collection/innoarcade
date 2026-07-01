@@ -7,8 +7,7 @@
 // module only READS those. There is no localStorage and no offline wallet — an
 // in-memory cache holds the last server value for instant synchronous rendering.
 
-import { supabase } from './supabase';
-import { isConfigured } from './supabase';
+import { getSupabase, isConfigured } from './supabase';
 
 export interface LedgerEntry {
   id: string;
@@ -40,7 +39,7 @@ export function balanceSync(): number {
 export async function balance(): Promise<number> {
   if (!isConfigured()) { cached = 0; emit(); return 0; }
   try {
-    const sb = supabase();
+    const sb = await getSupabase();
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) { cached = 0; emit(); return 0; }
     const { data } = await sb.from('profiles').select('coins').eq('id', me).maybeSingle();
@@ -54,7 +53,7 @@ export async function balance(): Promise<number> {
 export async function ledger(limit = 20): Promise<LedgerEntry[]> {
   if (!isConfigured()) return [];
   try {
-    const sb = supabase();
+    const sb = await getSupabase();
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) return [];
     const { data } = await sb

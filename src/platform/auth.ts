@@ -8,7 +8,7 @@
 // Until Supabase is configured these are inert and the platform treats the user
 // as an anonymous local player (see profile/tournaments fallbacks).
 
-import { isConfigured, supabase } from './supabase';
+import { isConfigured, getSupabase } from './supabase';
 import { maskPhone } from './phone';
 
 export interface AuthUser {
@@ -36,7 +36,8 @@ export async function fetchDevOtp(phone: string): Promise<string | null> {
   const p = normalizePhone(phone);
   for (let i = 0; i < 8; i++) {
     try {
-      const { data } = await supabase()
+      const sb = await getSupabase();
+      const { data } = await sb
         .from('dev_otps').select('code, created_at').eq('phone', p).maybeSingle();
       if (data?.code) return String(data.code);
     } catch { /* table may not exist in a hardened deploy — just stop echoing */ return null; }
@@ -78,13 +79,15 @@ function withTimeout<T>(p: Promise<T>, ms = 15_000): Promise<T> {
 }
 
 export async function requestOtp(phone: string): Promise<void> {
+  const sb = await getSupabase();
   const { error } = await withTimeout(
-    supabase().auth.signInWithOtp({ phone: normalizePhone(phone) }));
+    sb.auth.signInWithOtp({ phone: normalizePhone(phone) }));
   if (error) throw error;
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<AuthUser> {
-  const { data, error } = await withTimeout(supabase().auth.verifyOtp({
+  const sb = await getSupabase();
+  const { data, error } = await withTimeout(sb.auth.verifyOtp({
     phone: normalizePhone(phone),
     token: code.trim(),
     type: 'sms',
@@ -102,7 +105,8 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthUser> 
 
 export async function currentUser(): Promise<AuthUser | null> {
   if (!isConfigured()) return null;
-  const { data } = await supabase().auth.getUser();
+  const sb = await getSupabase();
+  const { data } = await sb.auth.getUser();
   const u = data.user;
   cachedUser = u ? {
     id: u.id,
@@ -113,25 +117,32 @@ export async function currentUser(): Promise<AuthUser | null> {
 }
 
 export async function setDisplayName(name: string): Promise<void> {
-  const { error } = await supabase().auth.updateUser({ data: { name: name.trim().slice(0, 24) } });
+  const sb = await getSupabase();
+  const { error } = await sb.auth.updateUser({ data: { name: name.trim().slice(0, 24) } });
   if (error) throw error;
 }
 
 export async function signOut(): Promise<void> {
-  if (isConfigured()) await supabase().auth.signOut();
+  if (isConfigured()) await (await getSupabase()).auth.signOut();
 }
 
 // Subscribe to sign-in/out; returns an unsubscribe function.
 export function onAuthChange(fn: (user: AuthUser | null) => void): () => void {
   if (!isConfigured()) return () => {};
-  const { data } = supabase().auth.onAuthStateChange((_e, session) => {
-    const u = session?.user;
-    cachedUser = u ? {
-    id: u.id,
-    phone: u.phone ?? '',
-    name: (u.user_metadata?.name as string) || maskPhone(u.phone ?? ''),
-  } : null;
-    fn(cachedUser);
+  let disposed = false;
+  let unsub = (): void => {};
+  void getSupabase().then((sb) => {
+    if (disposed) return;
+    const { data } = sb.auth.onAuthStateChange((_e, session) => {
+      const u = session?.user;
+      cachedUser = u ? {
+        id: u.id,
+        phone: u.phone ?? '',
+        name: (u.user_metadata?.name as string) || maskPhone(u.phone ?? ''),
+      } : null;
+      fn(cachedUser);
+    });
+    unsub = () => data.subscription.unsubscribe();
   });
-  return () => data.subscription.unsubscribe();
+  return () => { disposed = true; unsub(); };
 }

@@ -7,7 +7,7 @@
 // `app_config` table (edited via the admin-action Edge Function) overrides it.
 // There is NO localStorage config — the server is the single source of truth.
 
-import { isConfigured, supabase } from './supabase';
+import { isConfigured, getSupabase } from './supabase';
 import { isSignedIn } from './auth';
 
 // Base of the uniform scoring matrix: a "perfect" round (performance 1.0, no
@@ -145,7 +145,7 @@ export function winRateOverride(): number | null {
 export async function loadConfig(): Promise<AppConfig> {
   if (!isConfigured()) return cache;
   try {
-    const { data, error } = await supabase()
+    const { data, error } = await (await getSupabase())
       .from('app_config').select('value').eq('key', 'app').maybeSingle();
     if (error) throw error;
     const remote = (data?.value ?? {}) as Partial<AppConfig>;

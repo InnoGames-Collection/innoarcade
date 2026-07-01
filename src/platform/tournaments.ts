@@ -15,7 +15,7 @@
 // prize economy. Player names come from the auth profile (shown on the board).
 
 import { getGame, tournamentGames, type GameMeta, type TournamentCadence } from './catalog';
-import { isConfigured, supabase } from './supabase';
+import { isConfigured, getSupabase } from './supabase';
 import { config, economyNeedsAuth } from './config';
 import { SignInRequiredError } from './payments';
 
@@ -161,7 +161,7 @@ export function activeTournaments(now = Date.now()): Tournament[] {
 export async function loadTournaments(): Promise<Tournament[]> {
   if (!isConfigured()) { remoteCache = null; return activeTournaments(); }
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const { data, error } = await sb
       .from('tournaments')
       .select('id, game_id, title_en, title_am, type, entry_fee_coins, attempts, prize_model, sponsored_prize, prize_tiers, starts_at, ends_at, state')
@@ -205,7 +205,7 @@ export async function loadTournaments(): Promise<Tournament[]> {
 // pooled prizes reflect actual entries (not a simulation). Best-effort.
 async function loadPools(): Promise<void> {
   try {
-    const { data } = await supabase()
+    const { data } = await (await getSupabase())
       .from('tournament_pools')
       .select('tournament_id, entrants, fees_total, pool');
     for (const k of Object.keys(poolCache)) delete poolCache[k];
@@ -329,7 +329,7 @@ export async function enterTournament(tournamentIdOrGameId: string): Promise<Tou
   // Paid entry is account-bound — never proceed signed out.
   if (t && isPaid(t) && economyNeedsAuth()) throw new SignInRequiredError();
 
-  const { data, error } = await supabase().functions.invoke('enter-tournament', {
+  const { data, error } = await (await getSupabase()).functions.invoke('enter-tournament', {
     body: { gameId },
   });
   if (error) {
@@ -355,7 +355,7 @@ export async function enterTournament(tournamentIdOrGameId: string): Promise<Tou
 export async function myEntries(): Promise<TournamentEntry[]> {
   if (!isConfigured()) return [];
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) { enteredCache.clear(); return []; }
     const { data } = await sb

@@ -14,7 +14,7 @@
 // `payment-callback` Edge Functions (request signing + webhook verification);
 // nothing in this file or the UI changes.
 
-import { supabase } from './supabase';
+import { getSupabase } from './supabase';
 import { packageById, economyNeedsAuth } from './config';
 import { currentUser } from './auth';
 
@@ -60,7 +60,7 @@ export async function startCheckout(packageId: string, method: PayMethod): Promi
   const appBase = location.origin + dir;               // e.g. https://host/innoarcade/
   const returnUrl = location.origin + location.pathname; // back to this exact page
 
-  const { data, error } = await supabase().functions.invoke('buy-coins', {
+  const { data, error } = await (await getSupabase()).functions.invoke('buy-coins', {
     body: { packageId, method, appBase, returnUrl },
   });
   if (error) throw error;
@@ -69,7 +69,7 @@ export async function startCheckout(packageId: string, method: PayMethod): Promi
 
 // Poll the order row until it leaves `pending` (immediate first check, then every 500ms).
 export async function pollOrder(orderId: string): Promise<Order> {
-  const sb = supabase();
+  const sb = await getSupabase();
   for (let i = 0; i < 60; i++) {
     const { data } = await sb
       .from('payment_orders')
@@ -86,7 +86,7 @@ export async function pollOrder(orderId: string): Promise<Order> {
 
 // The signed-in player's recent orders (admin sees all via admin.ts).
 export async function myOrders(limit = 20): Promise<Order[]> {
-  const sb = supabase();
+  const sb = await getSupabase();
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return [];
   const { data } = await sb

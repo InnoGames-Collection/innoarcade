@@ -19,6 +19,7 @@ import { openTournamentEntry } from './tournamentEntry';
 import { activeDraws, myTickets, enterDraw, NotEnoughPointsError, hydrateTickets, loadDraws, myOdds } from '../platform/draws';
 import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, xpLifetime } from '../platform/currency';
 import { levelFor, economyNeedsAuth, WINNER_ETB_PRIZES, type WinnerCadence } from '../platform/config';
+import { getSupabase, isConfigured } from '../platform/supabase';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const lang = (): Lang => getLang();
@@ -666,8 +667,7 @@ setupWinnersTabs();
 syncNavActive();
 mountSettings();
 mountSignInGate();
-void mountWallet();
-void refreshData();
+
 // Hydrate the points balance from the server (the authority); refresh on load
 // and whenever auth changes, then re-render the top balance strip.
 let dailyClaimed = false; // once per page load (the server is idempotent per day)
@@ -688,7 +688,24 @@ function hydratePoints(): void {
     unlockedSet.clear(); ids.forEach((id) => unlockedSet.add(id)); renderGames();
   });
 }
-hydratePoints();
+
+/** Paint the hub first, then load the Supabase SDK chunk and hydrate server data. */
+function startBackendHydration(): void {
+  const run = (): void => {
+    void mountWallet();
+    void refreshData();
+    hydratePoints();
+  };
+  if (!isConfigured()) {
+    run();
+    return;
+  }
+  requestAnimationFrame(() => {
+    void getSupabase().then(run);
+  });
+}
+
+startBackendHydration();
 // Re-pull wallet/entries/standing when the player signs in or out.
 onAuthChange(() => { void refreshData(); hydratePoints(); });
 setInterval(tickCountdowns, 1000);

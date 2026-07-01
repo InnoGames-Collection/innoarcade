@@ -6,7 +6,7 @@
 // table insert — so the server is the authority on what counts (bounds checks,
 // rate limits, best-only). That's the anti-cheat boundary for prize tournaments.
 
-import { isConfigured, supabase } from './supabase';
+import { isConfigured, getSupabase } from './supabase';
 import { type LeaderEntry } from './tournaments';
 
 export function backendReady(): boolean {
@@ -37,7 +37,7 @@ export interface PlayResult {
 export async function submitPlayRemote(
   gameId: string, score: number, win: boolean, leaderboard: boolean, token = '', timeMs = 0,
 ): Promise<PlayResult> {
-  const sb = supabase();
+  const sb = (await getSupabase());
   const { data, error } = await sb.functions.invoke('submit-score', {
     body: { gameId, score, win, timeMs, leaderboard, token },
   });
@@ -53,7 +53,7 @@ export interface StartRoundResult { token: string; attemptsLeft?: number }
 export async function startRoundRemote(gameId: string, ranked = true): Promise<StartRoundResult> {
   if (!isConfigured()) return { token: '' };
   try {
-    const { data, error } = await supabase().functions.invoke('start-round', {
+    const { data, error } = await (await getSupabase()).functions.invoke('start-round', {
       body: { gameId, ranked },
     });
     if (error) return { token: '' };
@@ -69,7 +69,7 @@ export async function startRoundRemote(gameId: string, ranked = true): Promise<S
 // service-role functions). Read map of gameId -> skinId.
 export async function fetchSkins(): Promise<Record<string, string>> {
   if (!isConfigured()) return {};
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return {};
   const { data } = await sb.from('profiles').select('skins').eq('id', me).maybeSingle();
@@ -77,7 +77,7 @@ export async function fetchSkins(): Promise<Record<string, string>> {
 }
 
 export async function setSkinRemote(gameId: string, skinId: string): Promise<void> {
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return;
   const cur = await fetchSkins();
@@ -89,7 +89,7 @@ export async function setSkinRemote(gameId: string, skinId: string): Promise<voi
 // their profile (server-sourced; the client never writes them).
 export async function fetchWallets(): Promise<{ xp: number; lifetime: number } | null> {
   if (!isConfigured()) return null;
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return null;
   const { data, error } = await sb.from('profiles').select('xp, xp_lifetime').eq('id', me).maybeSingle();
@@ -103,7 +103,7 @@ export interface DailyClaim { award: number; xp: number; lifetime: number }
 export async function claimDailyLogin(): Promise<DailyClaim | null> {
   if (!isConfigured()) return null;
   try {
-    const { data, error } = await supabase().functions.invoke('claim-daily', { body: {} });
+    const { data, error } = await (await getSupabase()).functions.invoke('claim-daily', { body: {} });
     if (error || !data) return null;
     return { award: Number(data.award ?? 0), xp: Number(data.xp ?? 0), lifetime: Number(data.lifetime ?? 0) };
   } catch { return null; }
@@ -112,7 +112,7 @@ export async function claimDailyLogin(): Promise<DailyClaim | null> {
 // The signed-in player's unlocked games (level-gated games bought with coins).
 export async function fetchUnlocks(): Promise<string[]> {
   if (!isConfigured()) return [];
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return [];
   const { data } = await sb.from('profiles').select('unlocks').eq('id', me).maybeSingle();
@@ -122,7 +122,7 @@ export async function fetchUnlocks(): Promise<string[]> {
 // Unlock a level-gated game by spending coins (server-validated). Returns the
 // new coin balance + the updated unlock list.
 export async function unlockGameRemote(gameId: string): Promise<{ coins: number; unlocks: string[] }> {
-  const { data, error } = await supabase().functions.invoke('unlock-game', { body: { gameId } });
+  const { data, error } = await (await getSupabase()).functions.invoke('unlock-game', { body: { gameId } });
   if (error) throw error;
   return data as { coins: number; unlocks: string[] };
 }
@@ -131,7 +131,7 @@ export async function unlockGameRemote(gameId: string): Promise<{ coins: number;
 export interface GlobalRow { rank: number; name: string; lifetime: number; season?: number; isPlayer: boolean }
 export async function fetchGlobalLeaderboard(limit = 5): Promise<GlobalRow[]> {
   if (!isConfigured()) return [];
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   const { data, error } = await sb
     .from('global_leaderboard')
@@ -149,7 +149,7 @@ export async function fetchGlobalLeaderboard(limit = 5): Promise<GlobalRow[]> {
 // they've already redeemed someone else's (one-time).
 export async function fetchReferral(): Promise<{ code: string; redeemed: boolean } | null> {
   if (!isConfigured()) return null;
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return null;
   const { data } = await sb.from('profiles').select('ref_code, referred_by').eq('id', me).maybeSingle();
@@ -160,7 +160,7 @@ export async function fetchReferral(): Promise<{ code: string; redeemed: boolean
 // Redeem a friend's referral code (pays both sides in coins, server-validated).
 // Returns a status: 'ok' | 'already' | 'invalid' | 'self'.
 export async function redeemReferralRemote(code: string): Promise<{ status: string; coins: number }> {
-  const { data, error } = await supabase().functions.invoke('redeem-referral', { body: { code } });
+  const { data, error } = await (await getSupabase()).functions.invoke('redeem-referral', { body: { code } });
   if (error) throw error;
   return data as { status: string; coins: number };
 }
@@ -169,7 +169,7 @@ export async function redeemReferralRemote(code: string): Promise<{ status: stri
 export interface Season { id: number; name: string; endsAt: number }
 export async function fetchActiveSeason(): Promise<Season | null> {
   if (!isConfigured()) return null;
-  const { data } = await supabase()
+  const { data } = await (await getSupabase())
     .from('seasons').select('id, name, ends_at').eq('status', 'active')
     .order('ends_at', { ascending: true }).limit(1).maybeSingle();
   if (!data) return null;
@@ -180,7 +180,7 @@ export async function fetchActiveSeason(): Promise<Season | null> {
 // in the active season (each tournament RP comes from their best raw score).
 export async function fetchSeasonLeaderboard(limit = 10): Promise<GlobalRow[]> {
   if (!isConfigured()) return [];
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   const { data, error } = await sb
     .from('season_rp_leaderboard')
@@ -205,7 +205,7 @@ export async function fetchPoints(): Promise<number | null> {
 // (flat 20/ticket, doc §6.1). Returns the new XP + coin balances and ticket count.
 export interface DrawEnterResult { points: number; coins: number; tickets: number }
 export async function enterDrawRemote(drawId: string, pay: 'xp' | 'coins' = 'xp'): Promise<DrawEnterResult> {
-  const { data, error } = await supabase().functions.invoke('enter-draw', { body: { drawId, pay } });
+  const { data, error } = await (await getSupabase()).functions.invoke('enter-draw', { body: { drawId, pay } });
   if (error) throw error;
   return data as DrawEnterResult;
 }
@@ -213,7 +213,7 @@ export async function enterDrawRemote(drawId: string, pay: 'xp' | 'coins' = 'xp'
 // The signed-in player's ticket holdings, keyed by draw window id.
 export async function fetchDrawTickets(): Promise<Record<string, number>> {
   if (!isConfigured()) return {};
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return {};
   const { data } = await sb.from('draw_entries').select('draw_id, tickets').eq('user_id', me);
@@ -234,7 +234,7 @@ export interface DrawRow {
 export async function fetchDraws(): Promise<DrawRow[]> {
   if (!isConfigured()) return [];
   try {
-    const { data, error } = await supabase()
+    const { data, error } = await (await getSupabase())
       .from('draws')
       .select('id, period, title_en, title_am, prize_etb, ticket_cost_points, max_tickets_per_user, min_tickets, winner_count, starts_at, ends_at, state')
       .order('ends_at', { ascending: true });
@@ -257,7 +257,7 @@ export async function fetchDraws(): Promise<DrawRow[]> {
 export async function fetchDrawPools(): Promise<Record<string, { entrants: number; totalTickets: number }>> {
   if (!isConfigured()) return {};
   try {
-    const { data } = await supabase().from('draw_pools').select('draw_id, entrants, total_tickets');
+    const { data } = await (await getSupabase()).from('draw_pools').select('draw_id, entrants, total_tickets');
     const out: Record<string, { entrants: number; totalTickets: number }> = {};
     (data ?? []).forEach((r: { draw_id: string; entrants: number; total_tickets: number }) => {
       out[String(r.draw_id)] = { entrants: Number(r.entrants), totalTickets: Number(r.total_tickets) };
@@ -272,7 +272,7 @@ export interface DrawWinnerRow { phone: string; prizeEtb: number; period: 'daily
 export async function fetchDrawWinners(limit = 24): Promise<DrawWinnerRow[]> {
   if (!isConfigured()) return [];
   try {
-    const { data, error } = await supabase()
+    const { data, error } = await (await getSupabase())
       .from('draw_winners_public')
       .select('phone_masked, prize_etb, period, created_at')
       .order('created_at', { ascending: false })
@@ -294,7 +294,7 @@ export interface SeasonWinnerRow {
 export async function fetchPreviousSeasonLeaderboard(limit = 10): Promise<SeasonWinnerRow[]> {
   if (!isConfigured()) return [];
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     const { data, error } = await sb
       .from('previous_season_rp_leaderboard')
@@ -326,7 +326,7 @@ export async function fetchTournamentPeriodWinners(
 ): Promise<PeriodWinnerRow[]> {
   if (!isConfigured()) return [];
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     const { data, error } = await sb
       .from('tournament_period_board')
@@ -352,7 +352,7 @@ export const fetchPreviousSeasonWinners = fetchPreviousSeasonLeaderboard;
 // unconfigured so callers can merge with the local simulated board if they like.
 export async function leaderboardRemote(tournamentId: string, limit = 50): Promise<LeaderEntry[]> {
   if (!isConfigured()) return [];
-  const sb = supabase();
+  const sb = (await getSupabase());
   const { data, error } = await sb
     .from('leaderboard')
     .select('rank, name, score, rp, user_id')
@@ -381,7 +381,7 @@ export async function mergedLeaderboard(tournamentId: string): Promise<LeaderEnt
 // The signed-in player's own row (even outside the visible top-N).
 export async function playerStandingRemote(tournamentId: string): Promise<LeaderEntry | undefined> {
   if (!isConfigured()) return undefined;
-  const sb = supabase();
+  const sb = (await getSupabase());
   const me = (await sb.auth.getUser()).data.user?.id;
   if (!me) return undefined;
   const { data, error } = await sb

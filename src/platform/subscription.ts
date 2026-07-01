@@ -7,7 +7,7 @@
 // computes the expiry and enforces the one-time trial). The client keeps an
 // in-memory cache (NO localStorage) hydrated by loadSubscription().
 
-import { isConfigured, supabase } from './supabase';
+import { isConfigured, getSupabase } from './supabase';
 import { type PayMethod } from './payments';
 
 export type SubPeriod = 'daily' | 'weekly' | 'monthly';
@@ -72,7 +72,7 @@ function mapRow(r: Record<string, unknown>): Subscription {
 export async function loadSubscription(): Promise<Subscription | null> {
   if (!isConfigured()) { cache = null; trialUsed = false; emit(); return null; }
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) { cache = null; trialUsed = false; emit(); return null; }
     const { data } = await sb
@@ -94,7 +94,7 @@ export async function loadSubscription(): Promise<Subscription | null> {
 
 // Activate a plan via the server (computes expiry + applies the one-time trial).
 export async function subscribe(period: SubPeriod, method: PayMethod): Promise<Subscription> {
-  const { data, error } = await supabase().functions.invoke('subscribe', {
+  const { data, error } = await (await getSupabase()).functions.invoke('subscribe', {
     body: { period, method },
   });
   if (error) throw error;
@@ -106,7 +106,7 @@ export async function subscribe(period: SubPeriod, method: PayMethod): Promise<S
 
 // Cancel the active subscription (server marks it expired).
 export async function cancelSub(): Promise<void> {
-  const { error } = await supabase().functions.invoke('subscribe', { body: { cancel: true } });
+  const { error } = await (await getSupabase()).functions.invoke('subscribe', { body: { cancel: true } });
   if (error) throw error;
   cache = null;
   emit();

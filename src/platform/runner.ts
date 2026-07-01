@@ -8,7 +8,7 @@
 //   • Coins     — the global wallet; one entry fee (runner-enter) buys N attempts.
 //   • Score     — per-tournament raw best; ranks on the runner leaderboard.
 
-import { isConfigured, supabase } from './supabase';
+import { isConfigured, getSupabase } from './supabase';
 import { currentUser } from './auth';
 import { startRoundRemote } from './backend';
 import { SignInRequiredError } from './payments';
@@ -78,7 +78,7 @@ export async function getRunnerTournament(period: RunnerPeriod = 'daily'): Promi
   if (!isConfigured()) return null;
   try {
     const now = new Date().toISOString();
-    const { data } = await supabase()
+    const { data } = await (await getSupabase())
       .from('runner_tournaments')
       .select('id, period, title_en, title_am, entry_fee_coins, attempts, starts_at, ends_at, state')
       .eq('state', 'live').eq('period', period).lte('starts_at', now).gt('ends_at', now)
@@ -99,7 +99,7 @@ export async function getRunnerTournament(period: RunnerPeriod = 'daily'): Promi
 export async function getMyEntry(tournamentId: string): Promise<RunnerEntry | null> {
   if (!isConfigured()) return null;
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) return null;
     const { data } = await sb
@@ -119,7 +119,7 @@ export interface RunnerPool { pool: number; entrants: number; }
 export async function getRunnerPool(tournamentId: string): Promise<RunnerPool> {
   if (!isConfigured()) return { pool: 0, entrants: 0 };
   try {
-    const { data } = await supabase()
+    const { data } = await (await getSupabase())
       .from('runner_pools').select('pool, entrants').eq('tournament_id', tournamentId).maybeSingle();
     return { pool: Number(data?.pool ?? 0), entrants: Number(data?.entrants ?? 0) };
   } catch { return { pool: 0, entrants: 0 }; }
@@ -131,7 +131,7 @@ export async function getRunnerPool(tournamentId: string): Promise<RunnerPool> {
 export async function getMyBest(tournamentId: string): Promise<number> {
   if (!isConfigured()) return 0;
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) return 0;
     const { data } = await sb
@@ -147,7 +147,7 @@ export async function getMyBest(tournamentId: string): Promise<number> {
 export async function getMyXp(): Promise<RunnerXp> {
   if (!isConfigured()) return { xp: 0, xpSeason: 0, level: 1 };
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) return { xp: 0, xpSeason: 0, level: 1 };
     const { data } = await sb.from('profiles').select('xp_lifetime, xp_season').eq('id', me).maybeSingle();
@@ -160,7 +160,7 @@ export async function getMyXp(): Promise<RunnerXp> {
 export async function runnerLeaderboard(tournamentId: string, limit = 10): Promise<RunnerLeaderRow[]> {
   if (!isConfigured()) return [];
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     const { data } = await sb
       .from('runner_leaderboard')
@@ -178,7 +178,7 @@ export async function runnerLeaderboard(tournamentId: string, limit = 10): Promi
 export async function runnerSeasonLeaderboard(limit = 10): Promise<RunnerSeasonRow[]> {
   if (!isConfigured()) return [];
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     const { data } = await sb
       .from('runner_season_leaderboard')
@@ -196,7 +196,7 @@ export async function runnerSeasonLeaderboard(limit = 10): Promise<RunnerSeasonR
 /** Buy a block of attempts for a period's tournament (pays the entry fee in coins). */
 export async function enterRunnerTournament(period: RunnerPeriod = 'daily'): Promise<RunnerEntry> {
   await currentUser(); // hydrate the session (game pages skip the hub sign-in flow)
-  const { data, error } = await supabase().functions.invoke('runner-enter', { body: { period } });
+  const { data, error } = await (await getSupabase()).functions.invoke('runner-enter', { body: { period } });
   if (error) {
     const status = (error as { context?: { status?: number } }).context?.status;
     if (status === 402) throw new InsufficientCoinsError();
@@ -213,7 +213,7 @@ export async function submitRunnerRun(score: number, timeMs = 0, period: RunnerP
   if (!isConfigured()) return null;
   await currentUser();
   const { token } = await startRoundRemote(RUNNER_GAME_ID);
-  const { data, error } = await supabase().functions.invoke('runner-submit', {
+  const { data, error } = await (await getSupabase()).functions.invoke('runner-submit', {
     body: { score: Math.max(0, Math.floor(score)), timeMs: Math.max(0, Math.floor(timeMs)), token, period },
   });
   if (error) {

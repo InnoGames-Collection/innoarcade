@@ -5,7 +5,7 @@
 // touching anything (the client never trusts its own role claim). The console is
 // 100% server-backed — there is no offline/demo data path.
 
-import { supabase, isConfigured } from './supabase';
+import { getSupabase, isConfigured } from './supabase';
 import { patchConfigCache, type AppConfig } from './config';
 import { type Order } from './payments';
 import {
@@ -41,7 +41,7 @@ export interface Metrics {
 export async function isAdmin(): Promise<boolean> {
   if (!isConfigured()) return false;
   try {
-    const sb = supabase();
+    const sb = (await getSupabase());
     const me = (await sb.auth.getUser()).data.user?.id;
     if (!me) return false;
     const { data } = await sb.from('profiles').select('role').eq('id', me).maybeSingle();
@@ -58,7 +58,7 @@ export async function metrics(): Promise<Metrics> {
   const pending = tours.filter((t) => tournamentState(t) === 'ended').length;
 
   // Aggregate from the tables (best-effort; falls back to partials).
-  const sb = supabase();
+  const sb = (await getSupabase());
   const [{ count: players }, ordersRes] = await Promise.all([
     sb.from('profiles').select('id', { count: 'exact', head: true }),
     sb.from('payment_orders').select('amount_etb, coins, status, created_at').eq('status', 'paid'),
@@ -106,7 +106,7 @@ export async function saveTournament(t: Tournament): Promise<void> {
 }
 
 export async function settleTournament(id: string): Promise<{ won: number }> {
-  const { error } = await supabase().functions.invoke('settle-tournament', { body: { tournamentId: id } });
+  const { error } = await (await getSupabase()).functions.invoke('settle-tournament', { body: { tournamentId: id } });
   if (error) throw error;
   return { won: 0 };
 }
@@ -142,7 +142,7 @@ export interface AdminDrawWinner {
 }
 
 export async function listDraws(): Promise<AdminDraw[]> {
-  const sb = supabase();
+  const sb = (await getSupabase());
   const [{ data: rows }, { data: pools }] = await Promise.all([
     sb.from('draws').select('id, period, title_en, title_am, prize_etb, ticket_cost_points, max_tickets_per_user, min_tickets, winner_count, state, starts_at, ends_at').order('ends_at', { ascending: false }),
     sb.from('draw_pools').select('draw_id, entrants, total_tickets'),
@@ -164,7 +164,7 @@ export async function listDraws(): Promise<AdminDraw[]> {
 }
 
 export async function listDrawWinners(limit = 100): Promise<AdminDrawWinner[]> {
-  const sb = supabase();
+  const sb = (await getSupabase());
   const { data } = await sb
     .from('draw_winners')
     .select('draw_id, rank, prize_etb, fulfillment_status, created_at, user_id, profiles(name, phone)')
@@ -186,7 +186,7 @@ export async function saveDraw(draw: Partial<AdminDraw> & { id: string }): Promi
 }
 
 export async function settleDraws(): Promise<{ settled: number }> {
-  const { data, error } = await supabase().functions.invoke('settle-draws', { body: {} });
+  const { data, error } = await (await getSupabase()).functions.invoke('settle-draws', { body: {} });
   if (error) throw error;
   return data as { settled: number };
 }
@@ -198,7 +198,7 @@ export async function fulfillDrawWinner(drawId: string, rank: number, status: 'p
 // --- Player management ------------------------------------------------------
 
 export async function listPlayers(query = ''): Promise<AdminPlayer[]> {
-  let q = supabase().from('profiles').select('id, name, phone, coins, role, created_at').limit(200);
+  let q = (await getSupabase()).from('profiles').select('id, name, phone, coins, role, created_at').limit(200);
   if (query) q = q.or(`name.ilike.%${query}%,phone.ilike.%${query}%`);
   const { data } = await q;
   return (data ?? []).map((r) => ({
@@ -219,7 +219,7 @@ export async function setRole(userId: string, role: Role): Promise<void> {
 // --- Payments ---------------------------------------------------------------
 
 export async function listOrders(limit = 100): Promise<Order[]> {
-  const { data } = await supabase()
+  const { data } = await (await getSupabase())
     .from('payment_orders')
     .select('id, package_id, coins, amount_etb, method, status, created_at')
     .order('created_at', { ascending: false }).limit(limit);
@@ -240,7 +240,7 @@ export async function saveConfig(next: Partial<AppConfig>): Promise<AppConfig> {
 // --- Edge Function bridge ---------------------------------------------------
 
 async function adminAction(action: string, payload: Record<string, unknown>): Promise<unknown> {
-  const { data, error } = await supabase().functions.invoke('admin-action', {
+  const { data, error } = await (await getSupabase()).functions.invoke('admin-action', {
     body: { action, ...payload },
   });
   if (error) throw error;
