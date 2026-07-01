@@ -38,18 +38,21 @@ function canvasLayout(): { scale: number; offX: number; offY: number } {
   const wrap = canvas.parentElement!;
   const cw = wrap.clientWidth;
   const ch = wrap.clientHeight;
-  const scale = Math.min(cw / W, ch / H);
+  // Fill the frame width; crop vertically if the stage is taller than the box.
+  const scale = cw / W;
+  const drawH = H * scale;
   return {
     scale,
-    offX: (cw - W * scale) / 2,
-    offY: (ch - H * scale) / 2,
+    offX: 0,
+    offY: (ch - drawH) / 2,
   };
 }
 
 function renderFrame(): void {
   const { scale, offX, offY } = canvasLayout();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#2d1b4e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   const s = scale * dpr;
   ctx.setTransform(s, 0, 0, s, offX * dpr, offY * dpr);
   game.render(ctx);
@@ -68,6 +71,7 @@ let rankedThisRun = false;
 let serverBest = 0;
 let starting = false;
 let toastT = 0;
+let submitPromise: Promise<void> = Promise.resolve();
 
 function gameTitle(): string {
   return getLang() === 'am' ? host.meta.nameAm : host.meta.nameEn;
@@ -93,8 +97,11 @@ function tournamentPlayLabel(): string {
 
 function updateActionButtons(): void {
   const playLabel = tournamentPlayLabel();
-  $('#startBtn').textContent = playLabel;
-  $('#againBtn').textContent = playLabel;
+  const againBtn = $('#againBtn') as HTMLButtonElement;
+  const startBtn = $('#startBtn') as HTMLButtonElement;
+  startBtn.textContent = playLabel;
+  againBtn.textContent = playLabel;
+  againBtn.disabled = starting;
   $('#restartBtn').textContent = attemptsLeft() > 0 ? t('td.restart') : t('hub.play');
 }
 
@@ -163,7 +170,7 @@ async function refreshTournamentPanel(): Promise<void> {
 
   mount.innerHTML = renderShellMenuTournamentHtml(
     gameTitle(), '🍉', walletCoins, serverBest, left, board,
-    { cadence: 'monthly' },
+    { hideBestIfOnBoard: true },
   );
 
   updateActionButtons();
@@ -190,6 +197,8 @@ async function failRankedSubmit(reward: HTMLElement): Promise<void> {
 async function submitRun(score: number, durationMs: number, isWin: boolean): Promise<void> {
   const reward = $('#fsRunReward');
   const boardOver = $('#fsBoardOver');
+  const againBtn = $('#againBtn') as HTMLButtonElement;
+  againBtn.disabled = true;
   if (!isConfigured()) {
     reward.innerHTML = '';
     boardOver.innerHTML = '';
@@ -218,11 +227,12 @@ async function submitRun(score: number, durationMs: number, isWin: boolean): Pro
   }
   syncAttemptsUi();
   void refreshTournamentPanel();
+  againBtn.disabled = false;
 }
 
 game.onGameOver = (score, durationMs) => {
   showGameOverOverlay(score);
-  void submitRun(score, durationMs, score >= host.winScore);
+  submitPromise = submitRun(score, durationMs, score >= host.winScore);
 };
 
 async function onEnter(): Promise<void> {
@@ -233,7 +243,10 @@ async function onEnter(): Promise<void> {
 }
 
 async function onPlayOrEnter(): Promise<void> {
-  if (starting || game.state === 'playing' || game.state === 'paused') return;
+  if (starting) return;
+  if (game.state === 'playing' || game.state === 'paused') return;
+  await submitPromise;
+  await loadMyEntries();
   if (attemptsLeft() <= 0) {
     await onEnter();
     return;
@@ -263,10 +276,15 @@ input.onAction((a) => game.handleAction(a));
 
 function pointerPos(e: PointerEvent): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
-  const { scale, offX, offY } = canvasLayout();
-  const x = (e.clientX - rect.left - offX) / scale;
-  const y = (e.clientY - rect.top - offY) / scale;
-  return { x, y };
+  const cw = rect.width;
+  const ch = rect.height;
+  const scale = cw / W;
+  const drawH = H * scale;
+  const offY = (ch - drawH) / 2;
+  return {
+    x: (e.clientX - rect.left) / scale,
+    y: (e.clientY - rect.top - offY) / scale,
+  };
 }
 
 let isSlicing = false;

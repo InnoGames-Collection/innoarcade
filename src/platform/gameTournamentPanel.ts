@@ -17,6 +17,8 @@ export interface ShellMenuTournamentOpts {
   cadence?: TournamentCadence;
   /** Short scoring / rules line under the best-score row. */
   hint?: string;
+  /** Hide the separate best row when the player already appears on the board. */
+  hideBestIfOnBoard?: boolean;
 }
 
 function cadenceBadgeHtml(cadence: TournamentCadence): string {
@@ -79,13 +81,17 @@ export function renderShellMenuTournamentHtml(
   const hintRow = opts?.hint
     ? `<div class="gt-hint">${escHtml(opts.hint)}</div>`
     : '';
+  const playerOnBoard = board.some((r) => r.isPlayer);
+  const bestRow = (opts?.hideBestIfOnBoard && playerOnBoard)
+    ? ''
+    : `<div class="gt-best">${t('td.yourBest')}: <strong>${serverBest.toLocaleString()}</strong></div>`;
   return `
     <div class="gt-head">
       <span class="gt-title">${gameIcon} ${escHtml(gameTitle)}</span>
       <span class="gt-coins">${walletCoins.toLocaleString()} 🪙</span>
     </div>
     ${cadenceRow}
-    <div class="gt-best">${t('td.yourBest')}: <strong>${serverBest.toLocaleString()}</strong></div>
+    ${bestRow}
     ${hintRow}
     ${attemptsLeft > 0 ? `<div class="gt-status"><span class="gt-attempts">🎟️ ${t('td.attemptsLeft')}: <strong>${attemptsLeft}</strong></span></div>` : ''}
     <div class="gt-board">${tournamentBoardHtml(board)}</div>`;

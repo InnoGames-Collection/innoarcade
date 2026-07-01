@@ -127,11 +127,12 @@ body.game-shell[data-game="fruit-slice"] {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
-  max-height: min(52dvh, 420px);
+  max-height: min(58dvh, 500px);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(20, 45, 14, 0.18);
   border: 2px solid rgba(70, 192, 90, 0.35);
+  background: #2d1b4e;
 }
 
 #game {
