@@ -51,10 +51,10 @@ function resetSlot(): void {
   isSpinning = false;
   spinBtn.disabled = false;
   machineElement.classList.remove('slot-win-glow');
-  messageDisplay.textContent = t('sl.tapSpin');
+  messageDisplay.textContent = '';
 }
 
-const shell = wireFreeCasualShell(host, beginSpin);
+const shell = wireFreeCasualShell(host, beginSpin, { headerSlots: [] });
 
 async function beginSpin(): Promise<void> {
   resetSlot();
@@ -67,7 +67,7 @@ async function runSpinLogic(): Promise<void> {
   isSpinning = true;
   spinBtn.disabled = true;
   machineElement.classList.remove('slot-win-glow');
-  messageDisplay.textContent = t('sl.spinning');
+  messageDisplay.textContent = '';
   sfx.click();
 
   clearInterval(slotTickInterval);
@@ -150,5 +150,4 @@ spinBtn.addEventListener('click', () => void runSpinLogic());
 
 document.documentElement.lang = getLang();
 applyTranslations();
-messageDisplay.textContent = t('sl.tapSpin');
 initReels();
