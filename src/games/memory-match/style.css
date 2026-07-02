@@ -9,13 +9,24 @@ body.game-shell[data-game="memory-match"] {
   min-height: 100dvh;
 }
 
+body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)) {
+  align-items: center;
+}
+
 .mm-stage {
   position: relative;
   width: min(100%, 520px);
   height: fit-content;
-  min-height: min(calc(100dvh - 20px), 560px);
-  max-height: min(calc(100dvh - 20px), 560px);
   margin: auto;
+}
+
+.mm-stage:has(#memory-match-wrapper.hidden) {
+  min-height: min(calc(100dvh - 20px), 560px);
+}
+
+.mm-stage:has(#memory-match-wrapper:not(.hidden)) {
+  min-height: auto;
+  max-height: none;
 }
 
 .mm-backdrop {
@@ -49,7 +60,11 @@ body.game-shell[data-game="memory-match"] {
   align-items: center;
   justify-content: flex-start;
   gap: clamp(6px, 1.6vw, 10px);
-  padding: clamp(2.25rem, 5.5vw, 2.5rem) clamp(12px, 3vw, 16px) clamp(8px, 2vw, 12px);
+  padding:
+    max(3rem, calc(10px + 2.1rem + 10px + env(safe-area-inset-top, 0px)))
+    max(48px, calc(10px + 2.1rem + 10px + env(safe-area-inset-right, 0px)))
+    clamp(8px, 2vw, 12px)
+    clamp(12px, 3vw, 16px);
   background:
     var(--hub-stars),
     radial-gradient(120% 60% at 50% -10%, rgba(124, 201, 58, 0.12) 0%, transparent 55%),
@@ -63,10 +78,7 @@ body.game-shell[data-game="memory-match"] {
 #memory-match-wrapper * { box-sizing: border-box; }
 
 #mmCloseBtn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 6;
+  z-index: 20;
 }
 
 .mm-over-panel {
