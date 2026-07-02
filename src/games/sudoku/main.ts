@@ -1,13 +1,15 @@
 // Mini Sudoku — 6×6 grid, 2×3 boxes, uniqueness-checked puzzles. Native GoPlay game.
 import '../../styles/base.css';
 import '../_lq/lq.css';
-import { el, toast, modal, finishLQRound, mulberry32, shuffled, sound, mountLQ } from '../_lq/lq';
+import { el, toast, finishLQRound, mulberry32, shuffled, sound, mountLQ, setLQHeader } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
-import { lqHelp } from '../_lq/help';
+import { escalateTier } from '../../platform/freeDifficulty';
 import { createHost } from '../../platform/gameHost';
-import { t } from '../../i18n';
 
 const N = 6, BR = 2, BC = 3;
+const PUZZLES = 3;
+const host = createHost('sudoku');
+
 function boxOf(r: number, c: number): number { return Math.floor(r / BR) * (N / BC) + Math.floor(c / BC); }
 
 function makeSolution(rnd: () => number): number[][] {
@@ -61,113 +63,119 @@ function makePuzzle(rnd: () => number, removals: number): { puzzle: number[][]; 
   return { puzzle, solution };
 }
 
-const host = createHost('sudoku');
-
 function render(mount: HTMLElement): void {
-  let cleanup: (() => void) | null = null;
-  let difficulty: 'easy' | 'hard' = 'easy';
-
-  function newRound(seed: number): void {
-    if (cleanup) cleanup();
-    mount.innerHTML = '';
-    cleanup = startRound(seed);
-  }
-
-  function startRound(seed: number): () => void {
+  function startSession(seed: number): void {
     const rnd = mulberry32(seed);
-    const { puzzle, solution } = makePuzzle(rnd, difficulty === 'hard' ? 22 : 16);
-    const board = puzzle.map((row) => row.slice());
-    let sel: [number, number] | null = null;
-    let over = false;
-    const t0 = Date.now();
+    let puzzleIdx = 0;
+    let totalScore = 0;
+    const sessionStart = Date.now();
+    let puzzleCleanup: (() => void) | null = null;
 
-    const gridEl = el('div', { class: 'sudoku', role: 'grid', style: `grid-template-columns: repeat(${N}, auto);` });
-    const cellEls: HTMLElement[][] = [];
-    for (let r = 0; r < N; r++) {
-      cellEls.push([]);
-      for (let c = 0; c < N; c++) {
-        const given = puzzle[r][c] !== 0;
-        const cell = el('div', {
-          class: 'cell' + (given ? ' given' : '') + ((c + 1) % BC === 0 && c < N - 1 ? ' box-r' : '') + ((r + 1) % BR === 0 && r < N - 1 ? ' box-b' : ''),
-          role: 'gridcell', text: given ? String(puzzle[r][c]) : '',
-          onclick: () => { if (!given && !over) { sel = [r, c]; paint(); } },
-        });
-        cellEls[r].push(cell);
-        gridEl.appendChild(cell);
+    function loadPuzzle(): void {
+      if (puzzleCleanup) puzzleCleanup();
+      mount.innerHTML = '';
+
+      const tier = escalateTier(puzzleIdx, 2, 1);
+      const removals = 16 + tier * 2;
+      const { puzzle, solution } = makePuzzle(rnd, removals);
+      const board = puzzle.map((row) => row.slice());
+      let sel: [number, number] | null = null;
+      let over = false;
+      const puzzleStart = Date.now();
+
+      const sub = el('p', { class: 'sub center', text: `Puzzle ${puzzleIdx + 1} of ${PUZZLES}` });
+      const gridEl = el('div', { class: 'sudoku', role: 'grid', style: `grid-template-columns: repeat(${N}, auto);` });
+      const cellEls: HTMLElement[][] = [];
+      for (let r = 0; r < N; r++) {
+        cellEls.push([]);
+        for (let c = 0; c < N; c++) {
+          const given = puzzle[r][c] !== 0;
+          const cell = el('div', {
+            class: 'cell' + (given ? ' given' : '') + ((c + 1) % BC === 0 && c < N - 1 ? ' box-r' : '') + ((r + 1) % BR === 0 && r < N - 1 ? ' box-b' : ''),
+            role: 'gridcell', text: given ? String(puzzle[r][c]) : '',
+            onclick: () => { if (!given && !over) { sel = [r, c]; paint(); } },
+          });
+          cellEls[r].push(cell);
+          gridEl.appendChild(cell);
+        }
       }
-    }
 
-    const pad = el('div', { class: 'kbd' },
-      el('div', { class: 'kbd-row' },
-        [1, 2, 3, 4, 5, 6].map((v) => el('button', { class: 'key num', text: String(v), onclick: () => place(v) })),
-        el('button', { class: 'key wide', text: '⌫', onclick: () => place(0) })));
+      const pad = el('div', { class: 'kbd' },
+        el('div', { class: 'kbd-row' },
+          [1, 2, 3, 4, 5, 6].map((v) => el('button', { class: 'key num', text: String(v), onclick: () => place(v) })),
+          el('button', { class: 'key wide', text: '⌫', onclick: () => place(0) })));
 
-    const diffBtn = el('button', {
-      class: 'btn', text: 'Difficulty: ' + difficulty,
-      onclick: () => { difficulty = difficulty === 'easy' ? 'hard' : 'easy'; newRound(Math.floor(Math.random() * 1e9)); },
-    });
+      mount.appendChild(sub);
+      mount.appendChild(gridEl);
+      mount.appendChild(pad);
+      setLQHeader({ round: `${puzzleIdx + 1}/${PUZZLES}`, score: String(totalScore) });
 
-    mount.appendChild(el('div', { class: 'game-toolbar' },
-      el('button', { class: 'btn', text: t('hub.howToPlay'), onclick: showHelp }),
-      diffBtn,
-      el('button', { class: 'btn', text: 'New puzzle', onclick: () => newRound(Math.floor(Math.random() * 1e9)) })));
-    mount.appendChild(gridEl);
-    mount.appendChild(pad);
-
-    function showHelp(): void {
-      modal({ title: t('hub.howToPlay'), body: lqHelp('sudoku') });
-    }
-
-    function conflicts(r: number, c: number, v: number): boolean {
-      if (!v) return false;
-      for (let i = 0; i < N; i++) {
-        if (i !== c && board[r][i] === v) return true;
-        if (i !== r && board[i][c] === v) return true;
+      function conflicts(r: number, c: number, v: number): boolean {
+        if (!v) return false;
+        for (let i = 0; i < N; i++) {
+          if (i !== c && board[r][i] === v) return true;
+          if (i !== r && board[i][c] === v) return true;
+        }
+        const br = Math.floor(r / BR) * BR, bc = Math.floor(c / BC) * BC;
+        for (let i = br; i < br + BR; i++) for (let j = bc; j < bc + BC; j++) {
+          if ((i !== r || j !== c) && board[i][j] === v) return true;
+        }
+        return false;
       }
-      const br = Math.floor(r / BR) * BR, bc = Math.floor(c / BC) * BC;
-      for (let i = br; i < br + BR; i++) for (let j = bc; j < bc + BC; j++) {
-        if ((i !== r || j !== c) && board[i][j] === v) return true;
-      }
-      return false;
-    }
 
-    function paint(): void {
-      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
-        const cell = cellEls[r][c];
-        if (puzzle[r][c] === 0) cell.textContent = board[r][c] ? String(board[r][c]) : '';
-        cell.classList.toggle('sel', !!sel && sel[0] === r && sel[1] === c);
-        cell.classList.toggle('conflict', puzzle[r][c] === 0 && conflicts(r, c, board[r][c]));
+      function paint(): void {
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+          const cell = cellEls[r][c];
+          if (puzzle[r][c] === 0) cell.textContent = board[r][c] ? String(board[r][c]) : '';
+          cell.classList.toggle('sel', !!sel && sel[0] === r && sel[1] === c);
+          cell.classList.toggle('conflict', puzzle[r][c] === 0 && conflicts(r, c, board[r][c]));
+        }
       }
-    }
 
-    function place(v: number): void {
-      if (!sel || over) { toast('Tap an empty cell first'); return; }
-      board[sel[0]][sel[1]] = v;
-      if (v) sound('click');
+      function place(v: number): void {
+        if (!sel || over) { toast('Tap an empty cell first'); return; }
+        board[sel[0]][sel[1]] = v;
+        if (v) sound('click');
+        paint();
+        checkDone();
+      }
+
+      function checkDone(): void {
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (board[r][c] !== solution[r][c]) return;
+        over = true;
+        const elapsedMs = Date.now() - puzzleStart;
+        sound('win');
+        const score = puzzleCompletionScore(elapsedMs, 0, { budgetSec: 420 });
+        totalScore += score;
+        puzzleIdx++;
+        setLQHeader({ round: `${Math.min(puzzleIdx + 1, PUZZLES)}/${PUZZLES}`, score: String(totalScore) });
+        if (puzzleIdx >= PUZZLES) {
+          const sessionMs = Date.now() - sessionStart;
+          finishLQRound(
+            totalScore,
+            totalScore >= host.winScore,
+            `${PUZZLES}/${PUZZLES} puzzles`,
+            sessionMs,
+          );
+        } else {
+          setTimeout(loadPuzzle, 600);
+        }
+      }
+
+      function physicalKey(e: KeyboardEvent): void {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (/^[1-6]$/.test(e.key)) { e.preventDefault(); place(Number(e.key)); }
+        if (e.key === 'Backspace' || e.key === '0') { e.preventDefault(); place(0); }
+      }
+      document.addEventListener('keydown', physicalKey);
+      puzzleCleanup = () => document.removeEventListener('keydown', physicalKey);
       paint();
-      checkDone();
     }
 
-    async function checkDone(): Promise<void> {
-      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (board[r][c] !== solution[r][c]) return;
-      over = true;
-      const elapsedMs = Date.now() - t0;
-      sound('win');
-      const score = puzzleCompletionScore(elapsedMs, 0, { budgetSec: 600 });
-      finishLQRound(score, score >= host.winScore, '', elapsedMs);
-    }
-
-    function physicalKey(e: KeyboardEvent): void {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (/^[1-6]$/.test(e.key)) { e.preventDefault(); place(Number(e.key)); }
-      if (e.key === 'Backspace' || e.key === '0') { e.preventDefault(); place(0); }
-    }
-    document.addEventListener('keydown', physicalKey);
-    paint();
-    return () => document.removeEventListener('keydown', physicalKey);
+    loadPuzzle();
   }
 
-  newRound(Math.floor(Math.random() * 1e9));
+  startSession(Math.floor(Math.random() * 1e9));
 }
 
 mountLQ('sudoku', render);

@@ -202,6 +202,12 @@ export function showRunReward(res: FinishResult | null): void {
 
 type LQFinishFn = (score: number, isWin: boolean, summary?: string, durationMs?: number) => void;
 let lqFinish: LQFinishFn | null = null;
+let lqSetHeader: ((values: Record<string, string>) => void) | null = null;
+
+/** Update the free-shell stats header from a brain-game session. */
+export function setLQHeader(values: Record<string, string>): void {
+  lqSetHeader?.(values);
+}
 
 /** Report a completed brain-game run to the hub game-over overlay. */
 export function finishLQRound(
@@ -227,9 +233,12 @@ export function mountLQ(gameId: string, render: (mount: HTMLElement) => void): v
       { id: 'score', labelKey: 'td.score', icon: 'score', score: true },
     ],
   });
-  lqFinish = (score, isWin, _summary, durationMs) => {
-    shell.finishPlay(score, isWin, '', durationMs);
+  lqFinish = (score, isWin, summary, durationMs) => {
+    shell.finishPlay(score, isWin, summary ?? '', durationMs);
   };
+  lqSetHeader = shell.setHeader;
+  const mount = document.getElementById('lq-mount');
+  if (mount) mount.classList.add('fc-game-body');
   document.documentElement.lang = getLang();
   applyTranslations();
   shell.refreshMenu();

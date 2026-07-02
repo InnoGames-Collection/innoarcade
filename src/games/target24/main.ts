@@ -1,36 +1,40 @@
 // Make 24 — combine four numbers with + − × ÷ to reach exactly 24. Native GoPlay game.
 import '../../styles/base.css';
 import '../_lq/lq.css';
-import { el, toast, modal, finishLQRound, mulberry32, randInt, sound, mountLQ } from '../_lq/lq';
+import { el, toast, finishLQRound, mulberry32, randInt, sound, mountLQ, setLQHeader } from '../_lq/lq';
 import { multiPuzzleScore } from '../_lq/scoring';
-import { lqHelp } from '../_lq/help';
+import { escalateTier, scalingPenalty, tierLerp } from '../../platform/freeDifficulty';
 import { createHost } from '../../platform/gameHost';
-import { t } from '../../i18n';
 
 const TARGET = 24, ROUNDS = 5, EPS = 1e-9;
 const host = createHost('target24');
 
-function solve(nums: number[], exprs?: string[]): string | null {
-  exprs = exprs || nums.map(String);
-  if (nums.length === 1) return Math.abs(nums[0] - TARGET) < EPS ? exprs[0] : null;
+function solve(nums: number[]): boolean {
+  if (nums.length === 1) return Math.abs(nums[0] - TARGET) < EPS;
   for (let i = 0; i < nums.length; i++) {
     for (let j = 0; j < nums.length; j++) {
       if (i === j) continue;
       const rest = nums.filter((_, k) => k !== i && k !== j);
-      const restE = exprs.filter((_, k) => k !== i && k !== j);
-      const a = nums[i], b = nums[j], ea = exprs[i], eb = exprs[j];
-      const ops: Array<[number, string]> = [
-        [a + b, `(${ea}+${eb})`], [a - b, `(${ea}-${eb})`], [a * b, `(${ea}×${eb})`],
-      ];
-      if (Math.abs(b) > EPS) ops.push([a / b, `(${ea}÷${eb})`]);
-      for (const [v, e] of ops) { const r = solve(rest.concat([v]), restE.concat([e])); if (r) return r; }
+      const a = nums[i], b = nums[j];
+      const ops = [a + b, a - b, a * b];
+      if (Math.abs(b) > EPS) ops.push(a / b);
+      for (const v of ops) { if (solve(rest.concat([v]))) return true; }
     }
   }
-  return null;
+  return false;
 }
 
-function generate(rnd: () => number): number[] {
-  for (;;) { const nums = [0, 0, 0, 0].map(() => randInt(1, 9, rnd)); if (solve(nums)) return nums; }
+function generate(rnd: () => number, tier: number): number[] {
+  const lo = Math.round(tierLerp(1, 3, tier, 3));
+  const hi = Math.round(tierLerp(7, 9, tier, 3));
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const nums = [0, 0, 0, 0].map(() => randInt(lo, hi, rnd));
+    if (solve(nums)) return nums;
+  }
+  for (;;) {
+    const nums = [0, 0, 0, 0].map(() => randInt(1, 9, rnd));
+    if (solve(nums)) return nums;
+  }
 }
 
 interface Num { val: number; label: string; used: boolean; }
@@ -46,7 +50,10 @@ function render(mount: HTMLElement): void {
 
   function startRound(seed: number): () => void {
     const rnd = mulberry32(seed);
-    let round = 0, solvedCount = 0;
+    let round = 0;
+    let solvedCount = 0;
+    let undoCount = 0;
+    let penaltyTotal = 0;
     const t0 = Date.now();
     let nums: Num[] = [];
     let history: Num[][] = [];
@@ -68,25 +75,32 @@ function render(mount: HTMLElement): void {
     }
 
     mount.appendChild(el('div', { class: 'game-toolbar' },
-      el('button', { class: 'btn', text: t('hub.howToPlay'), onclick: showHelp }),
-      el('button', { class: 'btn', text: 'Undo', onclick: undo }),
-      el('button', { class: 'btn', text: 'Show solution', onclick: revealSolution }),
-      el('button', { class: 'btn', text: 'New game', onclick: () => newRound(Math.floor(Math.random() * 1e9)) })));
+      el('button', { class: 'btn', text: 'Undo', onclick: undo })));
     mount.appendChild(el('div', { class: 'quiz-wrap' }, el('div', { class: 'quiz-q' }, sub, chips, ops, fb)));
+    updateHeader();
     nextRound();
 
-    function showHelp(): void {
-      modal({ title: t('hub.howToPlay'), body: lqHelp('target24') });
+    function liveScore(): number {
+      return Math.max(0, solvedCount * 10 - penaltyTotal);
+    }
+
+    function updateHeader(): void {
+      setLQHeader({
+        round: `${Math.min(round + 1, ROUNDS)}/${ROUNDS}`,
+        score: String(liveScore()),
+      });
     }
 
     function nextRound(): void {
       if (round >= ROUNDS) { finish(); return; }
-      const vals = generate(rnd);
+      const tier = escalateTier(round, 3, 1);
+      const vals = generate(rnd, tier);
       nums = vals.map((v) => ({ val: v, label: String(v), used: false }));
       history = []; selIdx = -1; selOp = null;
       sub.textContent = `Puzzle ${round + 1} of ${ROUNDS} — make ${TARGET}`;
       fb.textContent = 'Tap number · operation · number';
       fb.className = 'quiz-feedback center dim';
+      updateHeader();
       paint();
     }
 
@@ -117,6 +131,7 @@ function render(mount: HTMLElement): void {
           sound('win'); solvedCount++; round++;
           fb.textContent = `🎯 ${TARGET}! Nailed it.`;
           fb.className = 'quiz-feedback good center';
+          updateHeader();
           setTimeout(nextRound, 1100);
         } else {
           sound('bad');
@@ -135,27 +150,21 @@ function render(mount: HTMLElement): void {
       if (!history.length) { toast('Nothing to undo'); return; }
       nums = history.pop()!;
       selIdx = -1; selOp = null;
+      undoCount++;
+      penaltyTotal += scalingPenalty(undoCount);
+      updateHeader();
       fb.textContent = 'Tap number · operation · number';
       fb.className = 'quiz-feedback center dim';
       paint();
     }
 
-    function revealSolution(): void {
-      const base = (history.length ? history[0] : nums).filter((n) => !n.used).map((n) => n.val);
-      const sol = solve(base);
-      modal({
-        title: 'One solution',
-        body: `<b>${sol ? sol.replace(/^\((.*)\)$/, '$1') + ' = ' + TARGET : '—'}</b><br><br>This puzzle counts as skipped.`,
-        actions: [{ label: 'Next puzzle', primary: true, onClick: () => { round++; nextRound(); } }],
-      });
-    }
-
     function finish(): void {
       const elapsedMs = Date.now() - t0;
-      const score = multiPuzzleScore(solvedCount, elapsedMs, { budgetSec: 180 });
+      const base = multiPuzzleScore(solvedCount, elapsedMs, { budgetSec: 180 });
+      const score = Math.max(0, base - penaltyTotal);
       const won = score >= host.winScore;
       sound(won ? 'win' : 'bad');
-      finishLQRound(score, won, '', elapsedMs);
+      finishLQRound(score, won, `${solvedCount}/${ROUNDS} solved`, elapsedMs);
     }
 
     return () => {};
