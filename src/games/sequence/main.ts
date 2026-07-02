@@ -1,12 +1,13 @@
 // Number Sequence — find the hidden rule, type the next number. Native GoPlay game.
 import '../../styles/base.css';
 import '../_lq/lq.css';
-import { el, keypad, finishLQRound, mulberry32, randInt, sound, mountLQ, setLQHeader } from '../_lq/lq';
+import { el, finishLQRound, mulberry32, randInt, sound, mountLQ, setLQHeader } from '../_lq/lq';
 import { multiPuzzleScore } from '../_lq/scoring';
 import { escalateTier } from '../../platform/freeDifficulty';
 import { createHost } from '../../platform/gameHost';
 
 const ROUNDS = 8;
+const POINTS_PER_CORRECT = 25;
 const host = createHost('sequence');
 
 interface Term { terms: number[]; next: number; }
@@ -47,6 +48,14 @@ function answerDigitCount(n: number): number {
   return String(Math.abs(n)).length;
 }
 
+function sequenceKeypad(onKey: (k: string) => void): HTMLElement {
+  return el('div', { class: 'kbd sequence-kbd', role: 'group', 'aria-label': 'Number pad' },
+    el('div', { class: 'kbd-row' },
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'].map((k) =>
+        el('button', { class: 'key num', text: k, onclick: () => onKey(k) })),
+      el('button', { class: 'key wide', text: '⌫', 'aria-label': 'Backspace', onclick: () => onKey('Backspace') })));
+}
+
 function render(mount: HTMLElement): void {
   let cleanup: (() => void) | null = null;
 
@@ -66,21 +75,24 @@ function render(mount: HTMLElement): void {
     const t0 = Date.now();
     let item: Term = GENERATORS[0].make(rnd);
 
-    const sub = el('p', { class: 'sub center' });
     const q = el('div', { class: 'big-q' });
     const a = el('div', { class: 'big-a' });
     const fb = el('div', { class: 'quiz-feedback center' });
-    const card = el('div', { class: 'quiz-q' }, sub, q, a, fb);
-    const pad = keypad(onKey, ['-']);
+    const card = el('div', { class: 'quiz-q sequence-card' }, q, a, fb);
+    const pad = sequenceKeypad(onKey);
 
-    mount.appendChild(el('div', { class: 'quiz-wrap' }, card));
+    mount.appendChild(el('div', { class: 'quiz-wrap sequence-wrap' }, card));
     mount.appendChild(pad);
     nextRound();
+
+    function liveScore(): number {
+      return correct * POINTS_PER_CORRECT;
+    }
 
     function updateHeader(): void {
       setLQHeader({
         round: `${Math.min(round + 1, ROUNDS)}/${ROUNDS}`,
-        score: String(correct),
+        score: String(liveScore()),
       });
     }
 
@@ -90,11 +102,10 @@ function render(mount: HTMLElement): void {
       const pool = GENERATORS.filter((g) => g.d === level);
       item = pool[Math.floor(rnd() * pool.length)].make(rnd);
       typed = ''; locked = false;
-      sub.textContent = `Round ${round + 1} of ${ROUNDS}`;
       q.textContent = item.terms.join(',  ') + ',  ?';
       a.textContent = '';
-      fb.textContent = 'What comes next?';
-      fb.className = 'quiz-feedback center dim';
+      fb.textContent = '';
+      fb.className = 'quiz-feedback center';
       updateHeader();
     }
 
@@ -105,12 +116,11 @@ function render(mount: HTMLElement): void {
       if (digits < answerDigitCount(item.next)) return;
       autoTimer = setTimeout(() => {
         if (!locked && typed !== '' && typed !== '-') submit();
-      }, 320);
+      }, 280);
     }
 
     function onKey(key: string): void {
       if (locked) return;
-      if (key === 'Enter') { clearTimeout(autoTimer); submit(); return; }
       if (key === 'Backspace') typed = typed.slice(0, -1);
       else if (key === '-' && typed === '') typed = '-';
       else if (/^\d$/.test(key) && typed.replace('-', '').length < 7) typed += key;
@@ -129,19 +139,22 @@ function render(mount: HTMLElement): void {
         fb.textContent = 'Correct!';
         fb.className = 'quiz-feedback good center';
         updateHeader();
-        setTimeout(nextRound, 1000);
+        setTimeout(nextRound, 900);
       } else {
         sound('bad');
         fb.textContent = `Not quite — it was ${item.next}.`;
         fb.className = 'quiz-feedback bad center';
         updateHeader();
-        setTimeout(nextRound, 1000);
+        setTimeout(nextRound, 900);
       }
     }
 
     function finish(): void {
       const elapsedMs = Date.now() - t0;
-      const finalScore = multiPuzzleScore(correct, elapsedMs, { budgetSec: 240 });
+      const finalScore = multiPuzzleScore(correct, elapsedMs, {
+        pointsPerPuzzle: POINTS_PER_CORRECT,
+        budgetSec: 240,
+      });
       const won = finalScore >= host.winScore;
       sound(won ? 'win' : 'bad');
       finishLQRound(finalScore, won, `${correct}/${ROUNDS} correct`, elapsedMs);
@@ -149,7 +162,10 @@ function render(mount: HTMLElement): void {
 
     function physicalKey(e: KeyboardEvent): void {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === 'Enter' || e.key === 'Backspace' || e.key === '-' || /^\d$/.test(e.key)) { e.preventDefault(); onKey(e.key); }
+      if (e.key === 'Backspace' || e.key === '-' || /^\d$/.test(e.key)) {
+        e.preventDefault();
+        onKey(e.key);
+      }
     }
     document.addEventListener('keydown', physicalKey);
     return () => {
@@ -161,4 +177,9 @@ function render(mount: HTMLElement): void {
   newRound(Math.floor(Math.random() * 1e9));
 }
 
-mountLQ('sequence', render);
+mountLQ('sequence', render, {
+  headerSlots: [
+    { id: 'round', labelKey: 'shell.puzzle', icon: 'round' },
+    { id: 'score', labelKey: 'td.score', icon: 'score', score: true },
+  ],
+});

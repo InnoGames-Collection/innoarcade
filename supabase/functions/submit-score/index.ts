@@ -47,7 +47,6 @@ const GAME_SCORING: Record<string, ScoreCfg> = {
   'bubble-pop': { par: 300 }, 'memory-match': { par: 3600 }, 'tap-game': { par: 50 },
   'dice-roll': { par: 300 }, 'scratch-card': { par: 100 }, 'lucky-box': { par: 300 },
   'spin-wheel': { par: 300 }, 'luckyslot': { par: 300 }, 'popblast': { par: 200 },
-  'crash-game': { par: 300 },
   'ethiopian-quiz': { par: 100, timeWeight: 0.5, parTime: 60000 },
   'sudoku': { par: 30 }, 'crosssum': { par: 10 }, 'logic': { par: 5 }, 'rhyme': { par: 10 },
   'spell': { par: 100, timeWeight: 0.3, parTime: 60000 },

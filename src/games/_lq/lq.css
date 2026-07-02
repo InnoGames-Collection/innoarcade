@@ -201,8 +201,60 @@
 .op-btn.sel { background: var(--lq-near); border-color: var(--lq-near); color: #fff; }
 
 /* sequence */
-.big-q { text-align: center; font-size: clamp(28px, 8vw, 40px); font-weight: 800; margin: 14px 0 4px; letter-spacing: 2px; }
-.big-a { text-align: center; font-size: clamp(24px, 7vw, 32px); font-weight: 800; min-height: 44px; color: var(--lq-accent); letter-spacing: 2px; }
+body[data-game="sequence"] #lq-mount {
+  padding: 0 8px 4px;
+}
+
+body[data-game="sequence"] .fc-playframe {
+  padding-bottom: clamp(8px, 2vw, 12px);
+  gap: clamp(6px, 1.5vw, 10px);
+}
+
+.sequence-wrap {
+  margin: 0 auto;
+}
+
+.sequence-card {
+  padding: clamp(12px, 3vw, 18px) clamp(14px, 3.5vw, 20px);
+}
+
+.big-q { text-align: center; font-size: clamp(24px, 7vw, 36px); font-weight: 800; margin: 6px 0 2px; letter-spacing: 1px; }
+.big-a { text-align: center; font-size: clamp(22px, 6.5vw, 30px); font-weight: 800; min-height: 36px; color: var(--lq-accent); letter-spacing: 1px; margin-bottom: 2px; }
+
+body[data-game="sequence"] .quiz-feedback {
+  min-height: 0;
+  margin-top: 6px;
+}
+
+body[data-game="sequence"] .quiz-feedback:empty {
+  display: none;
+}
+
+.kbd.sequence-kbd {
+  width: 100%;
+  max-width: min(100%, 360px);
+  margin: 8px auto 0;
+}
+
+.kbd.sequence-kbd .kbd-row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+.kbd.sequence-kbd .key {
+  min-width: 0;
+  width: 100%;
+  height: clamp(40px, 11vw, 52px);
+  padding: 0 2px;
+  font-size: clamp(13px, 3.4vw, 17px);
+}
+
+.kbd.sequence-kbd .key.wide {
+  min-width: 0;
+  font-size: clamp(15px, 4vw, 19px);
+}
 
 /* modal / toast */
 .modal-back { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }

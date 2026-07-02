@@ -155,11 +155,6 @@ const TERMS_HTML = `
 
   ${G('5.27 Bubble Pop', `<p>Bubble-shooter mechanics requiring grouping of same colors.</p>`)}
 
-  ${G('5.28 Crash Game <span class="tc-risk">⚠️ VERY HIGH RISK</span>', `
-    <p>Users cash out before the multiplier crashes.</p>
-    <p><strong>5.28.1 Mechanics.</strong> The multiplier increases over time until a random crash point is triggered.</p>
-    <p><strong>5.28.2 Risk Classification.</strong> This is structurally a gambling-like mechanic with high regulatory sensitivity.</p>`)}
-
   <h4>6. Virtual Currency &amp; Rewards</h4>
   ${UL([
     'The platform may include virtual currency, points, or rewards.',

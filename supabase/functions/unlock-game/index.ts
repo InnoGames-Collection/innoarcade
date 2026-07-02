@@ -15,7 +15,6 @@ const GATE: Record<string, { minLevel: number; unlockCost: number }> = {
   'spin-wheel': { minLevel: 2, unlockCost: 50 },
   'target24': { minLevel: 2, unlockCost: 50 },
   'logic': { minLevel: 2, unlockCost: 50 },
-  'crash-game': { minLevel: 3, unlockCost: 100 },
   'sequence': { minLevel: 3, unlockCost: 100 },
 };
 

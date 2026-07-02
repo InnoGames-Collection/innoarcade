@@ -48,7 +48,6 @@ export default defineConfig({
         spinWheel: p('games/spin-wheel/index.html'),
         luckyslot: p('games/luckyslot/index.html'),
         popblast: p('games/popblast/index.html'),
-        crashGame: p('games/crash-game/index.html'),
         ethiopianQuiz: p('games/ethiopian-quiz/index.html'),
         // LexiQuest brain & word games — now native GoPlay games.
         vocab: p('games/vocab/index.html'),
