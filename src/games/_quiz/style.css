@@ -13,7 +13,7 @@ body.game-shell.quiz-shell {
   user-select: none;
   -webkit-user-select: none;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   min-height: 100dvh;
 }
@@ -22,7 +22,7 @@ body.game-shell.quiz-shell {
   position: relative;
   width: min(100%, 480px);
   height: fit-content;
-  min-height: min(calc(100dvh - 20px), 520px);
+  min-height: 0;
   max-height: min(calc(100dvh - 20px), 680px);
   margin: auto;
 }

@@ -312,7 +312,7 @@ const WIN_SCORE: Record<string, number> = {
   'candy-crunch': 100, 'dot-link': 50, 'brick-blitz': 100, 'fruit-slice': 300,
   'sky-hopper': 30, 'bubble-pop': 100, 'popblast': 25,
   // Composite quiz: correct×pts + speed bonus + session time left
-  'ethiopian-quiz': 100, 'spell': 130, 'vocab': 130, 'logic': 130, 'rhyme': 80,
+  'ethiopian-quiz': 100, 'spell': 70, 'vocab': 70, 'logic': 70, 'rhyme': 60,
   // Brain: time-based formulas in _lq/scoring.ts
   'sudoku': 120, 'crosssum': 110, 'target24': 70, 'sequence': 80,
   'tap-game': 5,

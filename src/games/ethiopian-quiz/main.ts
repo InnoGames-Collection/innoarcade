@@ -8,8 +8,8 @@ import { QUIZ_BANK } from './bank';
 
 wireFreeQuizShell({
   gameId: 'ethiopian-quiz',
-  runSeconds: 60,
   pointsPerCorrect: 20,
+  winScore: 100,
   bank: () => QUIZ_BANK.map((q) => ({
     prompt: q.question,
     choices: q.opts,

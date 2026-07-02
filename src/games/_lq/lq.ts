@@ -221,6 +221,11 @@ export function mountLQ(gameId: string, render: (mount: HTMLElement) => void): v
     if (!mount) return;
     mount.innerHTML = '';
     render(mount);
+  }, {
+    headerSlots: [
+      { id: 'round', labelKey: 'eq.question', icon: 'question' },
+      { id: 'score', labelKey: 'td.score', icon: 'score', score: true },
+    ],
   });
   lqFinish = (score, isWin, _summary, durationMs) => {
     shell.finishPlay(score, isWin, '', durationMs);

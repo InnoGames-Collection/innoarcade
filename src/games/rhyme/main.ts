@@ -8,7 +8,7 @@ import { rhymeBank } from '../_quiz/adapters';
 
 wireFreeQuizShell({
   gameId: 'rhyme',
-  runSeconds: 60,
   pointsPerCorrect: 10,
+  winScore: 60,
   bank: rhymeBank,
 });

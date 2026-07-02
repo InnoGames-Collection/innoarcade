@@ -13,11 +13,7 @@
       <div id="fcPlayFrame" class="fc-playframe hidden">
         <button id="closeBtn" class="gp-close gp-close-corner hidden" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
 
-        <div id="tap-game-wrapper">
-          <div class="tg-stats">
-            <div class="tg-stat"><span class="tg-stat-label" data-i18n="tg.score">Score</span><span class="tg-stat-value" id="tg-score">0</span></div>
-            <div class="tg-stat"><span class="tg-stat-label" data-i18n="tg.time">Time</span><span class="tg-stat-value" id="tg-time">10</span></div>
-          </div>
+        <div id="tap-game-wrapper" class="fc-game-body">
           <div class="tg-area" id="tg-area">
             <div class="tg-hint" id="tg-hint" data-i18n="tg.hint">Tap the circles as fast as you can!</div>
           </div>

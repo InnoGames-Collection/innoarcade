@@ -8,7 +8,7 @@ import { logicBank } from '../_quiz/adapters';
 
 wireFreeQuizShell({
   gameId: 'logic',
-  runSeconds: 60,
   pointsPerCorrect: 10,
+  winScore: 70,
   bank: logicBank,
 });

@@ -22,8 +22,6 @@ let timerInterval: ReturnType<typeof setInterval> | undefined;
 let runStart = 0;
 
 const area = $('#tg-area');
-const scoreEl = $('#tg-score');
-const timeEl = $('#tg-time');
 const message = $('#tg-message');
 const hint = $('#tg-hint');
 
@@ -33,6 +31,13 @@ function play(type: 'tap' | 'win' | 'lose' | 'click'): void {
     case 'win': sfx.coin(); break;
     case 'lose': sfx.crash(); break;
   }
+}
+
+function updateHud(): void {
+  shell.setHeader({
+    time: String(timeLeft),
+    score: String(score),
+  });
 }
 
 function spawnTarget(type: 'regular' | 'golden' | 'poison' = 'regular'): void {
@@ -65,10 +70,10 @@ function spawnTarget(type: 'regular' | 'golden' | 'poison' = 'regular'): void {
       score = Math.max(0, score - 2);
       play('lose');
       btn.remove();
-      area.style.background = 'rgba(255, 68, 68, 0.25)';
-      setTimeout(() => { area.style.background = ''; }, 120);
+      area.classList.add('tg-flash');
+      setTimeout(() => area.classList.remove('tg-flash'), 120);
     }
-    scoreEl.textContent = String(score);
+    updateHud();
   });
 
   area.appendChild(btn);
@@ -81,18 +86,40 @@ function spawnTarget(type: 'regular' | 'golden' | 'poison' = 'regular'): void {
 
 function resetPlayfield(): void {
   if (timerInterval) clearInterval(timerInterval);
+  timerInterval = undefined;
   isPlaying = false;
   score = 0;
   timeLeft = 10;
-  scoreEl.textContent = '0';
-  timeEl.textContent = '10';
-  timeEl.style.color = '';
   message.textContent = '';
   hint.style.display = '';
   document.querySelectorAll('.tg-target-btn').forEach((el) => el.remove());
+  updateHud();
 }
 
-const shell = wireFreeCasualShell(host, startGame);
+const shell = wireFreeCasualShell(host, startGame, {
+  pauseable: true,
+  onPause: () => {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = undefined;
+    isPlaying = false;
+  },
+  onResume: () => {
+    if (shell.getPhase() !== 'playing') return;
+    isPlaying = true;
+    timerInterval = setInterval(tickTimer, 1000);
+  },
+  onAbandon: resetPlayfield,
+});
+
+function tickTimer(): void {
+  timeLeft--;
+  updateHud();
+  if (timeLeft <= 0) {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = undefined;
+    endGame();
+  }
+}
 
 async function startGame(): Promise<void> {
   resetPlayfield();
@@ -101,22 +128,14 @@ async function startGame(): Promise<void> {
   runStart = Date.now();
   message.textContent = '🔥 ' + t('tg.go');
   hint.style.display = 'none';
+  updateHud();
 
   spawnTarget('regular');
-  timerInterval = setInterval(() => {
-    timeLeft--;
-    timeEl.textContent = String(timeLeft);
-    if (timeLeft <= 3) timeEl.style.color = '#ff4444';
-    if (timeLeft <= 0) {
-      if (timerInterval) clearInterval(timerInterval);
-      endGame();
-    }
-  }, 1000);
+  timerInterval = setInterval(tickTimer, 1000);
 }
 
 function endGame(): void {
   isPlaying = false;
-  timeEl.style.color = '';
   document.querySelectorAll('.tg-target-btn').forEach((el) => el.remove());
   const isWin = score >= targetScore;
   play(isWin ? 'win' : 'lose');

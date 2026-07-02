@@ -7,6 +7,17 @@ import { freeGameBestRemote } from './backend';
 import { getLang, t } from '../i18n';
 import { isConfigured } from './supabase';
 import { promptIfSessionExpired } from './sessionAuth';
+import {
+  CASUAL_HEADER_SLOTS,
+  ensureFreePlayChrome,
+  setFreePlayHeaderValues,
+  type FreePlayHeaderSlot,
+} from './freePlayHeader';
+import {
+  confirmAbandonRun,
+  wireFreeShellCloseButtons,
+  type FreeShellPhase,
+} from './freeShellNav';
 
 export function gameTitle(host: GameHost): string {
   return getLang() === 'am' ? host.meta.nameAm : host.meta.nameEn;
@@ -237,6 +248,8 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
     if (key !== 'over' && key !== 'gameOver') shellOverlays[key] = el;
   }
 
+  const stage = document.getElementById('stage') as HTMLElement | null;
+
   const refreshMenu = (): void => {
     if (b.freeMenu) {
       b.freeMenu.innerHTML = renderFreeMenuHtml(b.host, Math.max(b.game.best, serverBest));
@@ -246,6 +259,13 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
   const hideOverOverlay = (): void => {
     overOverlay.classList.add('hidden');
     overOverlay.setAttribute('aria-hidden', 'true');
+  };
+
+  const goMenu = (): void => {
+    if (b.game.state === 'playing' || b.game.state === 'paused') {
+      b.game.pause();
+    }
+    setPhase('menu');
   };
 
   const showOverOverlay = (score: number, isRecord: boolean): void => {
@@ -365,6 +385,17 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
     refreshMenu();
   });
 
+  if (stage) {
+    wireFreeShellCloseButtons(stage, {
+      getPhase: () => phase,
+      goMenu,
+      confirmAbandon: () => {
+        if (phase !== 'playing') return true;
+        return confirmAbandonRun();
+      },
+    });
+  }
+
   return { toast, refreshMenu, play: onPlayOrEnter, showForState, handleGameOver };
 }
 
@@ -388,26 +419,83 @@ export function renderFreeHudHtml(host: GameHost): string {
     </div>`;
 }
 
+export interface FreeCasualShellOptions {
+  /** Stats header slots; defaults to time + score. Set `[]` to skip injection. */
+  headerSlots?: FreePlayHeaderSlot[];
+  /** Show pause button and pause overlay (requires onPause/onResume). */
+  pauseable?: boolean;
+  onPause?: () => void;
+  onResume?: () => void;
+  /** Reset game state when abandoning from playing/pause. */
+  onAbandon?: () => void;
+  /** Skip abandon confirm when closing mid-run. */
+  skipAbandonConfirm?: boolean;
+}
+
 export interface FreeCasualShell {
   toast: (msg: string) => void;
   refreshMenu: () => void;
+  getPhase: () => FreeShellPhase;
   /** Begin a round (auth + menu). Calls onStart when entry succeeds. */
   play: () => Promise<void>;
+  pause: () => void;
+  resume: () => void;
+  goMenu: () => void;
+  setHeader: (values: Record<string, string>) => void;
   /** Show game-over overlay and submit score in the background. */
   finishPlay: (score: number, isWin: boolean, summary?: string, durationMs?: number) => void;
+}
+
+function ensurePauseOverlay(stage: HTMLElement): {
+  overlay: HTMLElement;
+  resumeBtn: HTMLElement;
+  restartBtn: HTMLElement;
+} {
+  let overlay = stage.querySelector('#pauseOverlay') as HTMLElement | null;
+  if (overlay) {
+    return {
+      overlay,
+      resumeBtn: overlay.querySelector('#resumeBtn') as HTMLElement,
+      restartBtn: overlay.querySelector('#restartBtn') as HTMLElement,
+    };
+  }
+  overlay = document.createElement('div');
+  overlay.id = 'pauseOverlay';
+  overlay.className = 'game-overlay hidden';
+  overlay.innerHTML = `
+    <div class="game-panel">
+      <button type="button" class="gp-close gp-close-corner" aria-label="Close">✕</button>
+      <h2 data-i18n="td.paused">Paused</h2>
+      <button id="resumeBtn" class="btn primary" data-i18n="td.resume">Resume</button>
+      <button id="restartBtn" class="btn" data-i18n="td.restart">Play again</button>
+    </div>`;
+  const menu = stage.querySelector('#menuOverlay');
+  if (menu?.parentNode) menu.parentNode.insertBefore(overlay, menu.nextSibling);
+  else stage.appendChild(overlay);
+  return {
+    overlay,
+    resumeBtn: overlay.querySelector('#resumeBtn') as HTMLElement,
+    restartBtn: overlay.querySelector('#restartBtn') as HTMLElement,
+  };
 }
 
 /** Hub shell for timed / chance casual games (Tap, Dice, etc.). */
 export function wireFreeCasualShell(
   host: GameHost,
   onStart: () => void | Promise<void>,
+  options: FreeCasualShellOptions = {},
 ): FreeCasualShell {
   const toast = ensureToast(`${host.meta.id}-toast`);
   let serverBest = 0;
   let starting = false;
-  let phase: 'menu' | 'playing' | 'over' = 'menu';
+  let phase: FreeShellPhase = 'menu';
 
   const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+  const stage = document.getElementById('stage') as HTMLElement;
+  const playFrame = $('fcPlayFrame');
+  const headerSlots = options.headerSlots ?? CASUAL_HEADER_SLOTS;
+  if (headerSlots.length) ensureFreePlayChrome(playFrame, headerSlots, { pauseable: options.pauseable });
+  const pauseUi = options.pauseable ? ensurePauseOverlay(stage) : null;
 
   const refreshMenu = (): void => {
     $('freeMenu').innerHTML = renderFreeMenuHtml(host, serverBest);
@@ -421,28 +509,38 @@ export function wireFreeCasualShell(
 
   const showMenu = (): void => {
     $('menuOverlay').classList.remove('hidden');
-    $('fcPlayFrame').classList.add('hidden');
+    playFrame.classList.add('hidden');
     $('fcBackdrop').classList.remove('hidden');
+    pauseUi?.overlay.classList.add('hidden');
     hideOverOverlay();
   };
 
   const showGame = (): void => {
     $('menuOverlay').classList.add('hidden');
-    $('fcPlayFrame').classList.remove('hidden');
+    playFrame.classList.remove('hidden');
     $('fcBackdrop').classList.add('hidden');
+    pauseUi?.overlay.classList.add('hidden');
   };
 
-  const setPhase = (next: typeof phase): void => {
+  const setPhase = (next: FreeShellPhase): void => {
     phase = next;
     if (next === 'menu') showMenu();
-    else showGame();
+    else if (next === 'paused') {
+      playFrame.classList.add('hidden');
+      pauseUi?.overlay.classList.remove('hidden');
+    } else showGame();
     $('closeBtn').classList.toggle('hidden', next === 'menu' || next === 'over');
+  };
+
+  const goMenu = (): void => {
+    options.onAbandon?.();
+    setPhase('menu');
   };
 
   const finishPlay = (
     score: number,
     isWin: boolean,
-    _summary = '',
+    summary = '',
     durationMs = 0,
   ): void => {
     const isRecord = score > serverBest;
@@ -450,8 +548,8 @@ export function wireFreeCasualShell(
     refreshMenu();
     const summaryEl = document.getElementById('fcOverSummary');
     if (summaryEl) {
-      summaryEl.textContent = '';
-      summaryEl.classList.add('hidden');
+      summaryEl.textContent = summary;
+      summaryEl.classList.toggle('hidden', !summary);
     }
     $('finalScore').textContent = score.toLocaleString();
     $('finalBest').textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
@@ -497,7 +595,44 @@ export function wireFreeCasualShell(
     }
   };
 
+  const pause = (): void => {
+    if (!options.pauseable || phase !== 'playing') return;
+    options.onPause?.();
+    setPhase('paused');
+  };
+
+  const resume = (): void => {
+    if (phase !== 'paused') return;
+    setPhase('playing');
+    options.onResume?.();
+  };
+
+  const restartFromPause = async (): Promise<void> => {
+    if (phase !== 'paused') return;
+    hideOverOverlay();
+    options.onAbandon?.();
+    await play();
+  };
+
   wirePlayButtons(['startBtn', 'againBtn'], play);
+
+  if (options.pauseable) {
+    playFrame.querySelector('#fpPauseBtn')?.addEventListener('click', () => pause());
+    pauseUi?.resumeBtn.addEventListener('click', () => resume());
+    pauseUi?.restartBtn.addEventListener('click', () => void restartFromPause());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && phase === 'playing') pause();
+    });
+  }
+
+  wireFreeShellCloseButtons(stage, {
+    getPhase: () => phase,
+    goMenu,
+    confirmAbandon: () => {
+      if (options.skipAbandonConfirm || phase !== 'playing') return true;
+      return confirmAbandonRun();
+    },
+  });
 
   void freeGameBestRemote(host.meta.id).then((best) => {
     serverBest = best;
@@ -506,5 +641,15 @@ export function wireFreeCasualShell(
 
   setPhase('menu');
 
-  return { toast, refreshMenu, play, finishPlay };
+  return {
+    toast,
+    refreshMenu,
+    getPhase: () => phase,
+    play,
+    pause,
+    resume,
+    goMenu,
+    setHeader: (values) => setFreePlayHeaderValues(values, playFrame),
+    finishPlay,
+  };
 }

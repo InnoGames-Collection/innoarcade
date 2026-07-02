@@ -8,7 +8,7 @@ import { vocabBank } from '../_quiz/adapters';
 
 wireFreeQuizShell({
   gameId: 'vocab',
-  runSeconds: 60,
   pointsPerCorrect: 10,
+  winScore: 70,
   bank: vocabBank,
 });

@@ -8,8 +8,8 @@ import { spellBank } from '../_quiz/adapters';
 
 wireFreeQuizShell({
   gameId: 'spell',
-  runSeconds: 60,
   pointsPerCorrect: 10,
+  winScore: 70,
   twoColOptions: true,
   bank: spellBank,
 });

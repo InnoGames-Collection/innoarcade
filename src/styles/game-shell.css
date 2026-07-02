@@ -126,10 +126,19 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Runner-style game-over: score + best only (no extra summary line). */
-.game-shell .fc-over-summary,
-.game-shell .fq-over-summary {
+/* Runner-style game-over: optional summary line when populated. */
+.game-shell .fc-over-summary.hidden,
+.game-shell .fq-over-summary.hidden {
   display: none !important;
+}
+
+.game-shell .fc-over-summary:not(.hidden),
+.game-shell .fq-over-summary:not(.hidden) {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  color: var(--shell-muted);
+  text-align: center;
 }
 
 /* Stage close — reserved top-right; HUD controls stay left of it. */
