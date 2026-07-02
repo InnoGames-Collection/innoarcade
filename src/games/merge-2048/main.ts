@@ -16,6 +16,10 @@ const host = new GameHost(GAME_ID);
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
+const playWrapper = $('#m2-play-wrapper');
+const hud = $('#hud');
+const closeBtn = $('#closeBtn');
+
 const canvas = $('#game') as unknown as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -32,8 +36,8 @@ const shell = wireFreeEngineMain({
   host,
   overlays: { menu: $('#menuOverlay'), paused: $('#pauseOverlay'), over: $('#overOverlay') },
   stateOverlay: standardStateOverlay,
-  hud: $('#hud'),
-  closeBtn: $('#closeBtn'),
+  hud,
+  closeBtn,
   freeMenu: $('#freeMenu'),
   startBtn: $('#startBtn'),
   againBtn: $('#againBtn'),
@@ -46,19 +50,41 @@ const shell = wireFreeEngineMain({
   game,
 });
 
-game.onStateChange = shell.showForState;
+function syncPlayChrome(state: string): void {
+  const inRound = state === 'playing' || state === 'paused' || state === 'over';
+  playWrapper.classList.toggle('hidden', !inRound);
+  $('#m2Backdrop').classList.toggle('hidden', inRound);
+  if (state === 'paused') {
+    hud.classList.remove('hidden');
+    closeBtn.classList.remove('hidden');
+  }
+}
+
+game.onStateChange = (state) => {
+  shell.showForState(state);
+  syncPlayChrome(state);
+};
 game.onScore = (s) => { scoreVal.textContent = String(s); };
 game.onGameOver = (score, record) => { void shell.handleGameOver(score, record); };
 
 const input = new Input(document.body);
 input.onAction((a) => {
+  if (a === 'pause') {
+    if (game.state === 'playing') game.pause();
+    else if (game.state === 'paused') game.resume();
+    return;
+  }
   if (a === 'tap') return;
   if (a === 'left' || a === 'right' || a === 'up' || a === 'down') {
     game.handleAction(a as Dir);
   }
 });
 
-wireMutePause($('#muteBtn'), null, game, sfx);
+wireMutePause($('#muteBtn'), $('#pauseBtn'), game, sfx);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && game.state === 'playing') game.pause();
+});
 
 const loop = new GameLoop(
   (dt) => game.update(dt),
@@ -72,4 +98,5 @@ document.documentElement.lang = getLang();
 applyTranslations();
 shell.refreshMenu();
 shell.showForState('menu');
+syncPlayChrome('menu');
 loop.start();

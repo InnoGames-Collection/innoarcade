@@ -18,7 +18,7 @@ const PAD = 16;
 const GAP = 14;
 export const CELL = (W - PAD * 2 - GAP * (SIZE - 1)) / SIZE;
 
-export type GameState = 'menu' | 'playing' | 'over';
+export type GameState = 'menu' | 'playing' | 'paused' | 'over';
 export type Dir = 'left' | 'right' | 'up' | 'down';
 
 interface Tile {
@@ -93,9 +93,13 @@ export class Merge2048 {
     this.onScore(this.score);
   }
 
-  pause(): void {}
+  pause(): void {
+    if (this.state === 'playing') this.setState('paused');
+  }
 
-  resume(): void {}
+  resume(): void {
+    if (this.state === 'paused') this.setState('playing');
+  }
 
   private setState(s: GameState): void {
     this.state = s;
