@@ -41,36 +41,6 @@ function generate(rnd: () => number, tier: number): number[] {
 
 interface Num { val: number; label: string; used: boolean; }
 
-function wireHeaderActions(undoFn: () => void): void {
-  const stats = document.getElementById('fpStats');
-  if (!stats) return;
-
-  let undoBtn = stats.querySelector('#fpUndoBtn') as HTMLButtonElement | null;
-  if (!undoBtn) {
-    stats.appendChild(el('div', { class: 'fp-stat fp-stat-action' },
-      el('button', {
-        id: 'fpUndoBtn',
-        class: 'fp-action-btn',
-        text: 'Undo',
-        'aria-label': 'Undo',
-        onclick: undoFn,
-      })));
-  } else {
-    undoBtn.onclick = undoFn;
-  }
-
-  if (!stats.querySelector('#fpHelpBtn')) {
-    stats.appendChild(el('div', { class: 'fp-stat fp-stat-action' },
-      el('button', {
-        id: 'fpHelpBtn',
-        class: 'fp-action-btn fp-action-btn--icon',
-        text: '?',
-        'aria-label': t('td.howto'),
-        onclick: () => modal({ title: t('td.howto'), body: lqHelp('target24') }),
-      })));
-  }
-}
-
 function render(mount: HTMLElement): void {
   let cleanup: (() => void) | null = null;
 
@@ -106,6 +76,8 @@ function render(mount: HTMLElement): void {
     }
 
     mount.appendChild(el('div', { class: 'quiz-wrap' }, el('div', { class: 'quiz-q' }, chips, ops, fb)));
+    mount.appendChild(el('div', { class: 'game-toolbar' },
+      el('button', { class: 'lq-play-btn', text: 'Undo', 'aria-label': 'Undo', onclick: undo })));
     updateHeader();
     nextRound();
 
@@ -186,8 +158,6 @@ function render(mount: HTMLElement): void {
       paint();
     }
 
-    wireHeaderActions(undo);
-
     function finish(): void {
       const elapsedMs = Date.now() - t0;
       const base = multiPuzzleScore(solvedCount, elapsedMs, { budgetSec: 180 });
@@ -208,4 +178,8 @@ mountLQ('target24', render, {
     { id: 'round', labelKey: 'shell.puzzle', icon: 'round' },
     { id: 'score', labelKey: 'td.score', icon: 'score', score: true },
   ],
+});
+
+document.getElementById('helpBtn')?.addEventListener('click', () => {
+  modal({ title: t('td.howto'), body: lqHelp('target24') });
 });

@@ -58,6 +58,8 @@ function resetRound(): void {
   canvas.style.transition = '';
   currentRotation = 0;
   canvas.style.transform = '';
+  canvas.style.filter = '';
+  canvas.style.willChange = '';
   drawWheel();
 }
 
@@ -107,31 +109,35 @@ function segmentOffsetDeg(index: number): number {
   return 360 - (index * (360 / N) + 360 / N / 2);
 }
 
-/** Maps elapsed ms to rotation progress 0–1 with ramp-up, cruise, ramp-down phases. */
+/** Realistic wheel: quick launch, long fast cruise, gradual stop. */
 function spinRotationProgress(
   elapsedMs: number,
   rampUpMs: number,
   cruiseMs: number,
   rampDownMs: number,
 ): number {
-  const wUp = rampUpMs * 0.5;
-  const wCruise = cruiseMs;
-  const wDown = rampDownMs * 0.5;
-  const totalW = wUp + wCruise + wDown;
-  const fUp = wUp / totalW;
-  const fCruise = wCruise / totalW;
-  const fDown = wDown / totalW;
+  const duration = rampUpMs + cruiseMs + rampDownMs;
+  if (elapsedMs >= duration) return 1;
+  const t = elapsedMs / duration;
+  const rampEnd = rampUpMs / duration;
+  const cruiseEnd = (rampUpMs + cruiseMs) / duration;
 
-  if (elapsedMs <= rampUpMs) {
-    const u = elapsedMs / rampUpMs;
-    return fUp * u * u;
+  if (t <= rampEnd) {
+    const u = t / rampEnd;
+    return 0.05 * u * u * u;
   }
-  if (elapsedMs <= rampUpMs + cruiseMs) {
-    const u = (elapsedMs - rampUpMs) / cruiseMs;
-    return fUp + fCruise * u;
+  if (t <= cruiseEnd) {
+    const u = (t - rampEnd) / (cruiseEnd - rampEnd);
+    return 0.05 + 0.78 * u;
   }
-  const u = Math.min(1, (elapsedMs - rampUpMs - cruiseMs) / rampDownMs);
-  return fUp + fCruise + fDown * (1 - (1 - u) * (1 - u));
+  const u = (t - cruiseEnd) / (1 - cruiseEnd);
+  return 0.83 + 0.17 * (1 - Math.pow(1 - u, 4));
+}
+
+function spinPhase(elapsedMs: number, rampUpMs: number, cruiseMs: number): 'up' | 'cruise' | 'down' {
+  if (elapsedMs <= rampUpMs) return 'up';
+  if (elapsedMs <= rampUpMs + cruiseMs) return 'cruise';
+  return 'down';
 }
 
 function spinOnPlay(): void {
@@ -145,18 +151,19 @@ function spinOnPlay(): void {
 
   const isWin = chance(host.winRate);
   const segIndex = isWin ? randInt(4) * 2 : randInt(4) * 2 + 1;
-  const rampUpMs = 2000 + randInt(1001);
-  const cruiseMs = 3000 + randInt(1001);
-  const rampDownMs = 2000 + randInt(1001);
+  const rampUpMs = 350 + randInt(300);
+  const cruiseMs = 2600 + randInt(1200);
+  const rampDownMs = 2000 + randInt(1000);
   const duration = rampUpMs + cruiseMs + rampDownMs;
   const startRot = currentRotation;
-  const extraSpins = 4 + randInt(2);
+  const extraSpins = 14 + randInt(9);
   const targetMod = segmentOffsetDeg(segIndex);
   const endRot = Math.ceil(startRot / 360) * 360 + extraSpins * 360 + targetMod;
 
   const t0 = performance.now();
-  let tickSound = window.setInterval(() => sfx.click(), 260);
+  let tickSound = window.setInterval(() => sfx.click(), 220);
   let tickPhase = 'up';
+  canvas.style.willChange = 'transform';
 
   const frame = (now: number): void => {
     const elapsed = now - t0;
@@ -164,13 +171,14 @@ function spinOnPlay(): void {
     currentRotation = startRot + (endRot - startRot) * progress;
     canvas.style.transform = `rotate(${currentRotation}deg)`;
 
-    const phase = elapsed <= rampUpMs ? 'up' : elapsed <= rampUpMs + cruiseMs ? 'cruise' : 'down';
+    const phase = spinPhase(elapsed, rampUpMs, cruiseMs);
     if (phase !== tickPhase) {
       tickPhase = phase;
       clearInterval(tickSound);
-      const ms = phase === 'cruise' ? 95 : 240;
+      const ms = phase === 'cruise' ? 48 : phase === 'up' ? 140 : 110;
       tickSound = window.setInterval(() => sfx.click(), ms);
     }
+    canvas.style.filter = phase === 'cruise' ? 'blur(0.45px)' : '';
 
     if (elapsed < duration) {
       spinFrame = requestAnimationFrame(frame);
@@ -178,6 +186,8 @@ function spinOnPlay(): void {
       clearInterval(tickSound);
       currentRotation = endRot;
       canvas.style.transform = `rotate(${currentRotation}deg)`;
+      canvas.style.filter = '';
+      canvas.style.willChange = '';
       if (isWin) sfx.coin();
       else sfx.crash();
       message.textContent = '';
