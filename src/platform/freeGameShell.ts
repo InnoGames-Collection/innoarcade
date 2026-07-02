@@ -419,6 +419,8 @@ export function renderFreeHudHtml(host: GameHost): string {
 export interface FreeCasualShellOptions {
   /** Stats header slots; defaults to time + score. Set `[]` to skip injection. */
   headerSlots?: FreePlayHeaderSlot[];
+  /** Single-attempt chance games: win/loss headline, no best-score tracking. */
+  chanceOver?: boolean;
   /** Show pause button and pause overlay (requires onPause/onResume). */
   pauseable?: boolean;
   onPause?: () => void;
@@ -501,7 +503,7 @@ export function wireFreeCasualShell(
 
   const refreshMenu = (): void => {
     const menu = $('freeMenu');
-    if (menu) menu.innerHTML = renderFreeMenuHtml(host, serverBest);
+    if (menu) menu.innerHTML = renderFreeMenuHtml(host, options.chanceOver ? 0 : serverBest);
   };
 
   const hideOverOverlay = (): void => {
@@ -546,22 +548,48 @@ export function wireFreeCasualShell(
     summary = '',
     durationMs = 0,
   ): void => {
-    const isRecord = score > serverBest;
+    const isRecord = !options.chanceOver && score > serverBest;
     if (isRecord) serverBest = score;
     refreshMenu();
     const summaryEl = document.getElementById('fcOverSummary');
-    if (summaryEl) {
-      summaryEl.textContent = summary;
-      summaryEl.classList.toggle('hidden', !summary);
-    }
+    const titleEl = document.getElementById('fcOverTitle')
+      ?? document.querySelector('#overOverlay h2');
+    const scoreEl = document.getElementById('fcOverScore');
     const finalScore = $('finalScore');
-    if (finalScore) finalScore.textContent = score.toLocaleString();
     const finalBest = $('finalBest');
     const newBest = $('newBest');
     const runReward = $('runReward');
     const overOverlay = $('overOverlay');
-    if (finalBest) finalBest.textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
-    newBest?.classList.toggle('hidden', !isRecord);
+
+    if (options.chanceOver) {
+      if (summaryEl) summaryEl.classList.add('hidden');
+      if (titleEl) {
+        titleEl.textContent = isWin ? t('chance.wonTitle') : t('chance.lostTitle');
+        titleEl.classList.toggle('fc-over-headline--win', isWin);
+        titleEl.classList.toggle('fc-over-headline--lose', !isWin);
+      }
+      if (scoreEl) {
+        if (isWin && score > 0) {
+          scoreEl.textContent = t('chance.pointsGained').replace('{p}', score.toLocaleString());
+          scoreEl.classList.remove('hidden');
+        } else {
+          scoreEl.textContent = '';
+          scoreEl.classList.add('hidden');
+        }
+      }
+      if (finalScore) finalScore.textContent = score.toLocaleString();
+      finalBest?.closest('.shell-over-stat')?.classList.add('hidden');
+      document.querySelector('#overOverlay .shell-over-final')?.classList.add('hidden');
+      newBest?.classList.add('hidden');
+    } else {
+      if (summaryEl) {
+        summaryEl.textContent = summary;
+        summaryEl.classList.toggle('hidden', !summary);
+      }
+      if (finalScore) finalScore.textContent = score.toLocaleString();
+      if (finalBest) finalBest.textContent = serverBest > 0 ? serverBest.toLocaleString() : '—';
+      newBest?.classList.toggle('hidden', !isRecord);
+    }
     if (runReward) runReward.innerHTML = '<span class="shell-rr-pending">…</span>';
     $('closeBtn')?.classList.add('hidden');
     overOverlay?.classList.remove('hidden');
@@ -571,8 +599,8 @@ export function wireFreeCasualShell(
     void (async () => {
       const res = await submitFreeRun(host, score, isWin, durationMs);
       if (!res) {
-        if (finalBest) finalBest.textContent = serverBest.toLocaleString();
-        newBest?.classList.toggle('hidden', !isRecord);
+        if (!options.chanceOver && finalBest) finalBest.textContent = serverBest.toLocaleString();
+        if (!options.chanceOver) newBest?.classList.toggle('hidden', !isRecord);
         if (await promptIfSessionExpired(toast)) {
           if (runReward) runReward.innerHTML = `<span class="shell-rr-note">${t('td.sessionExpired')}</span>`;
         } else if (isConfigured()) {
@@ -582,9 +610,11 @@ export function wireFreeCasualShell(
         }
         return;
       }
-      if (typeof res.best === 'number') serverBest = Math.max(serverBest, res.best);
-      if (finalBest) finalBest.textContent = serverBest.toLocaleString();
-      newBest?.classList.toggle('hidden', !isRecord && !res.isRecord);
+      if (!options.chanceOver && typeof res.best === 'number') {
+        serverBest = Math.max(serverBest, res.best);
+      }
+      if (!options.chanceOver && finalBest) finalBest.textContent = serverBest.toLocaleString();
+      if (!options.chanceOver) newBest?.classList.toggle('hidden', !isRecord && !res.isRecord);
       if (runReward) runReward.innerHTML = renderRunRewardHtml(res);
       refreshMenu();
     })();
@@ -644,10 +674,12 @@ export function wireFreeCasualShell(
   refreshMenu();
   setPhase('menu');
 
-  void freeGameBestRemote(host.meta.id).then((best) => {
-    serverBest = best;
-    refreshMenu();
-  });
+  if (!options.chanceOver) {
+    void freeGameBestRemote(host.meta.id).then((best) => {
+      serverBest = best;
+      refreshMenu();
+    });
+  }
 
   return {
     toast,

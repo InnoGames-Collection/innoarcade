@@ -57,7 +57,10 @@ function resetSlot(): void {
   initIdleReels();
 }
 
-const shell = wireFreeCasualShell(host, beginSpin, { headerSlots: [] });
+const JACKPOT_POINTS = 100;
+const TWO_MATCH_POINTS = 70;
+
+const shell = wireFreeCasualShell(host, beginSpin, { headerSlots: [], chanceOver: true });
 
 async function beginSpin(): Promise<void> {
   resetSlot();
@@ -130,23 +133,26 @@ function evaluateWin(results: string[]): void {
   isSpinning = false;
   spinBtn.disabled = false;
   const [r1, r2, r3] = results;
+  let score = 0;
   let isWin = false;
   let summary = '';
   if (r1 === r2 && r2 === r3) {
+    score = JACKPOT_POINTS;
     isWin = true;
-    summary = t('sl.jackpot').replace('{p}', String(host.winPoints));
+    summary = t('sl.jackpot').replace('{p}', String(JACKPOT_POINTS));
     machineElement.classList.add('slot-win-glow');
     sfx.coin();
   } else if (r1 === r2 || r2 === r3 || r1 === r3) {
+    score = TWO_MATCH_POINTS;
     isWin = true;
-    summary = t('sl.twoMatch').replace('{p}', String(host.winPoints));
+    summary = t('sl.twoMatch').replace('{p}', String(TWO_MATCH_POINTS));
     sfx.coin();
   } else {
     summary = t('sl.tryAgain');
     sfx.crash();
   }
   messageDisplay.textContent = summary;
-  shell.finishPlay(isWin ? host.winPoints : 0, isWin, '', Date.now() - runStart);
+  shell.finishPlay(score, isWin, '', Date.now() - runStart);
 }
 
 spinBtn.addEventListener('click', () => void runSpinLogic());

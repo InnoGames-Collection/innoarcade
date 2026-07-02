@@ -85,6 +85,31 @@ body.game-shell.casual-shell {
   display: none;
 }
 
+.chance-over .fc-over-headline {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 5vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--shell-ink, #142d0e);
+}
+
+.chance-over .fc-over-headline--win {
+  color: var(--shell-green, #3d8010);
+}
+
+.chance-over .fc-over-score {
+  margin: 0 0 1rem;
+  font-size: clamp(1.1rem, 4vw, 1.35rem);
+  font-weight: 700;
+  text-align: center;
+  color: var(--shell-green, #4f9e16);
+}
+
+.chance-over .fc-over-score.hidden {
+  display: none;
+}
+
 /* Shared free play stats header (matches quiz shell) */
 .fp-stats {
   display: flex;
