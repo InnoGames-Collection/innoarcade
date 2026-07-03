@@ -22,10 +22,13 @@ let grid: (Color | null)[] = [];
 let score = 0;
 let moves = START_MOVES;
 let combo = 0;
-let selected = -1;
 let busy = false;
 let gameEnded = false;
 let runStart = 0;
+let dragPointerId: number | null = null;
+let drag: { from: number; startX: number; startY: number; dx: number; dy: number } | null = null;
+
+const SWAP_PX = 28;
 
 const board = $('#board');
 const comboEl = $('#combo');
@@ -67,12 +70,48 @@ function paintBoard(): void {
   grid.forEach((color, i) => {
     const tile = document.createElement('button');
     tile.type = 'button';
-    tile.className = 'tile' + (color ? ` ${color}` : ' empty') + (selected === i ? ' sel' : '');
+    tile.className = 'tile' + (color ? ` ${color}` : ' empty');
     tile.dataset.i = String(i);
     tile.disabled = busy || gameEnded || !color;
-    tile.addEventListener('click', () => void onTileClick(i));
     board.appendChild(tile);
   });
+  applyDragVisuals();
+}
+
+function tileEl(i: number): HTMLElement | null {
+  return board.querySelector<HTMLElement>(`.tile[data-i="${i}"]`);
+}
+
+function clearDragVisuals(): void {
+  board.querySelectorAll<HTMLElement>('.tile').forEach((tile) => {
+    tile.style.transform = '';
+    tile.style.zIndex = '';
+  });
+}
+
+function applyDragVisuals(): void {
+  clearDragVisuals();
+  if (!drag) return;
+  const from = tileEl(drag.from);
+  if (!from) return;
+  from.style.transform = `translate(${drag.dx}px, ${drag.dy}px)`;
+  from.style.zIndex = '2';
+
+  const row = Math.floor(drag.from / SIZE);
+  const col = drag.from % SIZE;
+  let neighbor = -1;
+  if (drag.dx > SWAP_PX && col < SIZE - 1) neighbor = drag.from + 1;
+  else if (drag.dx < -SWAP_PX && col > 0) neighbor = drag.from - 1;
+  else if (drag.dy > SWAP_PX && row < SIZE - 1) neighbor = drag.from + SIZE;
+  else if (drag.dy < -SWAP_PX && row > 0) neighbor = drag.from - SIZE;
+
+  if (neighbor >= 0) {
+    const n = tileEl(neighbor);
+    if (n) {
+      n.style.transform = `translate(${-drag.dx * 0.35}px, ${-drag.dy * 0.35}px)`;
+      n.style.zIndex = '1';
+    }
+  }
 }
 
 function updateHud(): void {
@@ -133,14 +172,6 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function neighbors(a: number, b: number): boolean {
-  const ar = Math.floor(a / SIZE);
-  const ac = a % SIZE;
-  const br = Math.floor(b / SIZE);
-  const bc = b % SIZE;
-  return (ar === br && Math.abs(ac - bc) === 1) || (ac === bc && Math.abs(ar - br) === 1);
-}
-
 async function trySwap(a: number, b: number): Promise<void> {
   if (busy || gameEnded) return;
   busy = true;
@@ -162,38 +193,38 @@ async function trySwap(a: number, b: number): Promise<void> {
     sfx.slide();
     paintBoard();
   }
-  selected = -1;
   busy = false;
   paintBoard();
 }
 
-async function onTileClick(i: number): Promise<void> {
-  if (busy || gameEnded || !grid[i]) return;
-  if (selected < 0) {
-    selected = i;
-    paintBoard();
+async function endDrag(): Promise<void> {
+  if (!drag) return;
+  const { from, dx, dy } = drag;
+  drag = null;
+  clearDragVisuals();
+
+  const row = Math.floor(from / SIZE);
+  const col = from % SIZE;
+  let to = -1;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWAP_PX) {
+    to = from + (dx > 0 ? 1 : -1);
+    if (Math.floor(to / SIZE) !== row) return;
+  } else if (Math.abs(dy) > SWAP_PX) {
+    to = from + (dy > 0 ? SIZE : -SIZE);
+    if (to < 0 || to >= SIZE * SIZE || to % SIZE !== col) return;
+  } else {
     return;
   }
-  if (selected === i) {
-    selected = -1;
-    paintBoard();
-    return;
-  }
-  if (!neighbors(selected, i)) {
-    selected = i;
-    paintBoard();
-    return;
-  }
-  const a = selected;
-  selected = -1;
-  await trySwap(a, i);
+  if (to < 0 || to >= SIZE * SIZE || !grid[to]) return;
+  await trySwap(from, to);
 }
 
 function resetGame(): void {
   score = 0;
   moves = START_MOVES;
   combo = 0;
-  selected = -1;
+  drag = null;
+  dragPointerId = null;
   busy = false;
   gameEnded = false;
   fillNoMatches();
@@ -222,6 +253,46 @@ async function beginPlay(): Promise<void> {
   runStart = Date.now();
   resetGame();
 }
+
+board.addEventListener('pointerdown', (e) => {
+  if (busy || gameEnded) return;
+  const tile = (e.target as HTMLElement).closest('.tile') as HTMLButtonElement | null;
+  if (!tile || tile.disabled) return;
+  const from = Number(tile.dataset.i);
+  if (!grid[from]) return;
+  dragPointerId = e.pointerId;
+  board.setPointerCapture(e.pointerId);
+  drag = { from, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0 };
+});
+
+board.addEventListener('pointermove', (e) => {
+  if (!drag || dragPointerId !== e.pointerId) return;
+  let dx = e.clientX - drag.startX;
+  let dy = e.clientY - drag.startY;
+  if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+    if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+    else dx = 0;
+  }
+  const max = 52;
+  drag.dx = Math.max(-max, Math.min(max, dx));
+  drag.dy = Math.max(-max, Math.min(max, dy));
+  applyDragVisuals();
+});
+
+function releaseDrag(e: PointerEvent): void {
+  if (dragPointerId !== e.pointerId) return;
+  dragPointerId = null;
+  try { board.releasePointerCapture(e.pointerId); } catch { /* released */ }
+  void endDrag();
+}
+
+board.addEventListener('pointerup', releaseDrag);
+board.addEventListener('pointercancel', (e) => {
+  if (dragPointerId !== e.pointerId) return;
+  dragPointerId = null;
+  drag = null;
+  clearDragVisuals();
+});
 
 document.documentElement.lang = getLang();
 applyTranslations();

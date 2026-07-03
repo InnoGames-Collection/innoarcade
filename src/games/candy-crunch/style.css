@@ -2,15 +2,18 @@
 
 body.game-shell[data-game="candy-crunch"] .arc-play-wrapper:not(.hidden) {
   height: min(calc(100dvh - 20px), 780px);
+  min-height: min(calc(100dvh - 20px), 560px);
+}
+
+body.game-shell[data-game="candy-crunch"] .arcade-stage:has(#arc-play-wrapper:not(.hidden)) {
+  height: min(calc(100dvh - 20px), 780px);
 }
 
 body.game-shell[data-game="candy-crunch"] .arc-canvas-wrap {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
+  display: block;
   padding: 0;
   border: none;
   border-radius: 0;
@@ -24,12 +27,13 @@ body.game-shell[data-game="candy-crunch"] #hud {
   pointer-events: auto;
 }
 
+body.game-shell[data-game="candy-crunch"] .arc-canvas-wrap canvas,
 body.game-shell[data-game="candy-crunch"] #game {
   display: block;
   width: 100%;
   height: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  max-height: none;
+  max-width: none;
   touch-action: none;
 }
 

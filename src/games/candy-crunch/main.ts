@@ -29,12 +29,16 @@ canvas.width = W * dpr;
 canvas.height = H * dpr;
 
 function fitCanvas(): void {
-  canvas.style.width = '100%';
-  canvas.style.height = '100%';
+  const w = canvasWrap.clientWidth;
+  const h = canvasWrap.clientHeight;
+  if (w <= 0 || h <= 0) return;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
 }
 
 if (typeof ResizeObserver !== 'undefined') {
   new ResizeObserver(fitCanvas).observe(canvasWrap);
+  new ResizeObserver(fitCanvas).observe(playWrapper);
 }
 fitCanvas();
 
@@ -79,6 +83,9 @@ const syncChrome = bindHubCanvasChrome({
 game.onStateChange = (state) => {
   run.onStateChange(state);
   syncChrome(state);
+  if (state === 'playing' || state === 'levelClear') {
+    requestAnimationFrame(fitCanvas);
+  }
 };
 
 game.onGameOver = (score, level) => {
