@@ -279,11 +279,13 @@ export class CandyCrunch {
     }
   }
 
-  private makeCandy(row: number, col: number, y: number, targetY: number, type?: number): Candy {
+  private makeCandy(
+    row: number, col: number, y: number, targetY: number, type?: number, grid: Candy[][] = this.grid,
+  ): Candy {
     let t = type ?? Math.floor(Math.random() * CANDY_TYPES);
     if (type == null) {
       let tries = 0;
-      while (this.wouldMatch(this.grid, row, col, t) && tries++ < 20) {
+      while (this.wouldMatch(grid, row, col, t) && tries++ < 20) {
         t = Math.floor(Math.random() * CANDY_TYPES);
       }
     }
@@ -325,14 +327,19 @@ export class CandyCrunch {
     for (let r = 0; r < ROWS; r++) {
       grid[r] = [];
       for (let c = 0; c < COLS; c++) {
-        grid[r][c] = this.makeCandy(r, c, GRID_Y + r * CELL, GRID_Y + r * CELL);
+        grid[r][c] = this.makeCandy(r, c, GRID_Y + r * CELL, GRID_Y + r * CELL, undefined, grid);
       }
     }
     let guard = 0;
     while (this.findMatchesOn(grid).length > 0 && guard++ < 40) {
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-          grid[r][c].type = Math.floor(Math.random() * CANDY_TYPES);
+          let t = Math.floor(Math.random() * CANDY_TYPES);
+          let tries = 0;
+          while (this.wouldMatch(grid, r, c, t) && tries++ < 20) {
+            t = Math.floor(Math.random() * CANDY_TYPES);
+          }
+          grid[r][c].type = t;
         }
       }
     }
@@ -340,7 +347,7 @@ export class CandyCrunch {
   }
 
   private wouldMatch(grid: Candy[][], r: number, c: number, type: number): boolean {
-    if (c >= 2 && grid[r][c - 1]?.type === type && grid[r][c - 2]?.type === type) return true;
+    if (c >= 2 && grid[r]?.[c - 1]?.type === type && grid[r]?.[c - 2]?.type === type) return true;
     if (r >= 2 && grid[r - 1]?.[c]?.type === type && grid[r - 2]?.[c]?.type === type) return true;
     return false;
   }
