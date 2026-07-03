@@ -11,7 +11,7 @@ import {
   startFreeRound,
   submitFreeRun,
 } from './freeGameShell';
-import { goHub, wireFreeShellCloseButtons } from './freeShellNav';
+import { pushShellHistory, wireFreeShellBackNavigation, wireFreeShellCloseButtons } from './freeShellNav';
 import { promptIfSessionExpired } from './sessionAuth';
 import { isConfigured } from './supabase';
 import { freeGameBestRemote } from './backend';
@@ -173,12 +173,31 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     $('#fqBackdrop').classList.add('hidden');
   }
 
+  function getOverlay(): string | null {
+    const pause = $('#pauseOverlay');
+    if (pause && !pause.classList.contains('hidden')) return 'paused';
+    const over = $('#overOverlay');
+    if (over && !over.classList.contains('hidden')) return 'over';
+    return null;
+  }
+
+  const shellNavHandlers = {
+    getPhase: () => phase,
+    getOverlay,
+    goMenu,
+    resumePlaying: () => resumeQuiz(),
+  };
+
   function setPhase(next: Phase): void {
+    const prev = phase;
     phase = next;
     if (next === 'menu') showMenu();
     else showGame();
     $('#closeBtn').classList.toggle('hidden', next === 'menu' || next === 'over');
     $('#pauseOverlay').classList.toggle('hidden', next !== 'paused');
+    if (next === 'playing' && prev === 'menu') pushShellHistory();
+    if (next === 'paused' && prev !== 'paused') pushShellHistory();
+    if (next === 'over' && prev !== 'over') pushShellHistory();
   }
 
   function goMenu(): void {
@@ -424,11 +443,8 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     if (document.hidden && phase === 'playing') pauseQuiz();
   });
 
-  wireFreeShellCloseButtons(stage, {
-    getPhase: () => phase,
-    goMenu,
-    abandonPlaying: goHub,
-  });
+  wireFreeShellCloseButtons(stage, shellNavHandlers);
+  wireFreeShellBackNavigation(shellNavHandlers);
 
   document.documentElement.lang = getLang();
   applyTranslations();

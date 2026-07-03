@@ -14,7 +14,9 @@ import {
   type FreePlayHeaderSlot,
 } from './freePlayHeader';
 import {
-  goHub,
+  confirmAbandonRun,
+  pushShellHistory,
+  wireFreeShellBackNavigation,
   wireFreeShellCloseButtons,
   type FreeShellPhase,
 } from './freeShellNav';
@@ -278,7 +280,23 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
     overOverlay.setAttribute('aria-hidden', 'false');
   };
 
+  const getOverlay = (): string | null => {
+    for (const [key, el] of Object.entries(shellOverlays)) {
+      if (key !== 'menu' && !el.classList.contains('hidden')) return key;
+    }
+    if (!overOverlay.classList.contains('hidden')) return 'over';
+    return null;
+  };
+
+  const shellNavHandlers = {
+    getPhase: () => phase,
+    getOverlay,
+    goMenu,
+    resumePlaying: () => b.game.resume(),
+  };
+
   const setPhase = (next: ShellPhase): void => {
+    const prev = phase;
     phase = next;
     if (next === 'menu') {
       wireOverlayVisibility(shellOverlays, 'menu', { hud: b.hud, close: b.closeBtn, playing: false });
@@ -288,12 +306,14 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
     if (next === 'paused') {
       wireOverlayVisibility(shellOverlays, 'paused', { hud: b.hud, close: b.closeBtn, playing: false });
       hideOverOverlay();
+      if (prev !== 'paused') pushShellHistory();
       return;
     }
     if (next === 'over') {
       for (const el of Object.values(shellOverlays)) el.classList.add('hidden');
       b.hud?.classList.remove('hidden');
       b.closeBtn?.classList.add('hidden');
+      if (prev !== 'over') pushShellHistory();
       return;
     }
     // playing
@@ -301,6 +321,7 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
     hideOverOverlay();
     b.hud?.classList.remove('hidden');
     b.closeBtn?.classList.remove('hidden');
+    if (prev === 'menu') pushShellHistory();
   };
 
   const showForState = (state: string): void => {
@@ -317,6 +338,7 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
       wireOverlayVisibility(shellOverlays, key, { hud: b.hud, close: b.closeBtn, playing: true });
       phase = 'playing';
       hideOverOverlay();
+      if (key === 'levelClear') pushShellHistory();
     }
   };
 
@@ -386,11 +408,8 @@ export function wireFreeEngineMain(b: FreeEngineBindings): FreeEngineShell {
   });
 
   if (stage) {
-    wireFreeShellCloseButtons(stage, {
-      getPhase: () => phase,
-      goMenu,
-      abandonPlaying: goHub,
-    });
+    wireFreeShellCloseButtons(stage, shellNavHandlers);
+    wireFreeShellBackNavigation(shellNavHandlers);
   }
 
   return { toast, refreshMenu, play: onPlayOrEnter, showForState, handleGameOver };
@@ -527,14 +546,26 @@ export function wireFreeCasualShell(
     pauseUi?.overlay.classList.add('hidden');
   };
 
+  const getOverlay = (): string | null => {
+    const pauseOverlay = $('pauseOverlay');
+    if (pauseOverlay && !pauseOverlay.classList.contains('hidden')) return 'paused';
+    const overOverlay = $('overOverlay');
+    if (overOverlay && !overOverlay.classList.contains('hidden')) return 'over';
+    return null;
+  };
+
   const setPhase = (next: FreeShellPhase): void => {
+    const prev = phase;
     phase = next;
     if (next === 'menu') showMenu();
     else if (next === 'paused') {
       playFrame?.classList.add('hidden');
       pauseUi?.overlay.classList.remove('hidden');
+      if (prev !== 'paused') pushShellHistory();
     } else showGame();
     $('closeBtn')?.classList.toggle('hidden', next === 'menu' || next === 'over');
+    if (next === 'playing' && prev === 'menu') pushShellHistory();
+    if (next === 'over' && prev !== 'over') pushShellHistory();
   };
 
   const goMenu = (): void => {
@@ -594,6 +625,7 @@ export function wireFreeCasualShell(
     $('closeBtn')?.classList.add('hidden');
     overOverlay?.classList.remove('hidden');
     overOverlay?.setAttribute('aria-hidden', 'false');
+    if (phase !== 'over') pushShellHistory();
     phase = 'over';
 
     void (async () => {
@@ -652,6 +684,14 @@ export function wireFreeCasualShell(
     await play();
   };
 
+  const shellNavHandlers = {
+    getPhase: () => phase,
+    getOverlay,
+    goMenu,
+    resumePlaying: () => resume(),
+    confirmAbandon: options.skipAbandonConfirm ? undefined : confirmAbandonRun,
+  };
+
   wirePlayButtons(['startBtn', 'againBtn'], play);
 
   if (options.pauseable && playFrame) {
@@ -664,11 +704,8 @@ export function wireFreeCasualShell(
   }
 
   if (stage) {
-    wireFreeShellCloseButtons(stage, {
-      getPhase: () => phase,
-      goMenu,
-      abandonPlaying: goHub,
-    });
+    wireFreeShellCloseButtons(stage, shellNavHandlers);
+    wireFreeShellBackNavigation(shellNavHandlers);
   }
 
   refreshMenu();

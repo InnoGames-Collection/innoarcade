@@ -1,4 +1,4 @@
-// In-shell close navigation for free games — return to menu/pause/hub instead of history.back().
+// In-shell close / back navigation for free games — one window back at a time.
 
 import { t } from '../i18n';
 
@@ -8,11 +8,13 @@ const HUB_URL = '../../';
 
 export interface FreeShellNavHandlers {
   getPhase: () => FreeShellPhase;
+  /** Visible in-game overlay key (paused, levelClear, over, …). */
+  getOverlay?: () => string | null;
   goMenu: () => void;
-  /** Called when closing while playing; return false to cancel. */
+  /** Dismiss pause overlay and return to the round. */
+  resumePlaying?: () => void;
+  /** Called when leaving an active round; return false to cancel. */
   confirmAbandon?: () => boolean;
-  /** Leave the game entirely while playing (defaults to goMenu). */
-  abandonPlaying?: () => void;
 }
 
 export function goHub(): void {
@@ -20,39 +22,68 @@ export function goHub(): void {
   else location.href = HUB_URL;
 }
 
+/** Push a history entry so the hardware back button can step in-shell first. */
+export function pushShellHistory(): void {
+  history.pushState({ innoShell: 1 }, '', location.href);
+}
+
+function isShellRoot(handlers: FreeShellNavHandlers): boolean {
+  if (handlers.getOverlay?.()) return false;
+  return handlers.getPhase() === 'menu';
+}
+
+/** Go back exactly one shell window (overlay → playing → menu → hub). */
+export function goBackOne(handlers: FreeShellNavHandlers): void {
+  const overlay = handlers.getOverlay?.();
+
+  if (overlay === 'paused') {
+    handlers.resumePlaying?.();
+    return;
+  }
+  if (overlay === 'levelClear' || overlay === 'over') {
+    handlers.goMenu();
+    return;
+  }
+
+  const phase = handlers.getPhase();
+  if (phase === 'menu') {
+    goHub();
+  } else if (phase === 'over') {
+    handlers.goMenu();
+  } else if (phase === 'paused') {
+    handlers.resumePlaying?.() ?? handlers.goMenu();
+  } else if (phase === 'playing') {
+    if (handlers.confirmAbandon?.() === false) return;
+    handlers.goMenu();
+  }
+}
+
+/** Mirror hardware / browser back to the same one-window stack as close buttons. */
+export function wireFreeShellBackNavigation(handlers: FreeShellNavHandlers): void {
+  window.addEventListener('popstate', () => {
+    if (!isShellRoot(handlers)) {
+      goBackOne(handlers);
+      if (!isShellRoot(handlers)) {
+        pushShellHistory();
+      }
+    }
+  });
+}
+
 /** Wire all close buttons inside a free-game stage. */
 export function wireFreeShellCloseButtons(
   stage: HTMLElement,
   handlers: FreeShellNavHandlers,
 ): void {
-  const playingClose = stage.querySelector('#closeBtn');
-  playingClose?.removeAttribute('onclick');
-  const leavePlaying = (): void => {
-    (handlers.abandonPlaying ?? handlers.goMenu)();
-  };
-
-  playingClose?.addEventListener('click', (e) => {
+  const onClose = (e: Event): void => {
     e.preventDefault();
     e.stopImmediatePropagation();
-    const phase = handlers.getPhase();
-    if (phase !== 'playing' && phase !== 'paused') return;
-    if (handlers.confirmAbandon?.() === false) return;
-    leavePlaying();
-  });
+    goBackOne(handlers);
+  };
 
   stage.querySelectorAll<HTMLElement>('.gp-close, .gp-close-corner').forEach((btn) => {
-    if (btn.id === 'closeBtn') return;
     btn.removeAttribute('onclick');
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const phase = handlers.getPhase();
-      if (phase === 'menu' || phase === 'over') goHub();
-      else if (phase === 'paused') leavePlaying();
-      else if (phase === 'playing') {
-        if (handlers.confirmAbandon?.() === false) return;
-        leavePlaying();
-      }
-    });
+    btn.addEventListener('click', onClose);
   });
 }
 

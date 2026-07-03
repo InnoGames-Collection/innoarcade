@@ -306,29 +306,26 @@ for (const g of CATALOG) {
 //   2. then the rest in catalog order;
 //   3. except BOTTOM games, pinned to the very end.
 const FRONT = [
-  // Free — quiz / trivia cluster first
-  'ethiopian-quiz',
-  'spell',
-  'vocab',
-  'rhyme',
-  'logic',
-  // Free — flagship puzzles
-  'merge-2048',
-  'sudoku',
-  // Free — level-gated
-  'luckyslot',
-  'spin-wheel',
-  'target24',
-  'sequence',
-  // Free — other casual / brain / arcade
-  'tap-game',
-  'lucky-box',
-  'crosssum',
+  // Free games (hub order)
   'popblast',
+  'ethiopian-quiz',
   'orbit-blast',
-  'candy-crunch',
+  'spell',
+  'spin-wheel',
+  'tap-game',
+  'crosssum',
+  'lucky-box',
   'brick-blitz',
   'sky-hopper',
+  'luckyslot',
+  'sudoku',
+  'logic',
+  'merge-2048',
+  'vocab',
+  'rhyme',
+  'target24',
+  'sequence',
+  'candy-crunch',
   'bubble-pop',
   // Tournament (enabled titles)
   'temple-dash',
