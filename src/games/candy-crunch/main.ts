@@ -21,11 +21,22 @@ const host = new GameHost(GAME_ID);
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
 const playWrapper = $('#arc-play-wrapper');
+const canvasWrap = $('.arc-canvas-wrap');
 const canvas = $('#game') as unknown as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
 canvas.width = W * dpr;
 canvas.height = H * dpr;
+
+function fitCanvas(): void {
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+}
+
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(fitCanvas).observe(canvasWrap);
+}
+fitCanvas();
 
 const game = new CandyCrunch();
 const run = trackArcadeRunStart();
@@ -99,11 +110,36 @@ function toCanvas(e: PointerEvent): [number, number] {
   ];
 }
 
+let dragPointerId: number | null = null;
+
 canvas.addEventListener('pointerdown', (e) => {
   if (game.state !== 'playing') return;
   const [x, y] = toCanvas(e);
   const cell = game.cellAt(x, y);
-  if (cell) game.tapCell(cell.r, cell.c);
+  if (!cell) return;
+  dragPointerId = e.pointerId;
+  canvas.setPointerCapture(e.pointerId);
+  game.beginDrag(cell.r, cell.c, x, y);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (dragPointerId !== e.pointerId) return;
+  const [x, y] = toCanvas(e);
+  game.updateDrag(x, y);
+});
+
+function endDrag(e: PointerEvent): void {
+  if (dragPointerId !== e.pointerId) return;
+  dragPointerId = null;
+  game.endDrag();
+  try { canvas.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+}
+
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', (e) => {
+  if (dragPointerId !== e.pointerId) return;
+  dragPointerId = null;
+  game.cancelDrag();
 });
 
 wireMutePause($('#muteBtn'), $('#pauseBtn'), game, sfx);

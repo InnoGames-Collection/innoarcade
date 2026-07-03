@@ -1,18 +1,18 @@
-// Candy Saga — match-3 with tap-to-swap and hub-themed board.
+// Candy Saga — match-3 with slide-to-swap and hub-themed board.
 
 import { sfx } from '../../engine/audio';
 import { getHighScore, setHighScore } from '../../engine/storage';
 
-export const W = 480;
-export const H = 560;
-
-const COLS = 8;
-const ROWS = 8;
-const CELL = 56;
-const GRID_X = (W - COLS * CELL) / 2;
-const GRID_Y = 12;
+export const COLS = 8;
+export const ROWS = 8;
+export const CELL = 60;
+export const W = COLS * CELL;
+export const H = ROWS * CELL;
+const GRID_X = 0;
+const GRID_Y = 0;
 const CANDY_TYPES = 5;
 const FALL_SPEED = 900;
+const SWAP_THRESHOLD = CELL * 0.28;
 
 export const CANDY_COLORS = ['#ff4d8a', '#ff9f1a', '#8b5cf6', '#fbbf24', '#22c55e'];
 export const CANDY_EMOJI = ['🍬', '🍭', '🍫', '🍯', '🌟'];
@@ -67,7 +67,7 @@ export class CandyCrunch {
   private comboTime = 0;
   private movesUsed = 0;
   private collected: number[] = [];
-  private selected: { r: number; c: number } | null = null;
+  private drag: { r: number; c: number; startX: number; startY: number; dx: number; dy: number } | null = null;
   private busy = false;
 
   goalProgress(): GoalProgress[] {
@@ -89,7 +89,7 @@ export class CandyCrunch {
     this.score = 0;
     this.movesUsed = 0;
     this.comboCount = 0;
-    this.selected = null;
+    this.drag = null;
     this.busy = false;
     this.resetCollection();
     this.grid = this.newGrid();
@@ -112,28 +112,45 @@ export class CandyCrunch {
     return { r, c };
   }
 
-  tapCell(r: number, c: number): void {
+  beginDrag(r: number, c: number, x: number, y: number): void {
     if (this.state !== 'playing' || this.busy) return;
     if (!this.grid[r]?.[c]) return;
+    this.drag = { r, c, startX: x, startY: y, dx: 0, dy: 0 };
+  }
 
-    if (!this.selected) {
-      this.selected = { r, c };
-      sfx.click();
+  updateDrag(x: number, y: number): void {
+    if (!this.drag) return;
+    let dx = x - this.drag.startX;
+    let dy = y - this.drag.startY;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+      else dx = 0;
+    }
+    const max = CELL * 0.82;
+    this.drag.dx = Math.max(-max, Math.min(max, dx));
+    this.drag.dy = Math.max(-max, Math.min(max, dy));
+  }
+
+  endDrag(): void {
+    if (!this.drag) return;
+    const { r, c, dx, dy } = this.drag;
+    this.drag = null;
+
+    let tr = r;
+    let tc = c;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWAP_THRESHOLD) {
+      tc = c + (dx > 0 ? 1 : -1);
+    } else if (Math.abs(dy) > SWAP_THRESHOLD) {
+      tr = r + (dy > 0 ? 1 : -1);
+    } else {
       return;
     }
-    if (this.selected.r === r && this.selected.c === c) {
-      this.selected = null;
-      return;
-    }
-    const dr = Math.abs(this.selected.r - r);
-    const dc = Math.abs(this.selected.c - c);
-    if (dr + dc !== 1) {
-      this.selected = { r, c };
-      sfx.click();
-      return;
-    }
-    void this.trySwap(this.selected.r, this.selected.c, r, c);
-    this.selected = null;
+    if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) return;
+    void this.trySwap(r, c, tr, tc);
+  }
+
+  cancelDrag(): void {
+    this.drag = null;
   }
 
   update(dt: number): void {
@@ -178,16 +195,26 @@ export class CandyCrunch {
       this.grid = this.newGrid();
     }
 
-    this.drawBoardFrame(ctx);
     this.drawGrid(ctx);
     this.drawCandies(ctx);
     this.drawParticles(ctx);
 
     if (this.comboCount > 1) {
-      ctx.fillStyle = '#4f9e16';
-      ctx.font = 'bold 17px system-ui';
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.strokeStyle = '#4f9e16';
+      ctx.lineWidth = 2;
+      const label = `${this.comboCount}x COMBO!`;
+      ctx.font = 'bold 16px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText(`${this.comboCount}x COMBO!`, W / 2, H - 8);
+      const tw = ctx.measureText(label).width + 24;
+      const bx = W / 2 - tw / 2;
+      const by = H - 34;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, tw, 26, 13);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#4f9e16';
+      ctx.fillText(label, W / 2, by + 18);
     }
 
     if (this.screenShake > 0) {
@@ -403,7 +430,7 @@ export class CandyCrunch {
     this.grid = this.newGrid();
     this.particles = [];
     this.comboCount = 0;
-    this.selected = null;
+    this.drag = null;
     this.busy = false;
     this.resetCollection();
     this.setState('playing');
@@ -430,45 +457,45 @@ export class CandyCrunch {
     this.onStateChange(s);
   }
 
-  private drawBoardFrame(ctx: CanvasRenderingContext2D): void {
-    const pad = 6;
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = 'rgba(79, 158, 22, 0.25)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(GRID_X - pad, GRID_Y - pad, COLS * CELL + pad * 2, ROWS * CELL + pad * 2, 14);
-    ctx.fill();
-    ctx.stroke();
-  }
-
   private drawGrid(ctx: CanvasRenderingContext2D): void {
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const x = GRID_X + c * CELL;
         const y = GRID_Y + r * CELL;
         ctx.fillStyle = (r + c) % 2 === 0 ? '#f4faee' : '#eaf5e0';
-        ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+        ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
       }
     }
   }
 
   private drawCandies(ctx: CanvasRenderingContext2D): void {
+    const dragR = this.drag?.r ?? -1;
+    const dragC = this.drag?.c ?? -1;
+    const dragDx = this.drag?.dx ?? 0;
+    const dragDy = this.drag?.dy ?? 0;
+
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const candy = this.grid[r]?.[c];
         if (!candy || candy.matched) continue;
 
-        const x = GRID_X + c * CELL;
-        const cy = candy.y + CELL / 2;
-        const cx = x + CELL / 2;
-        const rad = CELL * 0.4;
-        const color = CANDY_COLORS[candy.type];
-
-        if (this.selected?.r === r && this.selected?.c === c) {
-          ctx.strokeStyle = '#4f9e16';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(x + 3, candy.y + 3, CELL - 6, CELL - 6);
+        let ox = 0;
+        let oy = 0;
+        if (r === dragR && c === dragC) {
+          ox = dragDx;
+          oy = dragDy;
+        } else if (this.drag) {
+          if (dragDx > 0 && r === dragR && c === dragC + 1) ox = -dragDx * 0.35;
+          else if (dragDx < 0 && r === dragR && c === dragC - 1) ox = -dragDx * 0.35;
+          else if (dragDy > 0 && c === dragC && r === dragR + 1) oy = -dragDy * 0.35;
+          else if (dragDy < 0 && c === dragC && r === dragR - 1) oy = -dragDy * 0.35;
         }
+
+        const x = GRID_X + c * CELL + ox;
+        const cy = candy.y + CELL / 2 + oy;
+        const cx = x + CELL / 2;
+        const rad = CELL * 0.38;
+        const color = CANDY_COLORS[candy.type];
 
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -480,7 +507,7 @@ export class CandyCrunch {
         ctx.arc(cx - rad * 0.3, cy - rad * 0.3, rad * 0.28, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.font = `${Math.floor(CELL * 0.44)}px system-ui`;
+        ctx.font = `${Math.floor(CELL * 0.42)}px system-ui`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
