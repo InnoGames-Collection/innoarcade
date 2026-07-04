@@ -227,15 +227,23 @@ function injectStyles(): void {
     .auth-btn:hover { filter: brightness(1.05); }
 
     .auth-modal { position: fixed; inset: 0; z-index: 9990; display: flex; flex-direction: column;
-      align-items: center; background: #4f9e16; overflow-y: auto; }
+      align-items: center;
+      --auth-bg: #ffffff;
+      --auth-stars: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170' viewBox='0 0 170 170'%3E%3Cg fill='%234f9e16' fill-opacity='0.09'%3E%3Cg transform='translate(6 16) scale(1.8)'%3E%3Cpath d='M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM11 13H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5S14.67 12 15.5 12s1.5.67 1.5 1.5S16.33 15 15.5 15zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5S19.33 12 18.5 12z'/%3E%3C/g%3E%3Cg transform='translate(96 96) scale(1.8)'%3E%3Cpath d='M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM11 13H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5S14.67 12 15.5 12s1.5.67 1.5 1.5S16.33 15 15.5 15zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5S19.33 12 18.5 12z'/%3E%3C/g%3E%3Ccircle cx='132' cy='28' r='2.4'/%3E%3Ccircle cx='28' cy='140' r='2.4'/%3E%3C/g%3E%3C/svg%3E");
+      background:
+        var(--auth-stars),
+        radial-gradient(120% 60% at 50% -10%, rgba(124, 201, 58, 0.16) 0%, transparent 55%),
+        var(--auth-bg);
+      background-attachment: fixed;
+      overflow-y: auto; }
 
     .auth-topbar { width: 100%; display: flex; align-items: center; justify-content: space-between;
       padding: 0.8rem 1rem; background: transparent; flex-shrink: 0; }
-    .auth-logo-et { height: 2.2rem; object-fit: contain; filter: brightness(1.1); }
+    .auth-logo-et { height: 2.2rem; object-fit: contain; }
     .auth-back { width: 2.2rem; height: 2.2rem; border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.4); background: rgba(255,255,255,.15); color: #fff;
+      border: 1px solid #e6efdc; background: rgba(255,255,255,.9); color: #5f7262;
       font-size: 1rem; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
-    .auth-back:hover { background: rgba(255,255,255,.28); }
+    .auth-back:hover { background: #f2f6ee; }
 
     .auth-hero { width: 100%; flex-shrink: 0; }
     .auth-hero-img { width: 100%; display: block; object-fit: cover; max-height: 200px; }
