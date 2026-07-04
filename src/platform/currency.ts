@@ -45,11 +45,11 @@ export function setLifetime(v: number): void {
 
 /** Hydrate the player's per-cadence RP (server-authoritative). */
 export function setRpWeekly(v: number): void {
-  cacheRpWeekly = Math.max(0, Math.round(v * 10) / 10);
+  cacheRpWeekly = Math.max(0, Math.round(v * 100) / 100);
   emit();
 }
 export function setRpMonthly(v: number): void {
-  cacheRpMonthly = Math.max(0, Math.round(v * 10) / 10);
+  cacheRpMonthly = Math.max(0, Math.round(v * 100) / 100);
   emit();
 }
 

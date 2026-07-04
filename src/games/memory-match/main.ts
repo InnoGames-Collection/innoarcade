@@ -62,6 +62,7 @@ let roundSeq = 0;
 let starting = false;
 let lastFinalScore = 0;
 let toastT = 0;
+let roundStartMs = 0;
 
 function showToast(msg: string): void {
   const el = $('#toast');
@@ -325,6 +326,7 @@ function startRoundWithBlink(): void {
     if (seq !== roundSeq) return;
     revealAll(false);
     canFlip = true;
+    roundStartMs = performance.now();
     timerId = window.setInterval(() => tick(seq), 1000);
   }, 1000);
 }
@@ -363,9 +365,9 @@ function endRound(): void {
   if (phase !== 'playing' && phase !== 'paused') return;
   const cleared = pairs === PAIR_COUNT;
   if (!cleared) playSfx('lose');
+  const durationMs = roundStartMs > 0 ? Math.floor(performance.now() - roundStartMs) : spentSeconds() * 1000;
   abortRound();
   lastFinalScore = computeScore();
-  const durationMs = spentSeconds() * 1000;
   setPhase('over');
   scoreEl.textContent = String(lastFinalScore);
   bumpScoreStat();

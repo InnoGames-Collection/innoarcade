@@ -97,11 +97,12 @@ let liveBoardSeen = false;
 function tourLbRow(r: LeaderEntry): string {
   const medal = ['🥇', '🥈', '🥉'];
   const rp = r.rp ?? r.score;
+  const rpStr = typeof rp === 'number' ? fmtRp(rp) : String(rp);
   return `
     <div class="lb-row${r.rank <= 3 ? ' top' : ''}${r.isPlayer ? ' me' : ''}">
       <span class="lb-rank">${medal[r.rank - 1] ?? r.rank}</span>
       <span class="lb-name">${escapeHtml(r.isPlayer ? t('td.you') : r.name)}</span>
-      <span class="lb-score">${rp} RP</span>
+      <span class="lb-score">${rpStr} RP</span>
     </div>`;
 }
 
@@ -152,6 +153,10 @@ function setupLiveBoardTabs(): void {
 
 // --- Player balance bar -----------------------------------------------------
 // Level / XP / Weekly RP / Monthly RP chips under the promo banner.
+function fmtRp(v: number): string {
+  return v % 1 === 0 ? String(v) : v.toFixed(2);
+}
+
 function renderMyStats(): void {
   function chip(icon: string, label: string, val: string, cls: string): string {
     return `<span class="bal-chip ${cls}">${icon} <span class="bal-lbl">${label}:</span> <strong>${val}</strong></span>`;
@@ -161,8 +166,8 @@ function renderMyStats(): void {
     bar.innerHTML =
       chip('🎖️', t('hub.statLevel'), String(levelFor(xpLifetime())), 'bal-level') +
       chip('⭐', t('hub.progress'), xpLifetime().toLocaleString(), 'bal-points') +
-      chip('🏅', t('hub.rpWeekly'), rpWeekly().toLocaleString(), 'bal-rp bal-rp-weekly') +
-      chip('🏆', t('hub.rpMonthly'), rpMonthly().toLocaleString(), 'bal-rp bal-rp-monthly');
+      chip('🏅', t('hub.rpWeekly'), fmtRp(rpWeekly()), 'bal-rp bal-rp-weekly') +
+      chip('🏆', t('hub.rpMonthly'), fmtRp(rpMonthly()), 'bal-rp bal-rp-monthly');
   }
   const host = document.querySelector('#topBalances');
   if (host) {

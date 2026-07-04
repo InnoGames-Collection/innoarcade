@@ -133,6 +133,7 @@ Deno.serve(async (req: Request) => {
   const token = String(body.token ?? '');
   const gameId = String(body.gameId ?? String(body.tournamentId ?? '').replace(/-(daily|weekly|monthly)(-[0-9-]+)?$/, ''));
   const score = Number(body.score);
+  const timeMs = Number(body.timeMs ?? 0);
   const win = body.win !== undefined ? Boolean(body.win) : Number((body as { points?: number }).points ?? 0) > 0;
   const wantsLeaderboard = body.leaderboard ?? (body.tournamentId != null);
 
@@ -258,9 +259,15 @@ Deno.serve(async (req: Request) => {
   const isRecord = score > prevBest;
   const best = Math.max(prevBest, score);
 
-  // RP is purely score-based — independent of coins, XP, or attempts.
+  // RP = score-based + time micro-tiebreaker (0.00–0.99) to break ties.
+  const SURVIVAL_GAMES = new Set(['fruit-slice', 'temple-dash', 'sky-hopper']);
   await admin.rpc('refresh_game_stats');
-  const { data: rpVal } = await admin.rpc('rp_for', { p_game: gameId, p_raw: best });
+  const { data: rpVal } = await admin.rpc('rp_for', {
+    p_game: gameId,
+    p_raw: best,
+    p_time_ms: Math.max(0, Math.floor(timeMs)),
+    p_survival: SURVIVAL_GAMES.has(gameId),
+  });
   const { error: upErr } = await admin.from('scores').upsert({
     user_id: user.id,
     tournament_id: tournamentId,
