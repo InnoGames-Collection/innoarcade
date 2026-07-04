@@ -42,7 +42,7 @@ const CARD_ICONS: CardIcon[] = [
   { id: 'coffee', src: coffeeIcon, alt: 'Coffee ceremony' },
   { id: 'cash', src: cashIcon, alt: 'Cash' },
   { id: 'logo-green', src: logoGreenIcon, alt: 'Green logo' },
-  { id: 'phone', src: phoneIcon, alt: 'Phone' },
+  { id: 'phone', src: phoneIcon, alt: 'WiFi' },
 ];
 
 const ICON_BY_ID = new Map(CARD_ICONS.map((icon) => [icon.id, icon]));
