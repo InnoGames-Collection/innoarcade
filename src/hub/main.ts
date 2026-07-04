@@ -1,13 +1,12 @@
 import '../styles/base.css';
 import './hub.css';
 import { applyTranslations, getLang, setLang, t, type Lang } from '../i18n';
-import { openSignIn } from './signin';
 import { mountSignInGate } from '../platform/signInGate';
 import { openAccount } from './account';
 import { mountWallet } from './wallet';
 import { onAuthChange, currentUser, signOut } from '../platform/auth';
 import { sfx } from '../engine/audio';
-import { leaderboardRemote, fetchWallets, fetchUnlocks, unlockGameRemote, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote } from '../platform/backend';
+import { leaderboardRemote, fetchWallets, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote } from '../platform/backend';
 import { orderedCatalog, getGame, type GameMeta, type TournamentCadence } from '../platform/catalog';
 import {
   activeTournaments, tournamentGame, getTournamentForGame, getLiveTournamentByCadence,
@@ -15,10 +14,10 @@ import {
   tournamentState, enterTournament,
   type Tournament, type LeaderEntry,
 } from '../platform/tournaments';
-import { balanceSync, balance, onWalletChange } from '../platform/wallet';
+import { balance, onWalletChange } from '../platform/wallet';
 import { activeDraws, myTickets, enterDraw, NotEnoughPointsError, hydrateTickets, loadDraws, myOdds } from '../platform/draws';
-import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, xpLifetime } from '../platform/currency';
-import { levelFor, economyNeedsAuth, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, type WinnerCadence } from '../platform/config';
+import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, xpLifetime, rpTotal } from '../platform/currency';
+import { levelFor, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, type WinnerCadence } from '../platform/config';
 import { getSupabase, isConfigured } from '../platform/supabase';
 import { bootstrapHubData, type HubBootstrapResult } from '../platform/hubBootstrap';
 
@@ -146,8 +145,7 @@ function setupLiveBoardTabs(): void {
 }
 
 // --- Player balance bar -----------------------------------------------------
-// The Level / XP / Coins chips render in their own bar right under the promo
-// banner (where the KPI strip used to be). The Buy Coin button stays in the topbar.
+// Level / XP / RP chips under the promo banner.
 function renderMyStats(): void {
   function chip(icon: string, label: string, val: string, cls: string): string {
     return `<span class="bal-chip ${cls}">${icon} <span class="bal-lbl">${label}:</span> <strong>${val}</strong></span>`;
@@ -157,7 +155,7 @@ function renderMyStats(): void {
     bar.innerHTML =
       chip('🎖️', t('hub.statLevel'), String(levelFor(xpLifetime())), 'bal-level') +
       chip('⭐', t('hub.progress'), xpLifetime().toLocaleString(), 'bal-points') +
-      chip('🪙', t('hub.coinsLabel'), balanceSync().toLocaleString(), 'bal-coins');
+      chip('🏆', t('hub.rpLabel'), rpTotal().toLocaleString(), 'bal-rp');
   }
   const host = document.querySelector('#topBalances');
   if (host) {
@@ -224,14 +222,6 @@ const howToText = (g: GameMeta): { en: string; am: string } =>
   HOWTO[g.id] ?? { en: `Tap Play to start ${g.nameEn}. Score as high as you can!`, am: `${g.nameAm}ን ለመጀመር ይጫወቱ።` };
 function howTo(g: GameMeta): string { const h = howToText(g); return lang() === 'am' ? h.am : h.en; }
 
-// In-memory set of games the player has bought early (server is the authority).
-// Hydrated on load + on auth change; drives locked-card rendering synchronously.
-const unlockedSet = new Set<string>();
-
-// A game is locked when it's gated above the player's level and not yet unlocked.
-function isLocked(g: GameMeta): boolean {
-  return !!g.minLevel && levelFor(xpLifetime()) < g.minLevel && !unlockedSet.has(g.id);
-}
 
 function tournamentPrizeSummary(g: GameMeta): string {
   const prizes = TOURNAMENT_ETB_PRIZES[g.id];
@@ -259,20 +249,7 @@ function gameCard(g: GameMeta): string {
         ${modeTag}
         ${liveBadge}
         <button class="gc-info" data-howto="${g.id}" aria-label="${t('hub.howToPlay')}">?</button>
-        ${isLocked(g) ? `<span class="gc-lock">🔒 ${t('hub.lockLevel')} ${g.minLevel}</span>` : ''}
       </div>`;
-  // Locked games are a non-navigating tile that opens the unlock dialog.
-  if (isLocked(g)) {
-    return `
-    <div class="game-card locked" data-unlock="${g.id}">
-      ${thumb}
-      <div class="gc-body">
-        <h4>${escapeHtml(name(g))}</h4>
-        <p class="gc-cat">${escapeHtml(category(g))}</p>
-        <span class="gc-play gc-unlock">🔓 ${t('hub.unlock')} · ${g.unlockCost} 🪙</span>
-      </div>
-    </div>`;
-  }
   return `
     <a class="game-card" href="${g.route}">
       ${thumb}
@@ -595,58 +572,6 @@ function setupBrowse(): void {
       if (g) openHowTo(g);
       return;
     }
-    // A locked tile doesn't navigate — it opens the unlock dialog instead.
-    const locked = (e.target as HTMLElement).closest<HTMLElement>('.game-card.locked');
-    if (locked) {
-      e.preventDefault();
-      e.stopPropagation();
-      const g = getGame(locked.dataset.unlock!);
-      if (g) openUnlock(g);
-    }
-  });
-}
-
-// Unlock dialog for a level-gated game: reach the required level for free, or buy
-// it now with coins (server-validated charge). On success, mark unlocked + rerender.
-function openUnlock(g: GameMeta): void {
-  if (economyNeedsAuth()) { openSignIn(); return; }
-  const lvl = levelFor(xpLifetime());
-  const coins = balanceSync();
-  const cost = g.unlockCost ?? 0;
-  const canPay = coins >= cost;
-  const m = document.createElement('div');
-  m.className = 'unlock-modal';
-  m.innerHTML = `
-    <div class="unlock-scrim"></div>
-    <div class="unlock-box" role="dialog" aria-modal="true">
-      <span class="unlock-glyph">${g.cover ? `<img src="${g.cover}" alt="" />` : g.icon}</span>
-      <h3>${escapeHtml(name(g))}</h3>
-      <p class="unlock-msg">${t('hub.unlockReach')} ${g.minLevel} ${t('hub.unlockOrBuy')}</p>
-      <p class="unlock-sub">${t('hub.statLevel')} ${lvl} · ${coins.toLocaleString()} 🪙</p>
-      <div class="unlock-actions">
-        <button id="uCancel" class="btn ghost">${t('hub.cancel')}</button>
-        <button id="uBuy" class="btn primary" ${canPay ? '' : 'disabled'}>🔓 ${cost} 🪙</button>
-      </div>
-      
-    </div>`;
-  document.body.appendChild(m);
-  const close = (): void => m.remove();
-  m.querySelector('.unlock-scrim')!.addEventListener('click', close);
-  m.querySelector('#uCancel')!.addEventListener('click', close);
-  m.querySelector('#uBuy')!.addEventListener('click', async () => {
-    const btn = m.querySelector('#uBuy') as HTMLButtonElement;
-    btn.disabled = true; btn.textContent = '…';
-    try {
-      const res = await unlockGameRemote(g.id);
-      unlockedSet.clear(); res.unlocks.forEach((id) => unlockedSet.add(id));
-      void balance(); // re-hydrate coin chip from the authoritative new balance
-      close();
-      renderGames();
-      renderMyStats();
-    } catch {
-      btn.disabled = false; btn.textContent = `🔓 ${cost} 🪙`;
-      btn.classList.add('shake');
-    }
   });
 }
 
@@ -705,15 +630,7 @@ function hydratePointsAfterBootstrap(boot: HubBootstrapResult): void {
   }
   void loadDraws().then(() => hydrateTickets()).then(() => renderDraws());
   if (winnersSeen) renderWinners({ fetch: true });
-  if (boot.ok && boot.hadUser) {
-    unlockedSet.clear();
-    boot.unlocks.forEach((id) => unlockedSet.add(id));
-    renderGames();
-  } else {
-    void fetchUnlocks().then((ids) => {
-      unlockedSet.clear(); ids.forEach((id) => unlockedSet.add(id)); renderGames();
-    });
-  }
+  renderGames();
 }
 
 async function runBackendHydration(): Promise<void> {

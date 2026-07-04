@@ -18,6 +18,7 @@ const cache: Record<Currency, number> = { xp: 0, gold: 0 };
 // Lifetime XP (only grows) — drives level + the global leaderboard. Separate
 // from the spendable `xp` balance.
 let cacheLifetime = 0;
+let cacheRp = 0;
 
 const listeners = new Set<() => void>();
 function emit(): void { for (const fn of listeners) fn(); }
@@ -26,6 +27,7 @@ export function xp(): number { return cache.xp; }
 export function gold(): number { return cache.gold; }
 export function balanceOf(c: Currency): number { return cache[c]; }
 export function xpLifetime(): number { return cacheLifetime; }
+export function rpTotal(): number { return cacheRp; }
 
 /** Hydrate the cache from an authoritative (server) balance. */
 export function setBalance(c: Currency, v: number): void {
@@ -36,6 +38,12 @@ export function setBalance(c: Currency, v: number): void {
 /** Hydrate the lifetime XP total (server-authoritative). */
 export function setLifetime(v: number): void {
   cacheLifetime = Math.max(0, Math.floor(v));
+  emit();
+}
+
+/** Hydrate the player's season-average RP (server-authoritative). */
+export function setRp(v: number): void {
+  cacheRp = Math.max(0, Math.round(v * 10) / 10);
   emit();
 }
 

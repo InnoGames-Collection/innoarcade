@@ -478,15 +478,15 @@ body {
 
 /* compact balance chips in topbar */
 .top-balances { display: flex; align-items: center; gap: 0.25rem; margin-inline: auto; }
-/* player balance bar (Level / Points / Coins) — sits under the promo banner */
-.player-bar-section { display: flex; justify-content: center; align-items: center; gap: 0.5rem; flex-wrap: nowrap; }
+/* player balance bar (Level / XP / RP) — sits under the promo banner */
+.player-bar-section { display: flex; justify-content: center; align-items: center; gap: 0.55rem; flex-wrap: nowrap; }
 .player-bar-section:empty { display: none; }
-.player-bar-section .bal-chip { font-size: 0.82rem; padding: 0.3rem 0.7rem; flex: 1 1 0; min-width: 0; justify-content: center; }
-.bal-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.7rem; font-weight: 600;
-  padding: 0.13rem 0.45rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,0.85); white-space: nowrap; }
-.bal-chip .bal-lbl { font-weight: 500; opacity: 0.85; margin-right: 0.15rem; }
+.player-bar-section .bal-chip { font-size: 0.92rem; padding: 0.42rem 0.8rem; flex: 1 1 0; min-width: 0; justify-content: center; }
+.bal-chip { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; font-weight: 600;
+  padding: 0.22rem 0.55rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,0.85); white-space: nowrap; }
+.bal-chip .bal-lbl { font-weight: 600; opacity: 0.88; margin-right: 0.15rem; }
 .bal-chip strong { font-weight: 800; }
-.bal-coins strong { color: #8a6310; }
+.bal-rp strong { color: #1f74e0; }
 .bal-points strong { color: var(--accent); }
 .bal-level strong { color: #7a4bd0; }
 .bal-gold strong { color: #9a6b12; }
@@ -528,11 +528,9 @@ body {
   .brand { font-size: 1rem; }
   .brand-icon { width: 1.7rem; height: 1.7rem; font-size: 1rem; }
   .top-balances { margin-inline: auto 0; gap: 0.25rem; min-width: 0; }
-  .player-bar-section { gap: 0.28rem; padding-inline: 0.15rem; }
-  .player-bar-section .bal-chip { font-size: 0.58rem; padding: 0.18rem 0.32rem; gap: 0.12rem; }
-  .player-bar-section .bal-chip .bal-lbl { font-size: 0.58rem; }
-  /* Level / Points / Coins are the player's primary readout — keep all three in
-     the header on mobile (the KPI dashboard strip was removed). */
+  .player-bar-section { gap: 0.35rem; padding-inline: 0.2rem; }
+  .player-bar-section .bal-chip { font-size: 0.72rem; padding: 0.28rem 0.48rem; gap: 0.15rem; }
+  .player-bar-section .bal-chip .bal-lbl { font-size: 0.72rem; }
   .auth-btn { font-size: 0.78rem !important; padding: 0.34rem 0.7rem !important; }
   .settings-btn { width: 2rem; height: 2rem; }
 }
@@ -692,8 +690,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
 /* Per-game cover image on a catalog card (replaces the emoji glyph). Fills the
    same square slot; tag / play / how-to chrome stay on top. Other cards keep the
    light-green glyph look — this only applies to cards with a `cover`. */
-.gc-thumb-cover { background: none; padding: 0; }
-.gc-thumb-cover .gc-cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gc-thumb-cover { padding: 0; overflow: hidden; }
+.gc-thumb-cover .gc-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 
 /* ---- global leaderboard (top players) ---- */
 .global-board { display: flex; flex-direction: column; gap: 0.4rem; }

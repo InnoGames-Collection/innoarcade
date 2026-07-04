@@ -40,12 +40,13 @@ Deno.serve(async (req: Request) => {
 
   let userPayload = null;
   if (user) {
-    const [profRes, entriesRes] = await Promise.all([
+    const [profRes, entriesRes, rpRes] = await Promise.all([
       admin.from('profiles').select('coins, xp, xp_lifetime, unlocks').eq('id', user.id).maybeSingle(),
       admin
         .from('tournament_entries')
         .select('tournament_id, fee_paid, prize_won, entered_at, attempts_purchased, attempts_used')
         .eq('user_id', user.id),
+      admin.from('season_rp_leaderboard').select('avg_rp').eq('user_id', user.id).maybeSingle(),
     ]);
     userPayload = {
       coins: Number(profRes.data?.coins ?? 0),
@@ -53,6 +54,7 @@ Deno.serve(async (req: Request) => {
       lifetime: Number(profRes.data?.xp_lifetime ?? 0),
       unlocks: Array.isArray(profRes.data?.unlocks) ? profRes.data.unlocks : [],
       entries: entriesRes.data ?? [],
+      rp: Number(rpRes.data?.avg_rp ?? 0),
     };
   }
 

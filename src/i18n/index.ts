@@ -220,7 +220,8 @@ const en = {
   'hub.lockLevel': 'Lv',
   'hub.unlock': 'Unlock',
   'hub.unlockReach': 'Reach Level',
-  'hub.unlockOrBuy': 'to play free, or unlock it now with coins.',
+  'hub.unlockOrBuy': 'to play for free, or unlock it now with earned coins.',
+  'hub.unlockNeedCoins': 'Earn coins by playing free games!',
   // Memory Match (ported)
   'mm.back': 'All games',
   'mm.title': 'Memory Match',
@@ -367,7 +368,7 @@ const en = {
   'hub.yourTickets': 'Your tickets', 'hub.enterDraw': 'Enter', 'hub.needPoints': 'Not enough XP',
   'hub.yourOdds': 'Your odds', 'hub.ticketCap': 'Ticket cap reached',
   'hub.won': 'won',
-  'hub.available': 'Available games', 'hub.coinsLabel': 'Coins',
+  'hub.available': 'Available games', 'hub.coinsLabel': 'Coins', 'hub.rpLabel': 'RP',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -590,7 +591,8 @@ const am: Dict = {
   'hub.lockLevel': 'ደረጃ',
   'hub.unlock': 'ክፈት',
   'hub.unlockReach': 'ደረጃ ይድረሱ',
-  'hub.unlockOrBuy': 'በነፃ ለመጫወት፣ ወይም አሁን በሳንቲም ይክፈቱት።',
+  'hub.unlockOrBuy': 'በነፃ ለመጫወት፣ ወይም አሁን ባገኙት ሳንቲም ይክፈቱት።',
+  'hub.unlockNeedCoins': 'ነፃ ጨዋታዎችን ተጫውተው ሳንቲም ያግኙ!',
   // Memory Match (ported)
   'mm.back': 'ሁሉም ጨዋታዎች',
   'mm.title': 'ማች ማስታወሻ',
@@ -737,7 +739,7 @@ const am: Dict = {
   'hub.yourTickets': 'የእርስዎ ቲኬቶች', 'hub.enterDraw': 'ይግቡ', 'hub.needPoints': 'በቂ XP የለም',
   'hub.yourOdds': 'የማሸነፍ እድል', 'hub.ticketCap': 'የቲኬት ገደብ ደርሷል',
   'hub.won': 'አሸንፏል',
-  'hub.available': 'ያሉ ጨዋታዎች', 'hub.coinsLabel': 'ሳንቲም',
+  'hub.available': 'ያሉ ጨዋታዎች', 'hub.coinsLabel': 'ሳንቲም', 'hub.rpLabel': 'RP',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };
