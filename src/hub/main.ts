@@ -16,7 +16,6 @@ import {
   type Tournament, type LeaderEntry,
 } from '../platform/tournaments';
 import { balanceSync, balance, onWalletChange } from '../platform/wallet';
-import { openTournamentEntry } from './tournamentEntry';
 import { activeDraws, myTickets, enterDraw, NotEnoughPointsError, hydrateTickets, loadDraws, myOdds } from '../platform/draws';
 import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, xpLifetime } from '../platform/currency';
 import { levelFor, economyNeedsAuth, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, type WinnerCadence } from '../platform/config';
@@ -171,14 +170,17 @@ function renderMyStats(): void {
 // Attach handlers to register buttons / play links inside a freshly-rendered root.
 function wireEntryCtas(): void {
   document.querySelectorAll<HTMLButtonElement>('[data-enter]').forEach((b) => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       const tour = activeTournaments().find((x) => x.id === b.dataset.enter);
       const game = tour ? tournamentGame(tour) : undefined;
-      if (tour && game) openTournamentEntry({ tour, game, onEntered: () => renderAll(), playHref: game.route });
+      if (!tour || !game) return;
+      try {
+        await enterTournament(tour.id);
+        renderAll();
+        if (game.route) window.location.assign(game.route);
+      } catch { /* session expiry etc. handled by signInGate */ }
     });
   });
-  // Free / already-entered play links also record an entry so they show on the
-  // dashboard (idempotent; navigation proceeds normally).
   document.querySelectorAll<HTMLAnchorElement>('[data-play]').forEach((a) => {
     a.addEventListener('click', () => { void enterTournament(a.dataset.play!).catch(() => {}); });
   });

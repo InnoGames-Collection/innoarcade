@@ -218,7 +218,7 @@ game.onGameOver = (score, durationMs) => {
 };
 
 async function onEnter(): Promise<void> {
-  promptTournamentEntry(GAME_ID, () => { void refreshTournamentPanel(); }, () => { void onPlayOrEnter(); });
+  await promptTournamentEntry(GAME_ID, () => { void refreshTournamentPanel(); }, () => { void onPlayOrEnter(); });
 }
 
 async function onPlayOrEnter(): Promise<void> {

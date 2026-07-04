@@ -20,9 +20,9 @@ import { userId } from './auth';
 import { config, economyNeedsAuth } from './config';
 import { SignInRequiredError } from './payments';
 
-// Per-cadence economy: entry fee + attempts banked per entry.
-const CADENCE_FEE: Record<TournamentCadence, number> = { daily: 1, weekly: 3, monthly: 5 };
-const CADENCE_ATTEMPTS: Record<TournamentCadence, number> = { daily: 5, weekly: 10, monthly: 15 };
+// Per-cadence economy: FREE entry, unlimited sessions of N attempts each.
+const CADENCE_FEE: Record<TournamentCadence, number> = { daily: 0, weekly: 0, monthly: 0 };
+const CADENCE_ATTEMPTS: Record<TournamentCadence, number> = { daily: 10, weekly: 10, monthly: 10 };
 const CADENCE_TITLE: Record<TournamentCadence, { en: string; am: string }> = {
   daily: { en: 'Daily Runner', am: 'ዕለታዊ ሩጫ' },
   weekly: { en: 'Weekly Cup', am: 'ሳምንታዊ ዋንጫ' },
@@ -128,7 +128,7 @@ function buildTournament(gameId: string, cadence: TournamentCadence, now = Date.
   const t: Tournament = {
     id: `${gameId}-${cadence}`, gameId,
     titleEn: title.en, titleAm: title.am,
-    type: 'paid', entryFeeCoins: CADENCE_FEE[cadence], prizeModel: 'pool',
+    type: 'free', entryFeeCoins: CADENCE_FEE[cadence], prizeModel: 'pool',
     sponsoredPrize: 0, prizeTiers: DEFAULT_TIERS, prizeCoins: 0,
     cadence, attempts: CADENCE_ATTEMPTS[cadence],
     startsAt, endsAt,
@@ -350,7 +350,7 @@ export function tournamentState(t: Tournament, now = Date.now()): TournamentStat
 }
 
 export function isPaid(t: Tournament): boolean {
-  return t.type === 'paid' && t.entryFeeCoins > 0;
+  return t.entryFeeCoins > 0;
 }
 
 // --- Entry / registration ---------------------------------------------------

@@ -287,7 +287,7 @@ function abortRound(): void {
 async function onPlayOrEnter(): Promise<void> {
   if (starting || phase === 'playing' || phase === 'paused') return;
   if (tournamentAttemptsLeft(GAME_ID) <= 0) {
-    promptTournamentEntry(GAME_ID, () => { void refreshTournamentPanel(); }, () => { void onPlayOrEnter(); });
+    await promptTournamentEntry(GAME_ID, () => { void refreshTournamentPanel(); }, () => { void onPlayOrEnter(); });
     return;
   }
   await beginRankedRound();

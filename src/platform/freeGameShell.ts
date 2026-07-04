@@ -44,8 +44,6 @@ export function renderRunRewardHtml(res: FinishResult): string {
   let html = '';
   if (res.award != null && res.award > 0) {
     html += `<span class="shell-rr-stat xp">+${res.award} ⭐ ${t('td.xpGained')}</span>`;
-  } else if (res.award === 0 && res.points != null) {
-    html += `<span class="shell-rr-note">${t('arc.xpDailyCap')}</span>`;
   }
   if (res.coinAward != null && res.coinAward > 0) {
     html += `<span class="shell-rr-stat coins">+${res.coinAward} 🪙</span>`;

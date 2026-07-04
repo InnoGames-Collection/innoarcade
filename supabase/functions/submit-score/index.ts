@@ -11,21 +11,10 @@
 // these checks pass. This is what makes a prize tournament defensible.
 //
 // Deploy:  supabase functions deploy submit-score
-// Runtime: Deno (Supabase Edge Functions). This is the anti-cheat boundary for prize tournaments.
-//
-// The frontend NEVER writes the scores table directly. It calls this function,
-// which (1) identifies the player from their JWT, (2) validates the score against
-// per-game bounds, (3) rate-limits submissions, and (4) keeps only the best.
-// Because it runs with the service role it can write past RLS — but only after
-// these checks pass. This is what makes a prize tournament defensible.
-//
-// Deploy:  supabase functions deploy submit-score
-// Runtime: Deno (Supabase Edge Functions). This is the anti-cheat boundary for prize tournaments.
+// Runtime: Deno (Supabase Edge Functions).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Per-game sane ceilings — a score above this is rejected as impossible. Tune as
-// the games' real maxima become known; keys are catalog game ids.
 const MAX_SCORE: Record<string, number> = {
   'orbit-blast': 100_000,
   'temple-dash': 1_000_000,
@@ -34,11 +23,8 @@ const MAX_SCORE: Record<string, number> = {
   _default: 2_000_000,
 };
 
-// Per-game scoring config for the uniform matrix (target-based normalization).
-//   par       = a "great round" raw score → 100 RP when raw ≥ par (via rp_for baseline)
-//   timeWeight/parTime = speed bonus for time-relevant games (others: no time)
-//   difficulty = tier multiplier (default 1)
-// Tunable; the server is the single source of truth.
+// Per-game scoring config.
+//   par = a "great round" raw score used for XP/coin normalization
 interface ScoreCfg { par: number; timeWeight?: number; parTime?: number; difficulty?: number }
 const GAME_SCORING: Record<string, ScoreCfg> = {
   'orbit-blast': { par: 3000 }, 'merge-2048': { par: 5000 }, 'temple-dash': { par: 1500 },
@@ -55,19 +41,24 @@ const GAME_SCORING: Record<string, ScoreCfg> = {
   'sequence': { par: 8, timeWeight: 0.4, parTime: 90000 },
   _default: { par: 100 },
 };
-// XP difficulty multiplier per game (doc §3.1: Easy 1.0 / Medium 1.5 / Hard 2.0).
-// Drives normal-game XP = 10 × difficulty. Default 1.0 (Easy/casual).
+// XP difficulty multiplier per game.
 const XP_DIFFICULTY: Record<string, number> = {
-  // Hard — skill/brain games
   'sudoku': 2, 'crosssum': 2, 'logic': 2, 'target24': 2, 'sequence': 2,
   'merge-2048': 2, 'orbit-blast': 2, 'ethiopian-quiz': 2,
-  // Medium — reflex/word games
   'temple-dash': 1.5, 'brick-blitz': 1.5,
   'sky-hopper': 1.5, 'fruit-slice': 1.5, 'spell': 1.5, 'vocab': 1.5, 'rhyme': 1.5,
   'candy-crunch': 1.5, 'bubble-pop': 1.5, 'memory-match': 1.5,
-  // Easy/chance — everything else defaults to 1.0
 };
-const MIN_SECONDS_BETWEEN = 3; // basic flood protection per (user, tournament)
+
+// XP from score: xp = max(1, floor(score / par × XP_BASE × difficulty))
+// No session cap — every completed round earns XP proportional to performance.
+const XP_BASE = 10;
+
+// Coins from score: coins = min(5, max(1, floor(score / par)))
+// Every completed round earns coins too — no session cap.
+const COIN_CAP_PER_ROUND = 5;
+
+const MIN_SECONDS_BETWEEN = 3;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -82,7 +73,6 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// --- anti-cheat round-token helpers (mirror start-round signing) ---
 function b64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -95,8 +85,6 @@ async function hmac(payload: string, secret: string): Promise<string> {
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
   return b64url(new Uint8Array(mac));
 }
-// Verify a round token is well-signed, fresh, bound to this (user, game), and
-// not already used — then burn it (single-use). Returns false on any failure.
 async function verifyAndBurnToken(admin, token: string, uid: string, gid: string, secret: string): Promise<boolean> {
   if (!token || !token.includes('.')) return false;
   const [payload, sig] = token.split('.');
@@ -107,7 +95,18 @@ async function verifyAndBurnToken(admin, token: string, uid: string, gid: string
   if (typeof p.iat !== 'number' || Date.now() - p.iat > 15 * 60 * 1000) return false;
   if (!p.jti) return false;
   const { error } = await admin.from('used_nonces').insert({ jti: p.jti, user_id: uid });
-  return !error; // unique-violation (replay) → error → reject
+  return !error;
+}
+
+function computeXp(score: number, gameId: string): number {
+  const cfg = GAME_SCORING[gameId] ?? GAME_SCORING._default;
+  const difficulty = XP_DIFFICULTY[gameId] ?? 1;
+  return Math.max(1, Math.floor((score / cfg.par) * XP_BASE * difficulty));
+}
+
+function computeCoinAward(score: number, gameId: string): number {
+  const par = (GAME_SCORING[gameId] ?? GAME_SCORING._default).par;
+  return Math.min(COIN_CAP_PER_ROUND, Math.max(1, Math.floor(score / par)));
 }
 
 Deno.serve(async (req: Request) => {
@@ -118,7 +117,6 @@ Deno.serve(async (req: Request) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const authHeader = req.headers.get('Authorization') ?? '';
 
-  // Identify the caller from their JWT (anon client scoped to their token).
   const userClient = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -133,70 +131,49 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'bad json' }, 400);
   }
   const token = String(body.token ?? '');
-  // Accept either the new {gameId} contract or the legacy {tournamentId}. Strip
-  // the cadence suffix (bare or dated, e.g. -monthly, -daily-2026-06-27) to recover the game id.
   const gameId = String(body.gameId ?? String(body.tournamentId ?? '').replace(/-(daily|weekly|monthly)(-[0-9-]+)?$/, ''));
   const score = Number(body.score);
-  // New clients send {win}; older deployed clients sent {points>0 on a win}.
-  // Accept either so a function deploy can't strand the live frontend at 0 pts.
   const win = body.win !== undefined ? Boolean(body.win) : Number((body as { points?: number }).points ?? 0) > 0;
-  // Whether this round should count on a leaderboard. Free games pass false →
-  // points only, no leaderboard row. Defaults to true for the legacy contract.
   const wantsLeaderboard = body.leaderboard ?? (body.tournamentId != null);
 
-  // --- validation ---
   if (!gameId || !Number.isFinite(score) || !Number.isInteger(score) || score < 0) {
     return json({ error: 'invalid score' }, 400);
   }
   const ceiling = MAX_SCORE[gameId] ?? MAX_SCORE._default;
   if (score > ceiling) return json({ error: 'score out of range' }, 422);
 
-  // Service-role client for the privileged read/write.
   const admin = createClient(url, serviceKey);
 
-  // XP earning — doc §3.1: a NORMAL (free) game session earns a flat
-  // 10 XP × difficulty, capped at 3 rewarded sessions/day/game (unlimited play,
-  // just no XP past the cap). TOURNAMENT play earns NO XP — it earns Score→Rank
-  // (doc §1/§2). The client never proposes an amount.
-  const XP_BASE = 10;
-  const difficulty = XP_DIFFICULTY[gameId] ?? 1;
-  let points = 0;   // spendable XP balance (response key kept as `points` for back-compat)
-  let lifetime = 0; // lifetime XP -> level
-  // Apply a delta (>0) then read the authoritative balances for the response.
+  let points = 0;
+  let lifetime = 0;
   const applyXpAndRead = async (delta: number): Promise<void> => {
     try {
       if (delta > 0) await admin.rpc('apply_xp', { p_user: user.id, p_delta: delta });
       const { data: prof } = await admin.from('profiles').select('xp, xp_lifetime').eq('id', user.id).maybeSingle();
       points = Number(prof?.xp ?? 0);
       lifetime = Number(prof?.xp_lifetime ?? 0);
-    } catch { /* best-effort; never blocks the response */ }
+    } catch { /* best-effort */ }
   };
 
-  // Free games: XP + coins-from-score (capped), no leaderboard, no token required.
+  // ------------------------------------------------------------------
+  // FREE GAMES: XP + coins from score (no cap), no leaderboard
+  // ------------------------------------------------------------------
   if (!wantsLeaderboard) {
-    let award = 0;
-    let coinAward = 0;
-    try {
-      const { data: rewardable } = await admin.rpc('claim_xp_session', { p_user: user.id, p_game: gameId, p_cap: 3 });
-      if (rewardable) {
-        award = Math.round(XP_BASE * difficulty);
-        // Coins from score: floor(raw / par), clamped [1,5] per rewarded session.
-        const par = (GAME_SCORING[gameId] ?? GAME_SCORING._default).par;
-        coinAward = Math.min(5, Math.max(1, Math.floor(score / par)));
-      }
-    } catch { /* if the cap check fails, default to no award */ }
+    const award = computeXp(score, gameId);
+    const coinAward = computeCoinAward(score, gameId);
     await applyXpAndRead(award);
-    // Credit earned coins (server wallet is authoritative).
+
     let coins = 0;
     if (coinAward > 0) {
       try {
         await admin.rpc('apply_coins', { p_user: user.id, p_delta: coinAward, p_reason: 'score_reward', p_ref: gameId });
-      } catch { coinAward = 0; }
+      } catch { /* best-effort */ }
     }
     try {
       const { data: prof } = await admin.from('profiles').select('coins').eq('id', user.id).maybeSingle();
       coins = Number(prof?.coins ?? 0);
     } catch { /* best-effort */ }
+
     let best = 0;
     let isRecord = false;
     try {
@@ -210,41 +187,42 @@ Deno.serve(async (req: Request) => {
     return json({ points, lifetime, xp: points, award, coinAward, coins, best, isRecord });
   }
 
-  // --- anti-cheat: leaderboard scores require a valid single-use round token ---
-  // Enforced only when ROUND_SIGNING_SECRET is set; the token ties the score to a
-  // round that actually started on the server and blocks replays. Checked BEFORE
-  // any points are credited.
+  // ------------------------------------------------------------------
+  // TOURNAMENT: leaderboard scores require a valid round token
+  // ------------------------------------------------------------------
   const signingSecret = Deno.env.get('ROUND_SIGNING_SECRET');
   if (signingSecret) {
     const ok = await verifyAndBurnToken(admin, token, user.id, gameId, signingSecret);
     if (!ok) return json({ error: 'invalid round token' }, 403);
   }
 
-  // Resolve the game's single LIVE tournament window server-side (no client-built
-  // id). If none is live, treat this as a practice run: award capped XP, unranked.
   const { data: tid } = await admin.rpc('active_game_tournament', { p_game: gameId });
   const tournamentId = String(tid ?? '');
   if (!tournamentId) {
-    let award = 0;
-    try {
-      const { data: rewardable } = await admin.rpc('claim_xp_session', { p_user: user.id, p_game: gameId, p_cap: 3 });
-      if (rewardable) award = Math.round(XP_BASE * difficulty);
-    } catch { /* default no award */ }
+    // No live tournament — treat as practice, still earn XP + coins
+    const award = computeXp(score, gameId);
+    const coinAward = computeCoinAward(score, gameId);
     await applyXpAndRead(award);
+    let coins = 0;
+    if (coinAward > 0) {
+      try { await admin.rpc('apply_coins', { p_user: user.id, p_delta: coinAward, p_reason: 'score_reward', p_ref: gameId }); } catch {}
+    }
+    try {
+      const { data: prof } = await admin.from('profiles').select('coins').eq('id', user.id).maybeSingle();
+      coins = Number(prof?.coins ?? 0);
+    } catch {}
     let best = 0;
     let isRecord = false;
     try {
-      const { data: row } = await admin.rpc('upsert_free_game_best', {
-        p_user: user.id, p_game: gameId, p_score: score,
-      });
+      const { data: row } = await admin.rpc('upsert_free_game_best', { p_user: user.id, p_game: gameId, p_score: score });
       const r = Array.isArray(row) ? row[0] : row;
       best = Number(r?.best ?? score);
       isRecord = Boolean(r?.is_record);
-    } catch { /* best-effort */ }
-    return json({ points, lifetime, xp: points, award, best, isRecord, ranked: false, attemptsLeft: 0 });
+    } catch {}
+    return json({ points, lifetime, xp: points, award, coinAward, coins, best, isRecord, ranked: false, attemptsLeft: 0 });
   }
 
-  // Tournament gate: window must be live; attempt was consumed at start-round.
+  // Tournament gate: window must be live.
   let attemptsLeft = 0;
   const { data: tour } = await admin
     .from('tournaments')
@@ -256,13 +234,11 @@ Deno.serve(async (req: Request) => {
       (now >= new Date(tour.starts_at).getTime() && now < new Date(tour.ends_at).getTime()
         && tour.state !== 'ended' && tour.state !== 'settled' && tour.state !== 'settling');
     if (!live) return json({ error: 'tournament not live' }, 409);
-    if (tour.type === 'paid') {
-      const { data: entry } = await admin
-        .from('tournament_entries').select('attempts_purchased, attempts_used')
-        .eq('user_id', user.id).eq('tournament_id', tournamentId).maybeSingle();
-      if (!entry) return json({ error: 'not entered' }, 402);
-      const purchased = Number(entry.attempts_purchased), used = Number(entry.attempts_used);
-      attemptsLeft = Math.max(0, purchased - used);
+    const { data: entry } = await admin
+      .from('tournament_entries').select('attempts_purchased, attempts_used')
+      .eq('user_id', user.id).eq('tournament_id', tournamentId).maybeSingle();
+    if (entry) {
+      attemptsLeft = Math.max(0, Number(entry.attempts_purchased) - Number(entry.attempts_used));
     }
   }
 
@@ -273,7 +249,6 @@ Deno.serve(async (req: Request) => {
     .eq('tournament_id', tournamentId)
     .maybeSingle();
 
-  // Rate limit.
   if (existing?.updated_at) {
     const since = (Date.now() - new Date(existing.updated_at).getTime()) / 1000;
     if (since < MIN_SECONDS_BETWEEN) return json({ error: 'too fast' }, 429);
@@ -283,7 +258,7 @@ Deno.serve(async (req: Request) => {
   const isRecord = score > prevBest;
   const best = Math.max(prevBest, score);
 
-  // Normalize raw → RP (doc §4.2); refresh p95 baseline then rank by best RP.
+  // RP is purely score-based — independent of coins, XP, or attempts.
   await admin.rpc('refresh_game_stats');
   const { data: rpVal } = await admin.rpc('rp_for', { p_game: gameId, p_raw: best });
   const { error: upErr } = await admin.from('scores').upsert({
@@ -296,11 +271,19 @@ Deno.serve(async (req: Request) => {
   });
   if (upErr) return json({ error: 'write failed' }, 500);
 
-  // Tournament play earns NO XP (doc §1/§2: it earns Score→Rank, not XP). Just
-  // read the current balances for the response.
-  await applyXpAndRead(0);
+  // Tournament rounds also earn XP + coins from score (same formula as free).
+  const award = computeXp(score, gameId);
+  const coinAward = computeCoinAward(score, gameId);
+  await applyXpAndRead(award);
+  let coins = 0;
+  if (coinAward > 0) {
+    try { await admin.rpc('apply_coins', { p_user: user.id, p_delta: coinAward, p_reason: 'score_reward', p_ref: gameId }); } catch {}
+  }
+  try {
+    const { data: prof } = await admin.from('profiles').select('coins').eq('id', user.id).maybeSingle();
+    coins = Number(prof?.coins ?? 0);
+  } catch {}
 
-  // Compute the player's rank and the field size from the ranked view.
   const { data: board } = await admin
     .from('leaderboard')
     .select('user_id, rank')
@@ -308,5 +291,5 @@ Deno.serve(async (req: Request) => {
   const total = board?.length ?? 1;
   const rank = board?.find((r: { user_id: string; rank: number }) => r.user_id === user.id)?.rank ?? total;
 
-  return json({ best, isRecord, rank, total, points, lifetime, xp: points, attemptsLeft, ranked: true, award: 0 });
+  return json({ best, isRecord, rank, total, points, lifetime, xp: points, attemptsLeft, ranked: true, award, coinAward, coins });
 });

@@ -52,7 +52,7 @@ export function tournamentBoardHtml(rows: LeaderEntry[], standing?: LeaderEntry 
 export function renderShellMenuTournamentHtml(
   gameTitle: string,
   gameIcon: string,
-  walletCoins: number,
+  _walletCoins: number,
   serverBest: number,
   attemptsLeft: number,
   board: LeaderEntry[],
@@ -69,7 +69,6 @@ export function renderShellMenuTournamentHtml(
   return `
     <div class="gt-head">
       <span class="gt-title">${gameIcon} ${escHtml(gameTitle)}</span>
-      <span class="gt-coins">${walletCoins.toLocaleString()} 🪙</span>
     </div>
     ${cadenceRow}
     ${bestRow}

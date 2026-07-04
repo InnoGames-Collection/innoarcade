@@ -1,8 +1,7 @@
-// Shared tournament flow for in-game shells — one path for all tournament games
-// (coin modal entry, start-round, submit-score). Matches Memory Match model.
+// Shared tournament flow for in-game shells — auto-entry (free), start-round,
+// submit-score. No coin gate — attempts replenish automatically.
 
 import { getLang, t } from '../i18n';
-import { openTournamentEntryForGame } from '../hub/tournamentEntry';
 import { promptIfSessionExpired } from './sessionAuth';
 import { type GameHost, type FinishResult } from './gameHost';
 import {
@@ -12,7 +11,9 @@ import { balance } from './wallet';
 import { leaderboardRemote, playerStandingRemote } from './backend';
 import { isConfigured } from './supabase';
 import { currentUser } from './auth';
-import { loadTournaments, loadMyEntries, myEntry, getTournamentForGame } from './tournaments';
+import {
+  loadTournaments, loadMyEntries, myEntry, getTournamentForGame, enterTournament,
+} from './tournaments';
 import { getGame } from './catalog';
 
 export function tournamentAttemptsLeft(gameId: string): number {
@@ -65,12 +66,19 @@ export async function refreshTournamentMenuPanel(
   return { serverBest, attemptsLeft };
 }
 
-export function promptTournamentEntry(
+/** Auto-enter the tournament (FREE) to replenish attempts, then play. */
+export async function promptTournamentEntry(
   gameId: string,
   onRefresh: () => void,
   onPlay: () => void,
-): void {
-  openTournamentEntryForGame(gameId, { onEntered: onRefresh, onPlay });
+): Promise<void> {
+  try {
+    await enterTournament(gameId);
+    onRefresh();
+    onPlay();
+  } catch {
+    onRefresh();
+  }
 }
 
 export function applyTournamentPlayLabels(
@@ -143,11 +151,20 @@ export async function submitTournamentRound(
   }
   const best = res.best ?? 0;
   ui.onBest(best, res.isRecord ?? false);
-  ui.rewardEl.innerHTML = `<span class="${prefix}-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
+
+  let rewardHtml = `<span class="${prefix}-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
     <span class="${prefix}-stat"><b>${t('td.best')}</b> ${best.toLocaleString()}</span>`;
   if (typeof res.attemptsLeft === 'number') {
-    ui.rewardEl.innerHTML += `<span class="${prefix}-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
+    rewardHtml += `<span class="${prefix}-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;
   }
+  if (res.award != null && res.award > 0) {
+    rewardHtml += `<span class="${prefix}-stat xp">+${res.award} ⭐</span>`;
+  }
+  if (res.coinAward != null && res.coinAward > 0) {
+    rewardHtml += `<span class="${prefix}-stat coins">+${res.coinAward} 🪙</span>`;
+  }
+  ui.rewardEl.innerHTML = rewardHtml;
+
   const tour = getTournamentForGame(gameId);
   if (tour) {
     const [board, standing] = await Promise.all([
