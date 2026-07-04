@@ -99,7 +99,7 @@ function tourLbRow(r: LeaderEntry): string {
   const rp = r.rp ?? r.score;
   return `
     <div class="lb-row${r.rank <= 3 ? ' top' : ''}${r.isPlayer ? ' me' : ''}">
-      <span class="lb-rank">${medal[r.rank - 1] ?? '#' + r.rank}</span>
+      <span class="lb-rank">${medal[r.rank - 1] ?? r.rank}</span>
       <span class="lb-name">${escapeHtml(r.isPlayer ? t('td.you') : r.name)}</span>
       <span class="lb-score">${rp} RP</span>
     </div>`;

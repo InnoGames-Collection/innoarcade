@@ -276,8 +276,10 @@ function shell(inner: string): HTMLElement {
   const m = document.createElement('div');
   m.className = 'acct-modal';
   m.innerHTML = `
-    <div class="acct-brand"><span class="acct-brand-icon">🎮</span><span>GoPlay</span></div>
-    <button class="acct-back" aria-label="${t('back')}">✕</button>
+    <div class="acct-topbar">
+      <img class="acct-logo" src="/brand/ethio-e.png" alt="Ethio Telecom" />
+      <button class="acct-back" aria-label="${t('back')}">✕</button>
+    </div>
     <div class="acct-stack">${inner}</div>`;
   document.body.appendChild(m);
   m.querySelector('.acct-back')!.addEventListener('click', () => m.remove());
@@ -290,18 +292,17 @@ export async function openAccount(): Promise<void> {
   await loadSubscription();
   const sub = currentSub();
   const ref = user ? await fetchReferral() : null;
-  void sub; // subscription card intentionally not shown
+  void sub;
   shell(`
-    <h2 class="acct-title">${t('account')}</h2>
     ${accountCardHtml(user)}
     ${referralHtml(ref)}
     ${entriesHtml()}
-    <div class="acct-sec">${t('general')}</div>
-    <div class="acct-tiles">
-      <button class="acct-tile" id="aTerms">📄 ${t('terms')}</button>
-      <button class="acct-tile" id="aFaq">❓ ${t('faq')}</button>
-    </div>
-    <button class="acct-card acct-feedback" id="aFeedback">💬 ${t('feedback')}</button>`);
+    <nav class="acct-nav">
+      <div class="acct-nav-sec">SUPPORT &amp; LEGAL</div>
+      <button class="acct-nav-row" id="aTerms"><span class="acct-nav-ico">📋</span><span class="acct-nav-label">${t('terms')}</span></button>
+      <button class="acct-nav-row" id="aFaq"><span class="acct-nav-ico">❓</span><span class="acct-nav-label">FAQ</span></button>
+      <button class="acct-nav-row" id="aFeedback"><span class="acct-nav-ico">💬</span><span class="acct-nav-label">${t('feedback')}</span></button>
+    </nav>`);
   wireAccount(user);
 }
 
@@ -507,30 +508,41 @@ function injectStyles(): void {
   s.id = 'acct-styles';
   s.textContent = `
     .acct-modal { position: fixed; inset: 0; z-index: 9992; display: flex; flex-direction: column; align-items: center;
-      justify-content: flex-start; padding: 4rem 1.2rem 2rem; overflow-y: auto;
-      background: var(--grad-hero, linear-gradient(160deg,#3f9112,#2a6e0a)); }
-    .acct-brand { position: absolute; top: 1.25rem; left: 1.4rem; display: flex; align-items: center; gap: .5rem; color: #fff; font-weight: 800; }
-    .acct-brand-icon { width: 1.9rem; height: 1.9rem; display: grid; place-items: center; background: var(--accent); border-radius: 9px; }
-    .acct-back { position: absolute; top: 1.1rem; right: 1.3rem; width: 2.3rem; height: 2.3rem; border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.14); color: #fff; font-size: 1rem; cursor: pointer; }
-    .acct-stack { width: min(440px, 96vw); display: flex; flex-direction: column; gap: 14px; }
-    .acct-title { color: #fff; font-size: 1.4rem; }
-    .acct-card { background: #fff; color: var(--text); border-radius: 16px; padding: 1rem 1.1rem; box-shadow: 0 14px 36px rgba(8,12,34,.3);
-      border: none; font: inherit; text-align: left; width: 100%; }
+      justify-content: flex-start; overflow-y: auto; background: #f5f6f8; }
+    .acct-topbar { width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 0.8rem 1rem; background: #fff; border-bottom: 1px solid #e8eaed; flex-shrink: 0; }
+    .acct-logo { height: 1.6rem; object-fit: contain; }
+    .acct-back { width: 2.2rem; height: 2.2rem; border-radius: 999px;
+      border: 1px solid #e8eaed; background: #fff; color: #5f6368; font-size: 1rem; cursor: pointer;
+      display: grid; place-items: center; }
+    .acct-back:hover { background: #f0f0f0; }
+    .acct-stack { width: min(440px, 100%); display: flex; flex-direction: column; gap: 0; padding: 0.8rem 1rem 2rem; }
+    .acct-title { color: var(--text, #14271a); font-size: 1.3rem; margin: 0 0 0.6rem; }
+    .acct-card { background: #fff; color: var(--text, #14271a); border-radius: 16px; padding: 1rem 1.1rem; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      border: 1px solid #e8eaed; font: inherit; text-align: left; width: 100%; margin-bottom: 0.6rem; }
     .acct-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .acct-muted { color: var(--muted); font-size: .88rem; }
+    .acct-muted { color: #5f6368; font-size: .88rem; }
     .acct-user { font-weight: 800; }
-    .acct-btn { border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 999px; padding: .42rem 1rem; font: inherit; font-weight: 800; cursor: pointer; }
-    .acct-btn.ghost { background: #fff; color: var(--muted); border-color: var(--line); }
+    .acct-btn { border: 1px solid var(--accent, #4f9e16); background: var(--accent, #4f9e16); color: #fff; border-radius: 999px; padding: .42rem 1rem; font: inherit; font-weight: 800; cursor: pointer; }
+    .acct-btn.ghost { background: #fff; color: #5f6368; border-color: #e8eaed; }
     .sub-off { display: flex; align-items: center; gap: 12px; cursor: pointer; }
     .sub-cart { width: 2.4rem; height: 2.4rem; display: grid; place-items: center; background: var(--accent); color: #fff; border-radius: 50%; font-size: 1.1rem; }
     .sub-cta { display: block; font-size: 1.05rem; color: var(--accent); }
     .sub-on .sub-badge { display: inline-block; background: var(--gold); color: #5a3d00; font-weight: 900; font-size: .8rem; padding: .12rem .6rem; border-radius: 999px; margin-bottom: 4px; }
     .acct-sec { color: rgba(255,255,255,.92); font-weight: 800; font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }
-    .acct-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .acct-tile { background: #fff; border: none; border-radius: 16px; padding: 1.1rem; font: inherit; font-weight: 700; color: var(--text); cursor: pointer; box-shadow: 0 14px 36px rgba(8,12,34,.3); }
-    .acct-feedback { cursor: pointer; font-weight: 700; }
-    .acct-primary { background: var(--cta, #1f74e0); color: #fff; border: none; border-radius: 12px; padding: .85rem; font: inherit; font-weight: 800; cursor: pointer; }
+    .acct-nav { background: #fff; border-radius: 16px; border: 1px solid #e8eaed; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      overflow: hidden; margin-top: 0.6rem; }
+    .acct-nav-sec { padding: 0.7rem 1rem 0.35rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #5f6368; }
+    .acct-nav-row { display: flex; align-items: center; gap: 0.7rem; width: 100%; padding: 0.75rem 1rem;
+      border: none; background: none; font: inherit; font-size: 0.95rem; color: var(--text, #14271a);
+      cursor: pointer; text-align: left; border-top: 1px solid #f0f1f3; }
+    .acct-nav-row:first-of-type { border-top: none; }
+    .acct-nav-row:hover { background: #f8f9fa; }
+    .acct-nav-row:active { background: #f0f1f3; }
+    .acct-nav-ico { font-size: 1.1rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
+    .acct-nav-label { font-weight: 600; }
+    .acct-primary { background: var(--accent, #4f9e16); color: #fff; border: none; border-radius: 12px; padding: .85rem; font: inherit; font-weight: 800; cursor: pointer; width: 100%; margin-top: 0.5rem; }
     .plan-list { display: flex; flex-direction: column; gap: 10px; }
     .plan { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; background: #fff; border: 2px solid var(--line);
       border-radius: 14px; padding: .9rem 2.4rem .9rem 1rem; font: inherit; text-align: left; cursor: pointer; }

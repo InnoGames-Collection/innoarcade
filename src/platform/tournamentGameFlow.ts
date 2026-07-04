@@ -152,7 +152,7 @@ export async function submitTournamentRound(
   const best = res.best ?? 0;
   ui.onBest(best, res.isRecord ?? false);
 
-  let rewardHtml = `<span class="${prefix}-stat"><b>${t('td.rank')}</b> #${res.rank ?? '—'}/${res.total ?? '—'}</span>
+  let rewardHtml = `<span class="${prefix}-stat"><b>${t('td.rank')}</b> ${res.rank ?? '—'}/${res.total ?? '—'}</span>
     <span class="${prefix}-stat"><b>${t('td.best')}</b> ${best.toLocaleString()}</span>`;
   if (typeof res.attemptsLeft === 'number') {
     rewardHtml += `<span class="${prefix}-stat">🎟️ ${t('td.attemptsLeft')}: <strong>${res.attemptsLeft}</strong></span>`;

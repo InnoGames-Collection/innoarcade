@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
         const live = tour.state === 'live' ||
           (now >= new Date(tour.starts_at).getTime() && now < new Date(tour.ends_at).getTime()
             && tour.state !== 'ended' && tour.state !== 'settled' && tour.state !== 'settling');
-        if (live && tour.type === 'paid') {
+        if (live) {
           const res = await consumeAttempt(admin, user.id, tournamentId);
           if (!res.ok) return json({ error: res.error, attemptsLeft: res.attemptsLeft }, res.status);
           attemptsLeft = res.attemptsLeft;

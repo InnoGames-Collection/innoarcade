@@ -190,8 +190,8 @@ export class GameHost {
       if (typeof res.coins === 'number') setBalanceFromServer(res.coins);
       if (ranked && typeof res.rp === 'number' && this.tournament) {
         const tid = this.tournament.id;
-        if (tid.includes('-weekly-')) setRpWeekly(res.rp);
-        else if (tid.includes('-monthly-')) setRpMonthly(res.rp);
+        if (/-weekly(-|$)/.test(tid)) setRpWeekly(res.rp);
+        else if (/-monthly(-|$)/.test(tid)) setRpMonthly(res.rp);
       }
       return {
         best: res.best ?? 0, isRecord: res.isRecord ?? false, rank: res.rank, total: res.total,

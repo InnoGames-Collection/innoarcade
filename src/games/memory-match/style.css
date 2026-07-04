@@ -83,11 +83,12 @@ body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)
 
 .mm-over-panel {
   align-items: stretch;
-  gap: 11px;
+  gap: 8px;
   width: min(360px, 94vw);
-  max-height: min(86dvh, 680px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  max-height: none;
+  overflow: visible;
+  padding: 20px 22px;
+  padding-top: 32px;
 }
 
 .mm-over-panel .btn.primary {
@@ -183,7 +184,7 @@ body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)
   color: #fff;
 }
 .mm-card.flipped, .mm-card.matched {
-  background: #fff;
+  background: transparent;
   color: #14271a;
   border-color: var(--mm-green);
   padding: 5px;
@@ -194,12 +195,13 @@ body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)
   50% { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
-.mm-card:hover:not(.matched) {
+.mm-card:hover:not(.matched):not(.flipped) {
   transform: translateY(-2px);
   background: var(--mm-green-dark);
   border-color: var(--mm-green-dark);
   color: #fff;
 }
+.mm-card.flipped:hover { transform: translateY(-2px); }
 .mm-grid.mm-paused { opacity: 0.45; pointer-events: none; filter: saturate(0.7); }
 .mm-actions {
   display: flex;
@@ -241,20 +243,20 @@ body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)
 
 .mm-over-final {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   justify-content: center;
 }
 
 .mm-over-stat {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.82rem;
+  gap: 2px;
+  font-size: 0.78rem;
   color: var(--shell-muted, #5f7262);
 }
 
 .mm-over-stat strong {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   color: var(--shell-text, #14271a);
   font-variant-numeric: tabular-nums;
 }
@@ -262,12 +264,12 @@ body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)
 .mm-run-reward {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  gap: 4px 10px;
   justify-content: center;
   align-items: center;
-  margin: 4px 0;
-  font-size: 0.86rem;
-  min-height: 1.2em;
+  margin: 2px 0;
+  font-size: 0.82rem;
+  min-height: 1em;
 }
 
 .mm-rr-stat b { color: var(--shell-muted, #5f7262); font-weight: 600; margin-right: 3px; }
