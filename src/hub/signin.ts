@@ -96,6 +96,10 @@ export function openCodeScreen(phoneNumber: string): void {
   openCode();
 }
 
+export function notifySignIn(): void {
+  void currentUser().then((u) => { user = u; render(); });
+}
+
 function openModal(): void {
   const m = shell(`
     <h3>${t('title')}</h3>
