@@ -74,6 +74,7 @@ body {
   box-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 6px 20px rgba(31, 41, 80, 0.05);
 }
 .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 1.18rem; letter-spacing: -0.01em; }
+.brand-logo { height: 2.35rem; width: auto; object-fit: contain; flex-shrink: 0; }
 .brand-logo-et { height: 1.8rem; width: auto; object-fit: contain; flex-shrink: 0; }
 .brand-name { background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .topnav { display: flex; gap: 0.3rem; margin-inline: auto; }
@@ -320,11 +321,11 @@ body {
 .coming-soon { color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 1.4rem 1rem; text-align: center; font-size: 0.92rem; }
 
 /* promo banner carousel (top of the portal) */
-.promo-section { margin-bottom: -1.8rem; }
-.player-bar-section { margin-top: -0.5rem; }
+.promo-section { margin-bottom: 0.75rem; }
+.player-bar-section { margin-top: 0.35rem; }
 .promo-slide { color: #fff; font-weight: 800; text-align: center; padding: 1.05rem 1.2rem; border-radius: 18px; font-size: 1.04rem; box-shadow: var(--shadow-md); }
-.promo-slide-img { padding: 0; overflow: hidden; }
-.promo-slide-img .promo-banner-img { width: 100%; display: block; border-radius: 18px; object-fit: cover; max-height: 180px; }
+.promo-slide-img { padding: 0; overflow: hidden; background: transparent; box-shadow: none; }
+.promo-slide-img .promo-banner-img { width: 100%; display: block; border-radius: 18px; object-fit: cover; aspect-ratio: 16 / 6; max-height: min(42vw, 220px); box-shadow: var(--shadow-md); }
 .promo-dots { display: flex; justify-content: center; gap: 6px; margin-top: 9px; }
 .promo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: width 0.2s, background 0.2s; cursor: pointer; }
 .promo-track { cursor: grab; touch-action: pan-y; user-select: none; }
@@ -481,9 +482,23 @@ body {
 /* compact balance chips in topbar */
 .top-balances { display: flex; align-items: center; gap: 0.25rem; margin-inline: auto; }
 /* player balance bar (Level / XP / RP) — sits under the promo banner */
-.player-bar-section { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; justify-items: stretch; }
+.player-bar-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.55rem; justify-items: stretch; }
 .player-bar-section:empty { display: none; }
-.player-bar-section .bal-chip { font-size: 0.92rem; padding: 0.42rem 0.8rem; justify-content: center; }
+.stat-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 0.65rem 0.75rem;
+  box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.stat-card-head { display: flex; align-items: center; gap: 0.35rem; }
+.stat-ico { font-size: 1rem; line-height: 1; flex-shrink: 0; }
+.stat-lbl { font-size: 0.72rem; font-weight: 700; color: var(--muted); flex: 1; min-width: 0; }
+.stat-val { font-size: 1.05rem; font-weight: 900; line-height: 1; }
+.stat-level .stat-val { color: #3f8f12; }
+.stat-progress .stat-val { color: #c98a00; }
+.stat-rp-weekly .stat-val { color: #1a5fa8; }
+.stat-rp-monthly .stat-val { color: #6b3fa0; }
+.stat-bar { height: 5px; border-radius: 999px; background: #edf2e8; overflow: hidden; }
+.stat-bar-fill { height: 100%; border-radius: inherit; transition: width 0.25s ease; }
+.stat-bar-fill--green { background: linear-gradient(90deg, #6cc52f, #4f9e16); }
+.stat-bar-fill--gold { background: linear-gradient(90deg, #f2c94c, #e0a800); }
+.stat-sub { font-size: 0.68rem; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bal-chip { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; font-weight: 600;
   padding: 0.22rem 0.55rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,0.85); white-space: nowrap; }
 .bal-chip .bal-lbl { font-weight: 600; opacity: 0.88; margin-right: 0.15rem; }
@@ -529,11 +544,14 @@ body {
   .topbar { gap: 0.4rem; padding-inline: 0.7rem; flex-wrap: nowrap; }
   .topnav { display: none; }
   .brand { font-size: 1rem; }
+  .brand-logo { height: 2rem; }
   .brand-logo-et { height: 1.5rem; }
   .top-balances { margin-inline: auto 0; gap: 0.25rem; min-width: 0; }
-  .player-bar-section { gap: 0.3rem; padding-inline: 0.2rem; grid-template-columns: 1fr 1fr; }
-  .player-bar-section .bal-chip { font-size: 0.78rem; padding: 0.32rem 0.5rem; gap: 0.15rem; }
-  .player-bar-section .bal-chip .bal-lbl { font-size: 0.78rem; }
+  .player-bar-section { gap: 0.35rem; padding-inline: 0.2rem; grid-template-columns: 1fr 1fr; }
+  .stat-card { padding: 0.5rem 0.55rem; }
+  .stat-lbl { font-size: 0.66rem; }
+  .stat-val { font-size: 0.95rem; }
+  .stat-sub { font-size: 0.62rem; }
   .auth-btn { font-size: 0.78rem !important; padding: 0.34rem 0.7rem !important; }
   .settings-btn { width: 2rem; height: 2rem; }
 }

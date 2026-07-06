@@ -18,8 +18,7 @@ export interface FreeShellNavHandlers {
 }
 
 export function goHub(): void {
-  if (history.length > 1) history.back();
-  else location.href = HUB_URL;
+  location.href = HUB_URL;
 }
 
 /** Push a history entry so the hardware back button can step in-shell first. */
@@ -60,12 +59,15 @@ export function goBackOne(handlers: FreeShellNavHandlers): void {
 
 /** Mirror hardware / browser back to the same one-window stack as close buttons. */
 export function wireFreeShellBackNavigation(handlers: FreeShellNavHandlers): void {
+  pushShellHistory();
   window.addEventListener('popstate', () => {
+    if (isShellRoot(handlers)) {
+      goHub();
+      return;
+    }
+    goBackOne(handlers);
     if (!isShellRoot(handlers)) {
-      goBackOne(handlers);
-      if (!isShellRoot(handlers)) {
-        pushShellHistory();
-      }
+      pushShellHistory();
     }
   });
 }

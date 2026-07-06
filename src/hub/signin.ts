@@ -239,7 +239,7 @@ function injectStyles(): void {
 
     .auth-topbar { width: 100%; display: flex; align-items: center; justify-content: space-between;
       padding: 0.8rem 1rem; background: transparent; flex-shrink: 0; }
-    .auth-logo-et { height: 2.2rem; object-fit: contain; }
+    .auth-logo-et { height: 2.2rem; object-fit: contain; background: transparent; }
     .auth-back { width: 2.2rem; height: 2.2rem; border-radius: 999px;
       border: 1px solid #e6efdc; background: rgba(255,255,255,.9); color: #5f7262;
       font-size: 1rem; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
@@ -258,7 +258,7 @@ function injectStyles(): void {
 
     .auth-phone-row { display: flex; align-items: center; gap: 0; border: 1px solid #e6efdc; border-radius: 10px; overflow: hidden; }
     .auth-phone-input { border: none !important; border-radius: 0 !important; flex: 1; min-width: 0; }
-    .auth-phone-go { padding: 0.7rem 1rem; background: #d9534f; color: #fff; border: none;
+    .auth-phone-go { padding: 0.7rem 1rem; background: linear-gradient(135deg, #2f8fe6, #1f5fc4); color: #fff; border: none;
       font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer; white-space: nowrap;
       border-radius: 0 10px 10px 0; flex-shrink: 0; }
     .auth-phone-go:disabled { opacity: .55; cursor: default; }
@@ -293,11 +293,10 @@ function injectStyles(): void {
     .auth-err { font-size: 0.82rem; color: #d64545; min-height: 1em; margin: 0; }
 
     @media (min-width: 600px) {
-      .auth-modal { justify-content: center; }
-      .auth-topbar { max-width: 480px; margin: 0 auto; }
-      .auth-hero { max-width: 480px; margin: 0 auto; }
-      .auth-hero-img { border-radius: 18px; }
-      .auth-stack { justify-content: center; flex: 0; }
+      .auth-modal { justify-content: flex-start; }
+      .auth-topbar { padding-inline: clamp(1.2rem, 4vw, 2.5rem); }
+      .auth-hero-img { max-height: min(32vw, 320px); }
+      .auth-stack { justify-content: flex-start; flex: 1; }
     }`;
   document.head.appendChild(s);
 }

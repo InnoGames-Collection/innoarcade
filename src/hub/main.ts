@@ -17,7 +17,7 @@ import {
 import { balance, onWalletChange } from '../platform/wallet';
 import { activeDraws, myTickets, enterDraw, NotEnoughPointsError, hydrateTickets, loadDraws, myOdds } from '../platform/draws';
 import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, xpLifetime, rpWeekly, rpMonthly } from '../platform/currency';
-import { levelFor, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, type WinnerCadence } from '../platform/config';
+import { levelFor, LEVEL_THRESHOLDS, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, type WinnerCadence } from '../platform/config';
 import { getSupabase, isConfigured } from '../platform/supabase';
 import { bootstrapHubData, type HubBootstrapResult } from '../platform/hubBootstrap';
 
@@ -33,9 +33,10 @@ function escapeHtml(s: string): string {
 
 // --- Promo banner carousel --------------------------------------------------
 const PROMOS = [
-  { img: '/brand/goplay-banner.png', alt: 'GoPlay — Weekly & Monthly Prizes' },
-  { en: 'Enter tournaments — climb the leaderboard', am: 'ውድድሮችን ይቀላቀሉ — ደረጃ ይውጡ', grad: ['#62c12e', '#3f9e16'] },
-  { en: 'Play Lucky games for instant rewards', am: 'ለፈጣን ሽልማት ዕድል ጨዋታዎችን ይጫወቱ', grad: ['#2fae5a', '#1f8f3f'] },
+  { img: '/brand/ad-banner-1.png', alt: 'Every Score Counts — climb the leaderboard' },
+  { img: '/brand/ad-banner-2.png', alt: 'Weekly Fruit Slice Tournament' },
+  { img: '/brand/ad-banner-3.png', alt: 'Monthly Memory Match Tournament' },
+  { img: '/brand/ad-banner-4.png', alt: 'Win up to 50,000 ETB — Monthly & Weekly Tournaments' },
 ];
 let promoIdx = 0;
 function renderPromo(): void {
@@ -43,13 +44,7 @@ function renderPromo(): void {
   const dots = document.querySelector('#promoDots');
   if (!track || !dots) return;
   const p = PROMOS[promoIdx];
-  if ('img' in p && p.img) {
-    track.innerHTML = `<div class="promo-slide promo-slide-img"><img src="${p.img}" alt="${p.alt ?? ''}" class="promo-banner-img" /></div>`;
-  } else {
-    const txt = escapeHtml(lang() === 'am' ? (p as { am: string }).am : (p as { en: string }).en);
-    const g = (p as { grad: string[] }).grad;
-    track.innerHTML = `<div class="promo-slide" style="background:linear-gradient(135deg, ${g[0]}, ${g[1]})">${txt}</div>`;
-  }
+  track.innerHTML = `<div class="promo-slide promo-slide-img"><img src="${p.img}" alt="${escapeHtml(p.alt)}" class="promo-banner-img" /></div>`;
   dots.innerHTML = PROMOS.map((_, i) => `<span class="promo-dot${i === promoIdx ? ' on' : ''}"></span>`).join('');
 }
 function advancePromo(): void { promoIdx = (promoIdx + 1) % PROMOS.length; renderPromo(); }
@@ -157,22 +152,67 @@ function fmtRp(v: number): string {
   return v % 1 === 0 ? String(v) : v.toFixed(2);
 }
 
+function xpLevelBounds(lifetimeXp: number): { level: number; floor: number; ceiling: number } {
+  const xp = Math.max(0, lifetimeXp);
+  const level = levelFor(xp);
+  const floor = level <= 10
+    ? LEVEL_THRESHOLDS[level - 1] ?? 0
+    : 6000 + (level - 10) * 3000;
+  const ceiling = level < 10
+    ? LEVEL_THRESHOLDS[level] ?? floor + 3000
+    : 6000 + (level - 9) * 3000;
+  return { level, floor, ceiling };
+}
+
 function renderMyStats(): void {
-  function chip(icon: string, label: string, val: string, cls: string): string {
-    return `<span class="bal-chip ${cls}">${icon} <span class="bal-lbl">${label}:</span> <strong>${val}</strong></span>`;
-  }
   const bar = document.querySelector('#playerBar');
-  if (bar) {
-    bar.innerHTML =
-      chip('🎖️', t('hub.statLevel'), String(levelFor(xpLifetime())), 'bal-level') +
-      chip('⭐', t('hub.progress'), xpLifetime().toLocaleString(), 'bal-points') +
-      chip('🏅', t('hub.rpWeekly'), fmtRp(rpWeekly()), 'bal-rp bal-rp-weekly') +
-      chip('🏆', t('hub.rpMonthly'), fmtRp(rpMonthly()), 'bal-rp bal-rp-monthly');
-  }
+  if (!bar) return;
+  const xp = xpLifetime();
+  const { level, floor, ceiling } = xpLevelBounds(xp);
+  const span = Math.max(1, ceiling - floor);
+  const pct = Math.min(100, Math.round(((xp - floor) / span) * 100));
+  const nextXp = ceiling;
+
+  bar.innerHTML = `
+    <article class="stat-card stat-level">
+      <div class="stat-card-head">
+        <span class="stat-ico" aria-hidden="true">🛡️</span>
+        <span class="stat-lbl">${t('hub.statLevel')}</span>
+        <strong class="stat-val">${level}</strong>
+      </div>
+      <div class="stat-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+        <div class="stat-bar-fill stat-bar-fill--green" style="width:${pct}%"></div>
+      </div>
+      <span class="stat-sub">${t('hub.points')} ${xp.toLocaleString()} / ${nextXp.toLocaleString()}</span>
+    </article>
+    <article class="stat-card stat-progress">
+      <div class="stat-card-head">
+        <span class="stat-ico" aria-hidden="true">⭐</span>
+        <span class="stat-lbl">${t('hub.progress')}</span>
+        <strong class="stat-val">${xp.toLocaleString()}</strong>
+      </div>
+      <div class="stat-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+        <div class="stat-bar-fill stat-bar-fill--gold" style="width:${pct}%"></div>
+      </div>
+      <span class="stat-sub">${t('hub.nextXp')}: ${nextXp.toLocaleString()} ${t('hub.points')}</span>
+    </article>
+    <article class="stat-card stat-rp-weekly">
+      <div class="stat-card-head">
+        <span class="stat-ico" aria-hidden="true">🏅</span>
+        <span class="stat-lbl">${t('hub.rpWeekly')}</span>
+        <strong class="stat-val">${fmtRp(rpWeekly())}</strong>
+      </div>
+    </article>
+    <article class="stat-card stat-rp-monthly">
+      <div class="stat-card-head">
+        <span class="stat-ico" aria-hidden="true">🏆</span>
+        <span class="stat-lbl">${t('hub.rpMonthly')}</span>
+        <strong class="stat-val">${fmtRp(rpMonthly())}</strong>
+      </div>
+    </article>`;
+
   const host = document.querySelector('#topBalances');
-  if (host) {
-    host.innerHTML = '';
-  }
+  if (host) host.innerHTML = '';
 }
 
 // --- Tournament entry economy (confirm flow) --------------------------------
