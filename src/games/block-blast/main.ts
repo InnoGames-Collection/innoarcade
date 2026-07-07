@@ -4,6 +4,7 @@ import '../_lq/lq.css';
 import './style.css';
 import { el, finishLQRound, mulberry32, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
 import { createHost } from '../../platform/gameHost';
+import { showFirstRunToast } from '../_shared/firstRun';
 
 const SIZE = 8;
 const COLORS = ['#5b8cff', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6', '#1abc9c'];
@@ -97,7 +98,23 @@ function render(mount: HTMLElement): void {
   wrap.appendChild(tray);
   mount.appendChild(wrap);
 
+  showFirstRunToast('block-blast', 'Pick a piece, then tap the board where it fits. Clear rows and columns.', toast);
+
   setLQHeader({ round: '0', score: '0' });
+
+  function previewCells(): Set<string> {
+    const set = new Set<string>();
+    if (selected == null) return set;
+    const p = pieces[selected];
+    if (p.used) return set;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (!canPlace(grid, p.cells, r, c)) continue;
+        for (const [dr, dc] of p.cells) set.add(`${r + dr},${c + dc}`);
+      }
+    }
+    return set;
+  }
 
   function endRun(): void {
     const ms = Date.now() - t0;
@@ -110,12 +127,15 @@ function render(mount: HTMLElement): void {
   }
 
   function paint(): void {
+    const preview = previewCells();
     gridEl.innerHTML = '';
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
         const cell = el('div', {
-          class: 'bb-cell' + (grid[r][c] ? ' filled' : ''),
-          style: grid[r][c] ? `background:${grid[r][c]}` : '',
+          class: 'bb-cell'
+            + (grid[r][c] ? ' filled' : '')
+            + (preview.has(`${r},${c}`) ? ' preview' : ''),
+          style: grid[r][c] ? `background:${grid[r][c]}` : (preview.has(`${r},${c}`) && selected != null ? `background:${pieces[selected!].color}` : ''),
           onclick: () => onCell(r, c),
         });
         gridEl.appendChild(cell);
@@ -153,6 +173,8 @@ function render(mount: HTMLElement): void {
     if (lines > 0) {
       combo += lines;
       score += lines * 10 + (lines > 1 ? lines * 5 : 0);
+      gridEl.classList.add('bb-clear-flash');
+      window.setTimeout(() => gridEl.classList.remove('bb-clear-flash'), 350);
       sound('win');
     } else {
       sound('good');

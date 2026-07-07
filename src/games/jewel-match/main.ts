@@ -14,11 +14,14 @@ const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(s
 const SIZE = 8;
 const COLORS = ['ruby', 'sapphire', 'emerald', 'topaz', 'amethyst', 'diamond'] as const;
 type Color = typeof COLORS[number];
-const START_MOVES = 25;
+const LEVELS = 3;
+const LEVEL_TARGETS = [600, 1400, 2400];
+const LEVEL_MOVES = [28, 24, 20];
 
 let grid: (Color | null)[] = [];
 let score = 0;
-let moves = START_MOVES;
+let moves = LEVEL_MOVES[0];
+let levelIdx = 0;
 let combo = 0;
 let busy = false;
 let gameEnded = false;
@@ -90,7 +93,11 @@ function applyDragVisuals(): void {
 }
 
 function updateHud(): void {
-  shell.setHeader({ score: String(scaleArcadeScore(score)), moves: String(moves) });
+  shell.setHeader({
+    score: String(scaleArcadeScore(score)),
+    moves: String(moves),
+    round: `${levelIdx + 1}/${LEVELS}`,
+  });
 }
 
 function showCombo(): void {
@@ -136,7 +143,8 @@ async function trySwap(a: number, b: number): Promise<void> {
     moves--;
     updateHud();
     await clearMatches();
-    if (moves <= 0) endGame();
+    checkLevelAdvance();
+    if (moves <= 0 && score < LEVEL_TARGETS[levelIdx]) endGame();
   } else {
     grid[b] = grid[a]; grid[a] = tmp;
     sfx.slide();
@@ -166,10 +174,25 @@ async function endDrag(): Promise<void> {
 }
 
 function resetGame(): void {
-  score = 0; moves = START_MOVES; combo = 0;
+  score = 0;
+  levelIdx = 0;
+  moves = LEVEL_MOVES[0];
+  combo = 0;
   drag = null; dragPointerId = null; busy = false; gameEnded = false;
   fillNoMatches();
   paintBoard();
+  updateHud();
+}
+
+function checkLevelAdvance(): void {
+  if (score < LEVEL_TARGETS[levelIdx]) return;
+  if (levelIdx >= LEVELS - 1) {
+    endGame();
+    return;
+  }
+  levelIdx++;
+  moves = LEVEL_MOVES[levelIdx];
+  sfx.coin();
   updateHud();
 }
 
@@ -183,6 +206,7 @@ function endGame(): void {
 
 const shell = wireFreeCasualShell(host, beginPlay, {
   headerSlots: [
+    { id: 'round', labelKey: 'shell.puzzle', icon: 'round' },
     { id: 'score', labelKey: 'td.score', icon: 'score', score: true },
     { id: 'moves', labelKey: 'shell.moves', icon: 'moves' },
   ],

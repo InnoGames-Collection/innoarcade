@@ -11,6 +11,7 @@ interface Obstacle {
   y: number;
   rot: number;
   colorIdx: number;
+  star?: boolean;
 }
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
@@ -68,6 +69,7 @@ export class ColorSwitch {
       y,
       rot: this.rnd() * Math.PI * 2,
       colorIdx: Math.floor(this.rnd() * COLORS.length),
+      star: this.rnd() < 0.35,
     });
   }
 
@@ -91,7 +93,7 @@ export class ColorSwitch {
           this.vy = -380;
           if (o.y > this.passed) {
             this.passed = o.y;
-            this.score++;
+            this.score += o.star ? 5 : 1;
             sfx.coin();
           }
         }
@@ -138,6 +140,13 @@ export class ColorSwitch {
       ctx.beginPath();
       ctx.arc(cx, cy, 28, 0, Math.PI * 2);
       ctx.fill();
+      if (o.star) {
+        ctx.fillStyle = '#f1c40f';
+        ctx.font = 'bold 18px system-ui,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', cx, cy);
+      }
     }
 
     ctx.fillStyle = COLORS[this.colorIdx];

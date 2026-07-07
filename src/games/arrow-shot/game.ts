@@ -10,6 +10,7 @@ interface Target {
   y: number;
   r: number;
   pts: number;
+  vx: number;
 }
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
@@ -30,12 +31,14 @@ export class ArrowShot {
   private pull = 0;
   private arrow: { x: number; y: number; vx: number; vy: number; active: boolean } | null = null;
   private rnd = mulberry32(3);
+  private wind = 0;
 
   start(): void {
     this.score = 0;
     this.arrows = 12;
     this.targets = [];
     this.rnd = mulberry32((Math.random() * 1e9) | 0);
+    this.wind = (this.rnd() - 0.5) * 80;
     this.spawnTargets();
     this.arrow = null;
     this.aiming = false;
@@ -97,12 +100,19 @@ export class ArrowShot {
         y: 80 + this.rnd() * 320,
         r: 18 + this.rnd() * 16,
         pts: 20 + Math.floor(this.rnd() * 40),
+        vx: (this.rnd() - 0.5) * 40,
       });
     }
   }
 
   update(dt: number): void {
     if (this.state !== 'playing') return;
+
+    for (const t of this.targets) {
+      t.x += t.vx * dt;
+      if (t.x < t.r + 20 || t.x > W - t.r - 20) t.vx *= -1;
+    }
+
     if (!this.arrow?.active) {
       if (this.arrows <= 0) this.gameOver();
       return;
@@ -110,6 +120,7 @@ export class ArrowShot {
 
     const a = this.arrow;
     a.vy += 420 * dt;
+    a.vx += this.wind * dt;
     a.x += a.vx * dt;
     a.y += a.vy * dt;
 
@@ -120,6 +131,7 @@ export class ArrowShot {
         this.targets.splice(i, 1);
         sfx.coin();
         this.spawnTargets();
+        this.wind = (this.rnd() - 0.5) * 100;
         a.active = false;
         this.arrow = null;
         if (this.arrows <= 0) this.gameOver();
@@ -152,6 +164,11 @@ export class ArrowShot {
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#8B7355';
     ctx.fillRect(0, H - 40, W, 40);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = '12px system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Wind ${this.wind > 0 ? '→' : '←'} ${Math.abs(Math.round(this.wind))}`, W / 2, 24);
 
     for (const t of this.targets) {
       ctx.fillStyle = '#e74c3c';

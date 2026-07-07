@@ -3,7 +3,7 @@ import type { Action } from '../../engine/input';
 
 export const W = 480;
 export const H = 720;
-const LEVELS = 3;
+const LEVELS = 5;
 
 interface Point { x: number; y: number; }
 
@@ -18,6 +18,8 @@ const LEVEL_DEFS: LevelDef[] = [
   { gapStart: 140, gapEnd: 340, cliffY: 420, goalX: 420 },
   { gapStart: 120, gapEnd: 360, cliffY: 380, goalX: 430 },
   { gapStart: 100, gapEnd: 380, cliffY: 440, goalX: 440 },
+  { gapStart: 90, gapEnd: 390, cliffY: 400, goalX: 450 },
+  { gapStart: 80, gapEnd: 400, cliffY: 460, goalX: 455 },
 ];
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
@@ -83,7 +85,8 @@ export class DrawBridge {
   }
 
   tapDrive(): void {
-    if (this.state !== 'playing' || this.phase !== 'draw' || this.stroke.length < 4) return;
+    if (this.state !== 'playing' || this.phase !== 'draw') return;
+    if (this.stroke.length < 8) return;
     this.phase = 'drive';
     this.car.vx = 140;
     sfx.click();

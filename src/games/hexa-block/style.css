@@ -29,6 +29,7 @@
 }
 
 .hb-cell.filled { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2); }
+.hb-cell.hb-preview { opacity: 0.5; outline: 2px dashed #4f9e16; }
 
 .hb-tray {
   display: flex;

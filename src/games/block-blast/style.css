@@ -27,6 +27,15 @@
 .bb-cell.filled { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2); }
 .bb-cell.preview { opacity: 0.55; outline: 2px dashed #4f9e16; }
 
+.bb-grid.bb-clear-flash {
+  animation: bb-flash 0.35s ease;
+}
+
+@keyframes bb-flash {
+  0%, 100% { box-shadow: 0 0 0 transparent; }
+  50% { box-shadow: 0 0 18px rgba(79, 158, 22, 0.55); }
+}
+
 .bb-tray {
   display: flex;
   gap: 12px;

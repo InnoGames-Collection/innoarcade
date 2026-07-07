@@ -20,6 +20,7 @@ interface Tower {
   y: number;
   type: 0 | 1;
   cooldown: number;
+  level: number;
 }
 
 interface Shot {
@@ -90,11 +91,20 @@ export class TowerDefense {
     if (this.state !== 'playing') return false;
     for (const spot of BUILD_SPOTS) {
       if (Math.hypot(spot.x - x, spot.y - y) > 36) continue;
-      if (this.towers.some((t) => Math.hypot(t.x - spot.x, t.y - spot.y) < 8)) return false;
+      const existing = this.towers.find((t) => Math.hypot(t.x - spot.x, t.y - spot.y) < 8);
+      if (existing) {
+        if (existing.level < 3 && this.coins >= 40) {
+          this.coins -= 40;
+          existing.level++;
+          sfx.coin();
+          return true;
+        }
+        return false;
+      }
       const cost = this.selectedTower === 0 ? 50 : 90;
       if (this.coins < cost) return false;
       this.coins -= cost;
-      this.towers.push({ x: spot.x, y: spot.y, type: this.selectedTower, cooldown: 0 });
+      this.towers.push({ x: spot.x, y: spot.y, type: this.selectedTower, cooldown: 0, level: 1 });
       sfx.click();
       return true;
     }
@@ -138,7 +148,7 @@ export class TowerDefense {
         this.spawnTimer = 0.6;
         this.waveBreak = 2.5;
         this.coins += 30 + this.wave * 5;
-        if (this.wave > 12) {
+        if (this.wave > 15) {
           this.setState('over');
           this.onGameOver(this.score, this.score > this.best);
         }
@@ -190,7 +200,7 @@ export class TowerDefense {
         if (d <= range && d < bestD) { bestD = d; best = e; }
       }
       if (best) {
-        const dmg = t.type === 0 ? 18 : 32;
+        const dmg = (t.type === 0 ? 18 : 32) * (1 + (t.level - 1) * 0.35);
         this.shots.push({ x: t.x, y: t.y, tx: best.x, ty: best.y, dmg });
         t.cooldown = t.type === 0 ? 0.55 : 0.95;
       }
@@ -251,6 +261,10 @@ export class TowerDefense {
       ctx.font = 'bold 12px system-ui,sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(t.type === 0 ? 'A' : 'C', t.x, t.y + 4);
+      if (t.level > 1) {
+        ctx.font = '9px system-ui,sans-serif';
+        ctx.fillText(`+${t.level - 1}`, t.x, t.y - 14);
+      }
     }
 
     for (const s of this.shots) {

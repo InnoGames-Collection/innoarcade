@@ -53,6 +53,7 @@ export class CrossyRoad {
   private fromPx = 0;
   private fromPz = 0;
   private idleT = 0;
+  private tutorialT = 6;
 
   start(): void {
     this.score = 0;
@@ -66,6 +67,7 @@ export class CrossyRoad {
     this.rnd = mulberry32((Math.random() * 1e9) | 0);
     this.hopT = 0;
     this.idleT = 0;
+    this.tutorialT = 6;
     for (let z = -4; z <= 12; z++) this.ensureRow(z);
     this.setState('playing');
   }
@@ -148,8 +150,10 @@ export class CrossyRoad {
       if (this.hopT === 0) this.checkLanding();
     } else {
       this.idleT += dt;
-      if (this.idleT > 8) this.die();
+      if (this.idleT > 14) this.die();
     }
+
+    if (this.tutorialT > 0) this.tutorialT -= dt;
 
     for (const c of this.cars) {
       c.x += c.speed * dt;
@@ -258,6 +262,18 @@ export class CrossyRoad {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('🐔', drawPx * CELL + CELL / 2, py + CELL / 2 - hopBounce);
+
+    if (this.state === 'playing' && this.tutorialT > 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, H - 56, W, 56);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px system-ui,sans-serif';
+      ctx.fillText('Swipe or tap arrows to hop forward', W / 2, H - 28);
+    } else if (this.state === 'playing' && this.idleT > 10) {
+      ctx.fillStyle = 'rgba(231,76,60,0.85)';
+      ctx.font = 'bold 14px system-ui,sans-serif';
+      ctx.fillText('Hop soon!', W / 2, 28);
+    }
   }
 
   private setState(s: GameState): void {

@@ -25,9 +25,17 @@ let spawnId = 0;
 let active: HTMLButtonElement | null = null;
 let playing = false;
 
+function currentWave(): number {
+  const elapsed = Date.now() - runStart;
+  if (elapsed < 20_000) return 1;
+  if (elapsed < 40_000) return 2;
+  return 3;
+}
+
 function updateHud(): void {
   const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
-  shell.setHeader({ score: String(scaleArcadeScore(score)), time: `${left}s` });
+  const wave = currentWave();
+  shell.setHeader({ score: String(scaleArcadeScore(score)), time: `${left}s`, round: `W${wave}` });
 }
 
 function clearTarget(): void {
@@ -39,11 +47,12 @@ function spawnTarget(): void {
   clearTarget();
   hint.style.display = 'none';
   const rect = area.getBoundingClientRect();
-  const size = 44 + Math.random() * 28;
+  const wave = currentWave();
+  const size = (44 + Math.random() * 28) / wave;
   const margin = size / 2 + 8;
   const x = margin + Math.random() * (rect.width - size - margin * 2);
   const y = margin + Math.random() * (rect.height - size - margin * 2);
-  const life = Math.max(500, 1400 - score * 8);
+  const life = Math.max(350, (1500 - score * 6) / wave);
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'rt-target';
@@ -76,7 +85,8 @@ function spawnTarget(): void {
 function scheduleSpawn(): void {
   window.clearTimeout(spawnId);
   if (!playing) return;
-  const delay = Math.max(180, 520 - score * 2);
+  const wave = currentWave();
+  const delay = Math.max(120, (520 - score * 2) / wave);
   spawnId = window.setTimeout(spawnTarget, delay);
 }
 
@@ -105,6 +115,7 @@ const shell = wireFreeCasualShell(host, beginPlay, {
   headerSlots: [
     { id: 'score', labelKey: 'td.score', icon: 'score', score: true },
     { id: 'time', labelKey: 'mm.time', icon: 'time' },
+    { id: 'round', labelKey: 'shell.puzzle', icon: 'round' },
   ],
   onAbandon: resetGame,
 });

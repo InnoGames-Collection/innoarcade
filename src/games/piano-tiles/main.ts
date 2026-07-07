@@ -7,6 +7,7 @@ import { applyTranslations, getLang } from '../../i18n';
 import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
 import { wireFreeCasualShell } from '../../platform/freeGameShell';
+import { showFirstRunToast } from '../_shared/firstRun';
 
 const COLS = 4;
 const SESSION_SEC = 60;
@@ -97,9 +98,10 @@ function onLaneTap(col: number): void {
   if (!playing) return;
   const laneH = lanesEl.clientHeight || 400;
   const hitZone = laneH - 88;
-  const candidates = tiles.filter((t) => t.col === col && !t.hit && t.y >= hitZone - 40 && t.y <= hitZone + 40);
+  const candidates = tiles.filter((t) => t.col === col && !t.hit && !t.decoy && t.y >= hitZone - 40 && t.y <= hitZone + 40);
   if (candidates.length === 0) {
-    gameOver('Miss!');
+    const wrong = tiles.some((t) => t.col === col && t.decoy && !t.hit && t.y >= hitZone - 50 && t.y <= hitZone + 50);
+    gameOver(wrong ? 'Wrong tile!' : 'Miss!');
     return;
   }
   const tile = candidates.sort((a, b) => b.y - a.y)[0];
@@ -185,7 +187,11 @@ async function startGame(): Promise<void> {
   playing = true;
   runStart = Date.now();
   lastTs = performance.now();
-  message.textContent = 'Tap the black tiles!';
+  showFirstRunToast('piano-tiles', 'Tap only the black tiles. White tiles end your run.', (m) => {
+    message.textContent = m;
+    window.setTimeout(() => { if (playing) message.textContent = 'Tap the black tiles!'; }, 5000);
+  });
+  if (!message.textContent) message.textContent = 'Tap the black tiles!';
   updateHud();
   rafId = requestAnimationFrame(tick);
 }

@@ -4,6 +4,7 @@ import '../_lq/lq.css';
 import './style.css';
 import { el, finishLQRound, mulberry32, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
 import { createHost } from '../../platform/gameHost';
+import { showFirstRunToast } from '../_shared/firstRun';
 
 const ROWS = 7;
 const COLORS = ['#5b8cff', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6'];
@@ -119,21 +120,44 @@ function render(mount: HTMLElement): void {
   wrap.appendChild(tray);
   mount.appendChild(wrap);
 
+  showFirstRunToast('hexa-block', 'Select a hex cluster, then tap the board to place it. Clear full rows.', toast);
+
   setLQHeader({ round: '0', score: '0' });
+
+  function previewCells(): Set<string> {
+    const set = new Set<string>();
+    if (selected == null) return set;
+    const p = pieces[selected];
+    if (p.used) return set;
+    for (let r = 0; r < ROWS; r++) {
+      const w = rowWidth(r);
+      for (let c = 0; c < w; c++) {
+        if (!canPlace(grid, p.cells, r, c)) continue;
+        for (const [dr, dc] of p.cells) set.add(`${r + dr},${c + dc}`);
+      }
+    }
+    return set;
+  }
 
   function endRun(): void {
     finishLQRound(score, score >= host.winScore, `${lines} rows · ${score} pts`, Date.now() - t0);
   }
 
   function paint(): void {
+    const preview = previewCells();
     boardEl.innerHTML = '';
     for (let r = 0; r < ROWS; r++) {
       const row = el('div', { class: 'hb-row' });
       const w = rowWidth(r);
       for (let c = 0; c < w; c++) {
+        const key = `${r},${c}`;
         row.appendChild(el('div', {
-          class: 'hb-cell' + (grid[r][c] ? ' filled' : ''),
-          style: grid[r][c] ? `background:${grid[r][c]}` : '',
+          class: 'hb-cell'
+            + (grid[r][c] ? ' filled' : '')
+            + (preview.has(key) ? ' hb-preview' : ''),
+          style: grid[r][c]
+            ? `background:${grid[r][c]}`
+            : (preview.has(key) && selected != null ? `background:${pieces[selected].color}` : ''),
           onclick: () => onCell(r, c),
         }));
       }

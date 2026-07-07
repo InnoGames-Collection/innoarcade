@@ -14,6 +14,11 @@ interface Obstacle {
   speed: number;
 }
 
+interface Coin {
+  lane: number;
+  y: number;
+}
+
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
 
 export class RaceCar {
@@ -28,9 +33,12 @@ export class RaceCar {
   private laneT = 1;
   private carY = H - 140;
   private obstacles: Obstacle[] = [];
+  private coins: Coin[] = [];
   private rnd = mulberry32(9);
   private dist = 0;
   private spawnT = 0;
+  private coinT = 0;
+  private shield = false;
 
   start(): void {
     this.score = 0;
@@ -38,7 +46,10 @@ export class RaceCar {
     this.lane = 1;
     this.laneT = 1;
     this.obstacles = [];
+    this.coins = [];
     this.spawnT = 0;
+    this.coinT = 0;
+    this.shield = false;
     this.rnd = mulberry32((Math.random() * 1e9) | 0);
     this.setState('playing');
   }
@@ -86,12 +97,38 @@ export class RaceCar {
       this.spawnT = 0.7 + this.rnd() * 0.8;
     }
 
+    this.coinT -= dt;
+    if (this.coinT <= 0) {
+      this.coins.push({ lane: Math.floor(this.rnd() * 3), y: -40 });
+      this.coinT = 1.2 + this.rnd() * 1.5;
+    }
+
     for (const o of this.obstacles) o.y += o.speed * dt;
+    for (const c of this.coins) c.y += speed * dt;
     this.obstacles = this.obstacles.filter((o) => o.y < H + 80);
+    this.coins = this.coins.filter((c) => c.y < H + 40);
 
     const laneIdx = Math.round(this.laneT);
+    for (const c of this.coins) {
+      if (c.lane === laneIdx && Math.abs(c.y - this.carY) < 40) {
+        this.score += 5;
+        if (!this.shield && this.rnd() < 0.25) this.shield = true;
+        this.coins = this.coins.filter((x) => x !== c);
+        sfx.coin();
+        break;
+      }
+    }
     for (const o of this.obstacles) {
-      if (o.lane === laneIdx && Math.abs(o.y - this.carY) < 50) this.gameOver();
+      if (o.lane === laneIdx && Math.abs(o.y - this.carY) < 50) {
+        if (this.shield) {
+          this.shield = false;
+          this.obstacles = this.obstacles.filter((x) => x !== o);
+          sfx.click();
+        } else {
+          this.gameOver();
+        }
+        break;
+      }
     }
   }
 
@@ -132,7 +169,22 @@ export class RaceCar {
       ctx.fillRect(x - 24, o.y - 30, 48, 60);
     }
 
+    for (const c of this.coins) {
+      const x = LANES[c.lane];
+      ctx.fillStyle = '#f1c40f';
+      ctx.beginPath();
+      ctx.arc(x, c.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     const cx = LANES[0] + (LANES[2] - LANES[0]) * (this.laneT / 2);
+    if (this.shield) {
+      ctx.strokeStyle = 'rgba(116, 185, 255, 0.85)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, this.carY, 38, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.fillStyle = '#0984e3';
     ctx.fillRect(cx - 24, this.carY - 30, 48, 60);
     ctx.fillStyle = '#74b9ff';

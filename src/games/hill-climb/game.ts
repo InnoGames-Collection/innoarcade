@@ -21,6 +21,7 @@ export class HillClimb {
   private angle = 0;
   private flipT = 0;
   private camX = 0;
+  private fuel = 100;
 
   start(): void {
     this.x = 40;
@@ -30,6 +31,7 @@ export class HillClimb {
     this.angle = 0;
     this.flipT = 0;
     this.camX = 0;
+    this.fuel = 100;
     this.score = 0;
     this.setState('playing');
   }
@@ -70,11 +72,20 @@ export class HillClimb {
     if (this.gas) this.vx += 220 * dt;
     if (this.brake) this.vx -= 280 * dt;
     if (!this.gas && !this.brake) this.vx -= 40 * dt;
+    if (this.gas) this.fuel = Math.max(0, this.fuel - 22 * dt);
+    else this.fuel = Math.min(100, this.fuel + 10 * dt);
     this.vx = Math.max(0, Math.min(this.vx, 340));
 
     this.x += this.vx * dt;
     this.angle = this.terrainSlope(this.x);
     this.score = Math.floor(this.x / 8);
+
+    if (this.fuel <= 0 && this.vx < 30) {
+      sfx.crash();
+      this.setState('over');
+      this.onGameOver(this.score, this.score > this.best);
+      return;
+    }
 
     if (Math.abs(this.angle) > 1.35) {
       this.flipT += dt;
@@ -148,6 +159,15 @@ export class HillClimb {
     ctx.textAlign = 'center';
     ctx.fillText('GAS', W / 4, H - 28);
     ctx.fillText('BRAKE', (W * 3) / 4, H - 28);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(16, 16, W - 32, 10);
+    ctx.fillStyle = this.fuel > 25 ? '#f39c12' : '#e74c3c';
+    ctx.fillRect(16, 16, (W - 32) * (this.fuel / 100), 10);
+    ctx.fillStyle = '#fff';
+    ctx.font = '11px system-ui,sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('FUEL', 16, 12);
   }
 
   private setState(s: GameState): void {
