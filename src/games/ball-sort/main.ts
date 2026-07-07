@@ -6,15 +6,20 @@ import { el, finishLQRound, mulberry32, shuffled, sound, mountLQ, setLQHeader, t
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { escalateTier } from '../../platform/freeDifficulty';
 import { createHost } from '../../platform/gameHost';
+import { showFirstRunToast } from '../_shared/firstRun';
 
 const CAPACITY = 4;
-const LEVELS = 3;
+const LEVELS = 8;
 const EMPTY_TUBES = 2;
 const BALL = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#6c5ce7'];
 
 type Tube = number[];
 type Tubes = Tube[];
 const host = createHost('ball-sort');
+
+function cloneTubes(tubes: Tubes): Tubes {
+  return tubes.map((t) => t.slice());
+}
 
 function topRunLength(tube: Tube): number {
   if (!tube.length) return 0;
@@ -82,7 +87,7 @@ function scramble(n: number, moves: number, rnd: () => number): Tubes {
 }
 
 function levelConfig(i: number): { colors: number; shuffle: number; par: number } {
-  const tier = escalateTier(i, 2, 1);
+  const tier = escalateTier(i, 5, 1);
   return { colors: 3 + tier, shuffle: 12 + tier * 5, par: (3 + tier) * 5 + tier * 3 };
 }
 
@@ -95,7 +100,8 @@ function render(mount: HTMLElement): void {
   function loadLevel(): void {
     mount.innerHTML = '';
     const { colors, shuffle, par } = levelConfig(levelIdx);
-    const tubes = scramble(colors, shuffle, rnd);
+    let tubes = scramble(colors, shuffle, rnd);
+    const undoStack: Tubes[] = [];
     let moves = 0;
     let selected: number | null = null;
     let locked = false;
@@ -103,9 +109,21 @@ function render(mount: HTMLElement): void {
 
     const wrap = el('div', { class: 'bs-board' });
     wrap.appendChild(el('p', { class: 'bs-hint', text: 'Move balls between tubes — same color only.' }));
+    const undoBtn = el('button', {
+      type: 'button',
+      class: 'btn bs-undo',
+      text: '↩ Undo',
+      disabled: '',
+      onclick: () => undo(),
+    });
+    wrap.appendChild(undoBtn);
     const row = el('div', { class: 'bs-tubes' });
     wrap.appendChild(row);
     mount.appendChild(wrap);
+
+    if (levelIdx === 0) {
+      showFirstRunToast('ball-sort', 'Sort each color into its own tube. Use empty tubes as buffers.', toast);
+    }
 
     setLQHeader({ round: `${levelIdx + 1}/${LEVELS}`, score: String(totalScore), moves: '0' });
 
@@ -121,12 +139,28 @@ function render(mount: HTMLElement): void {
         for (const id of tube) {
           tubeEl.appendChild(el('div', {
             class: 'bs-ball',
+            'data-color': String(id),
             style: `background:${BALL[(id - 1) % BALL.length]}`,
           }));
         }
         row.appendChild(tubeEl);
       });
       setLQHeader({ moves: String(moves) });
+      undoBtn.toggleAttribute('disabled', undoStack.length === 0);
+    }
+
+    function pushUndo(): void {
+      undoStack.push(cloneTubes(tubes));
+      if (undoStack.length > 40) undoStack.shift();
+    }
+
+    function undo(): void {
+      if (locked || !undoStack.length) return;
+      tubes = undoStack.pop()!;
+      moves = Math.max(0, moves - 1);
+      selected = null;
+      sound('click');
+      paint();
     }
 
     function onTap(idx: number): void {
@@ -146,6 +180,7 @@ function render(mount: HTMLElement): void {
         paint();
         return;
       }
+      pushUndo();
       sound('good');
       moves++;
       selected = null;

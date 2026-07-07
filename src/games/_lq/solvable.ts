@@ -65,6 +65,27 @@ export function tileConnectCanConnect(
   return false;
 }
 
+/** First clearable pair for hint UI (does not mutate board). */
+export function tileConnectFindHint(
+  board: (string | null)[][],
+): [number, number, number, number] | null {
+  const rows = board.length;
+  const cols = board[0]?.length ?? 0;
+  for (let r1 = 0; r1 < rows; r1++) {
+    for (let c1 = 0; c1 < cols; c1++) {
+      if (!board[r1][c1]) continue;
+      for (let r2 = 0; r2 < rows; r2++) {
+        for (let c2 = 0; c2 < cols; c2++) {
+          if (r1 === r2 && c1 === c2) continue;
+          if (board[r2][c2] !== board[r1][c1]) continue;
+          if (tileConnectCanConnect(board, r1, c1, r2, c2)) return [r1, c1, r2, c2];
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /** Greedy solver — every pair clearable in some order. */
 export function tileConnectIsFullySolvable(
   board: string[][],

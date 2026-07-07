@@ -6,9 +6,10 @@ import { el, finishLQRound, mulberry32, shuffled, sound, mountLQ, setLQHeader, t
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { escalateTier } from '../../platform/freeDifficulty';
 import { createHost } from '../../platform/gameHost';
+import { showFirstRunToast } from '../_shared/firstRun';
 
 const CAPACITY = 4;
-const LEVELS = 3;
+const LEVELS = 8;
 const EMPTY_TUBES = 2;
 
 /** Distinct liquid colors (id 1..N maps to index 0..N-1). */
@@ -96,7 +97,7 @@ function scramble(numColors: number, shuffleMoves: number, rnd: () => number): T
 }
 
 function levelConfig(levelIdx: number): { colors: number; shuffle: number; parMoves: number } {
-  const tier = escalateTier(levelIdx, 2, 1);
+  const tier = escalateTier(levelIdx, 5, 1);
   const colors = 3 + tier;
   const shuffle = 10 + tier * 6;
   const parMoves = colors * 5 + tier * 3;
@@ -117,17 +118,31 @@ function render(mount: HTMLElement): void {
 
       const { colors, shuffle, parMoves } = levelConfig(levelIdx);
       let tubes = scramble(colors, shuffle, rnd);
+      const undoStack: Tubes[] = [];
       let moves = 0;
       let selected: number | null = null;
       let locked = false;
       const levelStart = Date.now();
 
       const hint = el('p', { class: 'ws-hint', text: 'Tap a tube, then tap another to pour.' });
+      const toolbar = el('div', { class: 'ws-toolbar' });
+      const undoBtn = el('button', {
+        type: 'button',
+        class: 'btn ws-undo',
+        text: '↩ Undo',
+        onclick: () => undo(),
+      });
+      toolbar.appendChild(undoBtn);
       const board = el('div', { class: 'ws-board' });
       const row = el('div', { class: 'ws-tubes', role: 'group', 'aria-label': 'Water tubes' });
       board.appendChild(hint);
+      board.appendChild(toolbar);
       board.appendChild(row);
       mount.appendChild(board);
+
+      if (levelIdx === 0) {
+        showFirstRunToast('water-sort', 'Pour matching colors together. Empty tubes help you sort.', toast);
+      }
 
       setLQHeader({
         round: `${levelIdx + 1}/${LEVELS}`,
@@ -152,6 +167,7 @@ function render(mount: HTMLElement): void {
             for (const colorId of tube) {
               tubeEl.appendChild(el('div', {
                 class: 'ws-seg',
+                'data-color': String(colorId),
                 style: `background:${LIQUID[(colorId - 1) % LIQUID.length]}`,
               }));
             }
@@ -159,6 +175,21 @@ function render(mount: HTMLElement): void {
           row.appendChild(tubeEl);
         });
         setLQHeader({ moves: String(moves) });
+        undoBtn.toggleAttribute('disabled', undoStack.length === 0);
+      }
+
+      function pushUndo(): void {
+        undoStack.push(cloneTubes(tubes));
+        if (undoStack.length > 40) undoStack.shift();
+      }
+
+      function undo(): void {
+        if (locked || !undoStack.length) return;
+        tubes = undoStack.pop()!;
+        moves = Math.max(0, moves - 1);
+        selected = null;
+        sound('click');
+        paint();
       }
 
       function onTap(idx: number): void {
@@ -185,6 +216,7 @@ function render(mount: HTMLElement): void {
           paint();
           return;
         }
+        pushUndo();
         sound('good');
         moves++;
         selected = null;
