@@ -1,6 +1,7 @@
 import { sfx } from '../../engine/audio';
 import type { Action } from '../../engine/input';
 import { mulberry32 } from '../_lq/lq';
+import { Juice } from '../../engine/juice';
 
 export const W = 480;
 export const H = 720;
@@ -31,6 +32,7 @@ export class DoodleJump {
   private camY = 0;
   private platforms: Platform[] = [];
   private rnd = mulberry32(42);
+  private juice = new Juice();
 
   start(): void {
     this.score = 0;
@@ -48,6 +50,7 @@ export class DoodleJump {
     this.py = startY - PLAYER_H;
     this.vx = 0;
     this.vy = 0;
+    this.juice = new Juice();
     this.setState('playing');
   }
 
@@ -83,6 +86,7 @@ export class DoodleJump {
 
   update(dt: number): void {
     if (this.state !== 'playing') return;
+    this.juice.update(dt);
     const prevFeet = this.py + PLAYER_H;
     this.vy += 900 * dt;
     this.px += this.vx * dt;
@@ -98,6 +102,7 @@ export class DoodleJump {
           && this.px + 10 > p.x && this.px - 10 < p.x + p.w) {
           this.vy = -480;
           this.py = p.y - PLAYER_H;
+          this.juice.burst(this.px, p.y, p.crumbling ? '#8B4513' : '#2ecc71', 8, 100, 3);
           sfx.click();
           if (p.crumbling) p.y = H + 999;
           break;
@@ -125,6 +130,7 @@ export class DoodleJump {
     this.setState('over');
     const record = this.score > this.best;
     if (record) this.best = this.score;
+    this.juice.shake(0.3);
     sfx.slide();
     this.onGameOver(this.score, record);
   }
@@ -141,6 +147,8 @@ export class DoodleJump {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
 
+    ctx.save();
+    this.juice.applyShake(ctx);
     for (const p of this.platforms) {
       if (p.y > H + 40) continue;
       ctx.fillStyle = p.crumbling ? '#8B4513' : '#2ecc71';
@@ -163,5 +171,9 @@ export class DoodleJump {
     ctx.arc(this.px - 5, this.py + 4, 2, 0, Math.PI * 2);
     ctx.arc(this.px + 5, this.py + 4, 2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+
+    this.juice.drawParticles(ctx);
+    this.juice.drawFlash(ctx, W, H);
   }
 }

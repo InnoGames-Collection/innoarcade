@@ -1,5 +1,6 @@
 import { sfx } from '../../engine/audio';
 import type { Action } from '../../engine/input';
+import { Juice } from '../../engine/juice';
 
 export const W = 480;
 export const H = 720;
@@ -67,6 +68,7 @@ export class KnifeHit {
   private knivesThisStage = 0;
   private knivesNeeded = 5;
   private boss = false;
+  private juice = new Juice();
 
   start(): void {
     this.score = 0;
@@ -78,6 +80,7 @@ export class KnifeHit {
     this.knivesNeeded = 5;
     this.boss = false;
     this.spinSpeed = 1.2;
+    this.juice = new Juice();
     this.setState('playing');
   }
 
@@ -138,6 +141,7 @@ export class KnifeHit {
 
   update(dt: number): void {
     if (this.state !== 'playing') return;
+    this.juice.update(dt);
     this.logAngle += this.spinSpeed * dt;
 
     if (this.flying) {
@@ -147,6 +151,8 @@ export class KnifeHit {
         this.flying = false;
         if (this.collide()) {
           sfx.crash();
+          this.juice.shake(0.45);
+          this.juice.flashOverlay('rgba(231,76,60,0.55)', 0.5);
           this.setState('over');
           this.onGameOver(this.score, this.score > this.best);
           return;
@@ -154,6 +160,7 @@ export class KnifeHit {
         this.knives.push({ angle: this.stickLocalAngle() });
         this.knivesThisStage++;
         this.score += 10 + (this.boss ? 5 : 0);
+        this.juice.burst(CX, CY + LOG_R, '#eceff1', 10, 140, 3);
         sfx.coin();
         if (this.knivesThisStage >= this.knivesNeeded) this.nextStage();
       }
@@ -165,6 +172,7 @@ export class KnifeHit {
     ctx.fillRect(0, 0, W, H);
 
     ctx.save();
+    this.juice.applyShake(ctx);
     ctx.translate(CX, CY);
     ctx.rotate(this.logAngle);
 
@@ -193,6 +201,9 @@ export class KnifeHit {
       drawKnifeShape(ctx);
       ctx.restore();
     }
+
+    this.juice.drawParticles(ctx);
+    this.juice.drawFlash(ctx, W, H);
 
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 16px system-ui,sans-serif';

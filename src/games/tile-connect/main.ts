@@ -2,9 +2,11 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import './style.css';
-import { el, finishLQRound, mulberry32, shuffled, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
+import { el, finishLQRound, mulberry32, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { createHost } from '../../platform/gameHost';
+import { tileConnectCanConnect } from '../_lq/solvable';
+import { buildSolvableTileBoard } from '../_lq/levelGen';
 
 const ROWS = 6;
 const COLS = 8;
@@ -12,114 +14,10 @@ const ICONS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🌸', '⭐', '💎', '�
 const LEVELS = 3;
 const host = createHost('tile-connect');
 
-function canConnect(board: (string | null)[][], r1: number, c1: number, r2: number, c2: number): boolean {
-  if (board[r1][c1] !== board[r2][c2] || !board[r1][c1]) return false;
-  const H = board.length;
-  const W = board[0].length;
-
-  type Node = { r: number; c: number; dir: number; turns: number };
-  const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
-  const seen = new Set<string>();
-  const q: Node[] = [{ r: r1, c: c1, dir: -1, turns: 0 }];
-  seen.add(`${r1},${c1},-1,0`);
-
-  while (q.length) {
-    const cur = q.shift()!;
-    if (cur.r === r2 && cur.c === c2 && (cur.r !== r1 || cur.c !== c1)) return true;
-    for (let d = 0; d < 4; d++) {
-      const turns = cur.dir === -1 ? 0 : (d === cur.dir ? cur.turns : cur.turns + 1);
-      if (turns > 2) continue;
-      let nr = cur.r + dirs[d][0];
-      let nc = cur.c + dirs[d][1];
-      while (nr >= -1 && nc >= -1 && nr <= H && nc <= W) {
-        const inside = nr >= 0 && nc >= 0 && nr < H && nc < W;
-        const empty = !inside || !board[nr][nc];
-        const isEnd = nr === r2 && nc === c2;
-        if (!empty && !isEnd) break;
-        const key = `${nr},${nc},${d},${turns}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          q.push({ r: nr, c: nc, dir: d, turns });
-        }
-        if (isEnd) return true;
-        if (!empty) break;
-        nr += dirs[d][0];
-        nc += dirs[d][1];
-      }
-    }
-  }
-  return false;
-}
-
-function buildBoard(pairs: number, rnd: () => number): string[][] {
-  const icons = shuffled(ICONS.slice(0, pairs), rnd);
-  const deck: string[] = [];
-  for (const ic of icons) { deck.push(ic, ic); }
-  const cells = shuffled(deck, rnd);
-  const board: string[][] = [];
-  let i = 0;
-  for (let r = 0; r < ROWS; r++) {
-    board.push([]);
-    for (let c = 0; c < COLS; c++) board[r].push(cells[i++] ?? '');
-  }
-  return board;
-}
-
 function remaining(board: (string | null)[][]): number {
   let n = 0;
   for (const row of board) for (const v of row) if (v) n++;
   return n;
-}
-
-function cloneBoard(board: (string | null)[][]): (string | null)[][] {
-  return board.map((row) => row.slice());
-}
-
-/** Greedy solver — confirms every pair can be cleared in some order. */
-function isFullySolvable(board: string[][]): boolean {
-  const b = cloneBoard(board);
-  let guard = 0;
-  while (remaining(b) > 0 && guard++ < 600) {
-    let cleared = false;
-    outer:
-    for (let r1 = 0; r1 < ROWS; r1++) {
-      for (let c1 = 0; c1 < COLS; c1++) {
-        if (!b[r1][c1]) continue;
-        for (let r2 = 0; r2 < ROWS; r2++) {
-          for (let c2 = 0; c2 < COLS; c2++) {
-            if (r1 === r2 && c1 === c2) continue;
-            if (b[r2][c2] !== b[r1][c1]) continue;
-            if (!canConnect(b, r1, c1, r2, c2)) continue;
-            b[r1][c1] = null;
-            b[r2][c2] = null;
-            cleared = true;
-            break outer;
-          }
-        }
-      }
-    }
-    if (!cleared) return false;
-  }
-  return remaining(b) === 0;
-}
-
-function buildSolvableBoard(pairs: number, rnd: () => number): string[][] {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const board = buildBoard(pairs, rnd);
-    if (isFullySolvable(board)) return board;
-  }
-  // Deterministic fallback: pairs in adjacent columns (always connectable).
-  const icons = ICONS.slice(0, pairs);
-  const board: string[][] = Array.from({ length: ROWS }, () => Array(COLS).fill(''));
-  let idx = 0;
-  for (let p = 0; p < pairs; p++) {
-    const r = Math.floor(idx / (COLS / 2)) % ROWS;
-    const c = (idx % (COLS / 2)) * 2;
-    board[r][c] = icons[p];
-    board[r][c + 1] = icons[p];
-    idx++;
-  }
-  return board;
 }
 
 function render(mount: HTMLElement): void {
@@ -131,7 +29,7 @@ function render(mount: HTMLElement): void {
     mount.innerHTML = '';
     const rnd = mulberry32((Math.random() * 1e9) | 0);
     const pairs = 10 + levelIdx * 2;
-    const board: (string | null)[][] = buildSolvableBoard(pairs, rnd);
+    const board: (string | null)[][] = buildSolvableTileBoard(ROWS, COLS, ICONS, pairs, rnd);
     let sel: [number, number] | null = null;
     let moves = 0;
     const levelStart = Date.now();
@@ -174,7 +72,7 @@ function render(mount: HTMLElement): void {
       }
       const [r1, c1] = sel;
       if (r1 === r && c1 === c) { sel = null; paint(); return; }
-      if (board[r1][c1] !== board[r][c] || !canConnect(board, r1, c1, r, c)) {
+      if (board[r1][c1] !== board[r][c] || !tileConnectCanConnect(board, r1, c1, r, c)) {
         sound('bad');
         toast('No valid path');
         sel = [r, c];

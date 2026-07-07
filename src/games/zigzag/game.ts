@@ -1,5 +1,6 @@
 import { sfx } from '../../engine/audio';
 import type { Action } from '../../engine/input';
+import { Juice } from '../../engine/juice';
 
 export const W = 480;
 export const H = 720;
@@ -24,6 +25,7 @@ export class ZigZag {
   private segT = 0;
   private camY = 0;
   private dist = 0;
+  private juice = new Juice();
 
   start(): void {
     this.score = 0;
@@ -39,6 +41,7 @@ export class ZigZag {
     this.segT = 0;
     this.bx = this.path[0].x;
     this.by = this.path[0].y;
+    this.juice = new Juice();
     this.setState('playing');
   }
 
@@ -64,6 +67,7 @@ export class ZigZag {
   private tryTurn(): void {
     sfx.click();
     this.score += 1;
+    this.juice.burst(this.bx, this.by, '#4ecdc4', 6, 90, 3);
   }
 
   private extendPath(): void {
@@ -75,6 +79,7 @@ export class ZigZag {
 
   update(dt: number): void {
     if (this.state !== 'playing') return;
+    this.juice.update(dt);
 
     let remaining = SPEED * dt;
     while (remaining > 0 && this.segIndex < this.path.length - 1) {
@@ -118,6 +123,7 @@ export class ZigZag {
     this.setState('over');
     const record = this.score > this.best;
     if (record) this.best = this.score;
+    this.juice.shake(0.35);
     sfx.slide();
     this.onGameOver(this.score, record);
   }
@@ -156,5 +162,8 @@ export class ZigZag {
     ctx.font = '14px system-ui,sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Tap for bonus at corners', W / 2, H - 24);
+
+    this.juice.drawParticles(ctx);
+    this.juice.drawFlash(ctx, W, H);
   }
 }

@@ -5,18 +5,15 @@ import './style.css';
 import { el, finishLQRound, sound, mountLQ, setLQHeader } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { createHost } from '../../platform/gameHost';
+import { pipeGridConnected, type PipeCell, type PipeRot } from '../_lq/solvable';
 
 const LEVELS = 3;
 const host = createHost('pipe-connect');
 
-/** 0=empty 1=wall 2=source 3=drain 4=straight 5=corner */
-type Cell = 0 | 1 | 2 | 3 | 4 | 5;
-type Rot = 0 | 1 | 2 | 3;
-
 interface LevelDef {
   w: number;
   h: number;
-  grid: Cell[][];
+  grid: PipeCell[][];
   par: number;
 }
 
@@ -59,29 +56,7 @@ const LEVELS_DEF: LevelDef[] = [
   },
 ];
 
-const DR = [-1, 0, 1, 0];
-const DC = [0, 1, 0, -1];
-
-function ports(cell: Cell, rot: Rot): boolean[] {
-  const open = [false, false, false, false];
-  if (cell === 4) {
-    if (rot % 2 === 0) { open[1] = open[3] = true; }
-    else { open[0] = open[2] = true; }
-  } else if (cell === 5) {
-    const r = rot % 4;
-    if (r === 0) { open[1] = open[2] = true; }
-    if (r === 1) { open[2] = open[3] = true; }
-    if (r === 2) { open[0] = open[3] = true; }
-    if (r === 3) { open[0] = open[1] = true; }
-  } else if (cell === 2) {
-    open[1] = true;
-  } else if (cell === 3) {
-    open[3] = true;
-  }
-  return open;
-}
-
-function pipeChar(cell: Cell, rot: Rot): string {
+function pipeChar(cell: PipeCell, rot: PipeRot): string {
   if (cell === 2) return '💧';
   if (cell === 3) return '🕳';
   if (cell === 4) return rot % 2 === 0 ? '═' : '║';
@@ -92,50 +67,12 @@ function pipeChar(cell: Cell, rot: Rot): string {
   return '';
 }
 
-function connected(grid: Cell[][], rots: Rot[][]): boolean {
-  let srcR = -1; let srcC = -1;
-  let drainR = -1; let drainC = -1;
-  for (let r = 0; r < grid.length; r++) {
-    for (let c = 0; c < grid[0].length; c++) {
-      if (grid[r][c] === 2) { srcR = r; srcC = c; }
-      if (grid[r][c] === 3) { drainR = r; drainC = c; }
-    }
-  }
-  if (srcR < 0 || drainR < 0) return false;
-
-  const seen = new Set<string>();
-  const q: [number, number][] = [[srcR, srcC]];
-  seen.add(`${srcR},${srcC}`);
-
-  while (q.length) {
-    const [r, c] = q.shift()!;
-    if (r === drainR && c === drainC) return true;
-    const p = ports(grid[r][c], rots[r][c]);
-    for (let d = 0; d < 4; d++) {
-      if (!p[d]) continue;
-      const nr = r + DR[d];
-      const nc = c + DC[d];
-      if (nr < 0 || nc < 0 || nr >= grid.length || nc >= grid[0].length) continue;
-      const ncell = grid[nr][nc];
-      if (ncell === 0 || ncell === 1) continue;
-      const key = `${nr},${nc}`;
-      if (seen.has(key)) continue;
-      const np = ports(ncell, rots[nr][nc]);
-      if (np[(d + 2) % 4]) {
-        seen.add(key);
-        q.push([nr, nc]);
-      }
-    }
-  }
-  return false;
-}
-
 function render(mountEl: HTMLElement): void {
   let levelIdx = 0;
   let totalScore = 0;
   let sessionStart = Date.now();
-  let grid: Cell[][] = [];
-  let rots: Rot[][] = [];
+  let grid: PipeCell[][] = [];
+  let rots: PipeRot[][] = [];
   let rotations = 0;
   let locked = false;
   let levelStart = 0;
@@ -143,7 +80,7 @@ function render(mountEl: HTMLElement): void {
   function loadLevel(): void {
     const def = LEVELS_DEF[levelIdx];
     grid = def.grid.map((row) => row.slice());
-    rots = grid.map((row) => row.map(() => 0 as Rot));
+    rots = grid.map((row) => row.map(() => 0 as PipeRot));
     rotations = 0;
     locked = false;
     levelStart = Date.now();
@@ -171,12 +108,12 @@ function render(mountEl: HTMLElement): void {
           class: `pc-cell c${cell}`,
           onclick: () => {
             if (locked || cell < 4) return;
-            rots[rr][cc] = ((rots[rr][cc] + 1) % 4) as Rot;
+            rots[rr][cc] = ((rots[rr][cc] + 1) % 4) as PipeRot;
             rotations++;
             sound('click');
             setLQHeader({ moves: String(rotations) });
             paint();
-            if (connected(grid, rots)) finishLevel();
+            if (pipeGridConnected(grid, rots)) finishLevel();
           },
         }, pipeChar(cell, rots[r][c]));
         wrap.appendChild(btn);

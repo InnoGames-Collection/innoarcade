@@ -2,57 +2,14 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import './style.css';
-import { el, finishLQRound, mulberry32, shuffled, sound, mountLQ, setLQHeader } from '../_lq/lq';
+import { el, finishLQRound, mulberry32, sound, mountLQ, setLQHeader } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { createHost } from '../../platform/gameHost';
+import { slidePuzzleScramble, slidePuzzleSolved } from '../_lq/solvable';
 
 const SIZE = 4;
 const LEVELS = 3;
 const host = createHost('slide-puzzle');
-
-function solved(): number[] {
-  const arr: number[] = [];
-  for (let i = 1; i < SIZE * SIZE; i++) arr.push(i);
-  arr.push(0);
-  return arr;
-}
-
-function inversionCount(arr: number[]): number {
-  let inv = 0;
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] === 0) continue;
-    for (let j = i + 1; j < arr.length; j++) {
-      if (arr[j] !== 0 && arr[i] > arr[j]) inv++;
-    }
-  }
-  return inv;
-}
-
-function isSolvable(arr: number[]): boolean {
-  const inv = inversionCount(arr);
-  const blankRow = Math.floor(arr.indexOf(0) / SIZE);
-  return (inv + blankRow) % 2 === 1;
-}
-
-function scramble(seed: number, scrambleMoves: number): number[] {
-  const rnd = mulberry32(seed);
-  let tiles: number[];
-  do { tiles = shuffled(solved(), rnd); } while (!isSolvable(tiles));
-  for (let m = 0; m < scrambleMoves; m++) {
-    const empty = tiles.indexOf(0);
-    const er = Math.floor(empty / SIZE);
-    const ec = empty % SIZE;
-    const opts = [empty - 1, empty + 1, empty - SIZE, empty + SIZE].filter((i) => {
-      if (i < 0 || i >= SIZE * SIZE) return false;
-      const r = Math.floor(i / SIZE);
-      const c = i % SIZE;
-      return Math.abs(er - r) + Math.abs(ec - c) === 1;
-    });
-    const pick = opts[Math.floor(rnd() * opts.length)];
-    [tiles[empty], tiles[pick]] = [tiles[pick], tiles[empty]];
-  }
-  return tiles;
-}
 
 function render(mountEl: HTMLElement): void {
   let levelIdx = 0;
@@ -62,9 +19,10 @@ function render(mountEl: HTMLElement): void {
   let moves = 0;
   let locked = false;
   let levelStart = 0;
+  const solved = slidePuzzleSolved(SIZE);
 
   function loadLevel(): void {
-    tiles = scramble(levelIdx * 997 + 3, 12 + levelIdx * 18);
+    tiles = slidePuzzleScramble(SIZE, 12 + (levelIdx + 1) * 18, mulberry32(levelIdx * 997 + 3));
     moves = 0;
     locked = false;
     levelStart = Date.now();
@@ -89,7 +47,7 @@ function render(mountEl: HTMLElement): void {
     sound('click');
     setLQHeader({ moves: String(moves) });
     paint();
-    if (tiles.every((v, idx) => v === solved()[idx])) finishLevel();
+    if (tiles.every((v, idx) => v === solved[idx])) finishLevel();
   }
 
   function paint(): void {
