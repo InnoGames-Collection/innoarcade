@@ -2,12 +2,13 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import './style.css';
-import { el, finishLQRound, sound, mountLQ, setLQHeader } from '../_lq/lq';
+import { el, finishLQRound, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { createHost } from '../../platform/gameHost';
 import { pipeGridConnected, type PipeCell, type PipeRot } from '../_lq/solvable';
+import { showFirstRunToast } from '../_shared/firstRun';
 
-const LEVELS = 3;
+const LEVELS = 5;
 const host = createHost('pipe-connect');
 
 interface LevelDef {
@@ -54,6 +55,31 @@ const LEVELS_DEF: LevelDef[] = [
       [1, 1, 1, 1, 1, 1, 1, 1],
     ],
   },
+  {
+    w: 7, h: 7, par: 10,
+    grid: [
+      [1, 1, 1, 1, 1, 1, 1],
+      [1, 2, 5, 0, 4, 0, 1],
+      [1, 0, 4, 5, 4, 0, 1],
+      [1, 0, 5, 4, 5, 0, 1],
+      [1, 0, 4, 5, 4, 0, 1],
+      [1, 0, 0, 4, 4, 3, 1],
+      [1, 1, 1, 1, 1, 1, 1],
+    ],
+  },
+  {
+    w: 8, h: 8, par: 12,
+    grid: [
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 2, 4, 5, 4, 5, 0, 1],
+      [1, 0, 5, 4, 5, 4, 0, 1],
+      [1, 0, 4, 5, 4, 5, 0, 1],
+      [1, 0, 5, 4, 5, 4, 0, 1],
+      [1, 0, 4, 5, 4, 5, 0, 1],
+      [1, 0, 0, 0, 4, 4, 3, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+    ],
+  },
 ];
 
 function pipeChar(cell: PipeCell, rot: PipeRot): string {
@@ -76,6 +102,7 @@ function render(mountEl: HTMLElement): void {
   let rotations = 0;
   let locked = false;
   let levelStart = 0;
+  let waterFill = false;
 
   function loadLevel(): void {
     const def = LEVELS_DEF[levelIdx];
@@ -83,7 +110,11 @@ function render(mountEl: HTMLElement): void {
     rots = grid.map((row) => row.map(() => 0 as PipeRot));
     rotations = 0;
     locked = false;
+    waterFill = false;
     levelStart = Date.now();
+    if (levelIdx === 0) {
+      showFirstRunToast('pipe-connect', 'Tap pipes to rotate. Link the water source to the drain.', toast);
+    }
     setLQHeader({
       round: `${levelIdx + 1}/${LEVELS}`,
       moves: String(rotations),
@@ -95,7 +126,7 @@ function render(mountEl: HTMLElement): void {
   function paint(): void {
     mountEl.innerHTML = '';
     const wrap = el('div', {
-      class: 'pc-grid',
+      class: 'pc-grid' + (waterFill ? ' pc-solved' : ''),
       style: `grid-template-columns:repeat(${grid[0].length},1fr)`,
     });
     for (let r = 0; r < grid.length; r++) {
@@ -112,8 +143,14 @@ function render(mountEl: HTMLElement): void {
             rotations++;
             sound('click');
             setLQHeader({ moves: String(rotations) });
+            if (pipeGridConnected(grid, rots)) {
+              waterFill = true;
+              sound('win');
+              paint();
+              window.setTimeout(finishLevel, 750);
+              return;
+            }
             paint();
-            if (pipeGridConnected(grid, rots)) finishLevel();
           },
         }, pipeChar(cell, rots[r][c]));
         wrap.appendChild(btn);
@@ -125,7 +162,6 @@ function render(mountEl: HTMLElement): void {
   function finishLevel(): void {
     if (locked) return;
     locked = true;
-    sound('win');
     const def = LEVELS_DEF[levelIdx];
     const elapsedMs = Date.now() - levelStart;
     const moveBonus = Math.max(0, def.par - rotations) * 15;

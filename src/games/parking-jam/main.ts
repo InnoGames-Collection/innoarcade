@@ -5,8 +5,9 @@ import './style.css';
 import { el, finishLQRound, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { createHost } from '../../platform/gameHost';
+import { showFirstRunToast } from '../_shared/firstRun';
 
-const LEVELS = 3;
+const LEVELS = 8;
 const CELL = 42;
 const GAP = 2;
 const host = createHost('parking-jam');
@@ -65,6 +66,70 @@ const LEVELS_DEF: LevelDef[] = [
       { id: 7, r: 4, c: 3, len: 2, horiz: false },
       { id: 8, r: 5, c: 0, len: 2, horiz: true },
       { id: 9, r: 5, c: 3, len: 2, horiz: true },
+    ],
+  },
+  {
+    w: 6, h: 6, exitRow: 2, par: 10,
+    cars: [
+      { id: 1, r: 2, c: 0, len: 2, horiz: true, exit: true },
+      { id: 2, r: 0, c: 1, len: 2, horiz: false },
+      { id: 3, r: 1, c: 3, len: 2, horiz: false },
+      { id: 4, r: 3, c: 2, len: 2, horiz: true },
+      { id: 5, r: 4, c: 4, len: 2, horiz: false },
+      { id: 6, r: 5, c: 0, len: 2, horiz: true },
+    ],
+  },
+  {
+    w: 6, h: 6, exitRow: 2, par: 16,
+    cars: [
+      { id: 1, r: 2, c: 0, len: 2, horiz: true, exit: true },
+      { id: 2, r: 0, c: 0, len: 2, horiz: false },
+      { id: 3, r: 0, c: 3, len: 2, horiz: true },
+      { id: 4, r: 1, c: 5, len: 2, horiz: false },
+      { id: 5, r: 3, c: 1, len: 3, horiz: false },
+      { id: 6, r: 4, c: 3, len: 2, horiz: true },
+      { id: 7, r: 5, c: 1, len: 2, horiz: true },
+    ],
+  },
+  {
+    w: 6, h: 6, exitRow: 2, par: 18,
+    cars: [
+      { id: 1, r: 2, c: 0, len: 2, horiz: true, exit: true },
+      { id: 2, r: 0, c: 2, len: 2, horiz: false },
+      { id: 3, r: 0, c: 4, len: 2, horiz: false },
+      { id: 4, r: 2, c: 3, len: 2, horiz: false },
+      { id: 5, r: 3, c: 0, len: 2, horiz: true },
+      { id: 6, r: 4, c: 2, len: 3, horiz: false },
+      { id: 7, r: 5, c: 4, len: 2, horiz: true },
+      { id: 8, r: 1, c: 0, len: 2, horiz: false },
+    ],
+  },
+  {
+    w: 6, h: 6, exitRow: 2, par: 22,
+    cars: [
+      { id: 1, r: 2, c: 0, len: 2, horiz: true, exit: true },
+      { id: 2, r: 0, c: 0, len: 3, horiz: false },
+      { id: 3, r: 0, c: 4, len: 2, horiz: false },
+      { id: 4, r: 2, c: 2, len: 3, horiz: false },
+      { id: 5, r: 3, c: 4, len: 2, horiz: false },
+      { id: 6, r: 4, c: 0, len: 2, horiz: true },
+      { id: 7, r: 5, c: 2, len: 2, horiz: true },
+      { id: 8, r: 1, c: 5, len: 2, horiz: false },
+      { id: 9, r: 4, c: 5, len: 2, horiz: false },
+    ],
+  },
+  {
+    w: 6, h: 6, exitRow: 2, par: 24,
+    cars: [
+      { id: 1, r: 2, c: 0, len: 2, horiz: true, exit: true },
+      { id: 2, r: 0, c: 1, len: 2, horiz: false },
+      { id: 3, r: 0, c: 3, len: 2, horiz: false },
+      { id: 4, r: 0, c: 5, len: 2, horiz: false },
+      { id: 5, r: 2, c: 2, len: 3, horiz: false },
+      { id: 6, r: 3, c: 0, len: 2, horiz: true },
+      { id: 7, r: 4, c: 3, len: 2, horiz: false },
+      { id: 8, r: 5, c: 0, len: 3, horiz: true },
+      { id: 9, r: 5, c: 4, len: 2, horiz: true },
     ],
   },
 ];
@@ -158,6 +223,10 @@ function render(mount: HTMLElement): void {
     wrap.appendChild(lot);
     wrap.appendChild(ctrl);
     mount.appendChild(wrap);
+
+    if (levelIdx === 0) {
+      showFirstRunToast('parking-jam', 'Select a car, then use arrows to slide it. Free the red car →', toast);
+    }
 
     setLQHeader({ round: `${levelIdx + 1}/${LEVELS}`, score: String(totalScore), moves: '0' });
 

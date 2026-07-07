@@ -30,7 +30,23 @@
 
 .tc-tile:hover:not(.tc-empty) { transform: scale(1.04); }
 .tc-tile--sel { box-shadow: 0 0 0 3px #4f9e16; transform: scale(1.06); }
+.tc-tile--hint { box-shadow: 0 0 0 3px #f39c12; animation: tc-pulse 0.9s ease infinite; }
 .tc-tile.tc-empty { visibility: hidden; pointer-events: none; }
+
+.tc-toolbar {
+  display: flex;
+  justify-content: center;
+}
+
+.tc-hint-btn {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+@keyframes tc-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
 
 .tc-hint {
   font-size: 13px;

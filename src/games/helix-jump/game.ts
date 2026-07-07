@@ -1,6 +1,7 @@
 import { sfx } from '../../engine/audio';
 import type { Action } from '../../engine/input';
 import { mulberry32 } from '../_lq/lq';
+import { Juice } from '../../engine/juice';
 
 export const W = 480;
 export const H = 720;
@@ -32,6 +33,9 @@ export class HelixJump {
   private rings: Ring[] = [];
   private rnd = mulberry32(7);
   private passed = 0;
+  private juice = new Juice();
+  private smashStreak = 0;
+  private clearedRings = new Set<number>();
 
   start(): void {
     this.score = 0;
@@ -42,6 +46,9 @@ export class HelixJump {
     this.camY = 0;
     this.rnd = mulberry32((Math.random() * 1e9) | 0);
     this.rings = [];
+    this.juice = new Juice();
+    this.smashStreak = 0;
+    this.clearedRings = new Set();
     for (let i = 0; i < 20; i++) this.addRing(200 + i * 90);
     this.setState('playing');
   }
@@ -79,6 +86,7 @@ export class HelixJump {
 
   update(dt: number): void {
     if (this.state !== 'playing') return;
+    this.juice.update(dt);
     this.ballVy += 680 * dt;
     this.ballY += this.ballVy * dt;
 
@@ -102,7 +110,16 @@ export class HelixJump {
       while (rel < 0) rel += Math.PI * 2;
       while (rel >= Math.PI * 2) rel -= Math.PI * 2;
       const inGap = rel < GAP || rel > Math.PI * 2 - GAP * 0.3;
-      if (!inGap) {
+      if (inGap) {
+        if (!this.clearedRings.has(ring.y)) {
+          this.clearedRings.add(ring.y);
+          this.smashStreak++;
+          this.score += Math.min(this.smashStreak, 6);
+          this.juice.burst(CX, screenY, '#5b8cff', 6 + this.smashStreak, 100, 3);
+          sfx.coin();
+        }
+      } else {
+        this.smashStreak = 0;
         if (ring.danger) {
           sfx.crash();
           this.setState('over');
@@ -157,10 +174,18 @@ export class HelixJump {
 
     ctx.restore();
 
+    this.juice.drawParticles(ctx);
+
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.font = 'bold 15px system-ui,sans-serif';
     ctx.textAlign = 'center';
-    if (this.state === 'playing') ctx.fillText('Tap to rotate tower', CX, H - 22);
+    if (this.state === 'playing') {
+      ctx.fillText('Tap to rotate tower', CX, H - 22);
+      if (this.smashStreak > 1) {
+        ctx.fillStyle = '#5b8cff';
+        ctx.fillText(`Smash x${this.smashStreak}`, CX, 36);
+      }
+    }
   }
 
   private setState(s: GameState): void {

@@ -2,11 +2,12 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import './style.css';
-import { el, finishLQRound, sound, mountLQ, setLQHeader } from '../_lq/lq';
+import { el, finishLQRound, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { createHost } from '../../platform/gameHost';
+import { showFirstRunToast } from '../_shared/firstRun';
 
-const LEVELS = 3;
+const LEVELS = 5;
 const host = createHost('laser-puzzle');
 
 /** 0=empty 1=wall 2=source 3=target 4=mirror / 5=mirror \ */
@@ -59,6 +60,31 @@ const LEVELS_DEF: LevelDef[] = [
       [1, 0, 0, 5, 0, 4, 0, 1],
       [2, 0, 0, 0, 0, 0, 0, 1],
       [1, 0, 0, 4, 5, 0, 3, 1],
+      [1, 0, 0, 0, 0, 0, 0, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+    ],
+  },
+  {
+    w: 7, h: 7, srcR: 3, srcC: 0, srcDir: 1, par: 5,
+    grid: [
+      [1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 3, 0, 0, 0, 1],
+      [1, 0, 4, 5, 0, 0, 1],
+      [2, 0, 0, 4, 0, 3, 1],
+      [1, 0, 0, 5, 4, 0, 1],
+      [1, 0, 0, 0, 0, 0, 1],
+      [1, 1, 1, 1, 1, 1, 1],
+    ],
+  },
+  {
+    w: 8, h: 8, srcR: 4, srcC: 0, srcDir: 1, par: 7,
+    grid: [
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 0, 3, 0, 0, 0, 1],
+      [1, 0, 4, 5, 4, 0, 0, 1],
+      [1, 0, 5, 0, 5, 0, 0, 1],
+      [2, 0, 0, 4, 0, 0, 3, 1],
+      [1, 0, 0, 5, 4, 0, 0, 1],
       [1, 0, 0, 0, 0, 0, 0, 1],
       [1, 1, 1, 1, 1, 1, 1, 1],
     ],
@@ -148,6 +174,10 @@ function render(mount: HTMLElement): void {
     wrap.appendChild(boardWrap);
     mount.appendChild(wrap);
 
+    if (levelIdx === 0) {
+      showFirstRunToast('laser-puzzle', 'Tap mirrors to rotate. Light every target to win.', toast);
+    }
+
     setLQHeader({ round: `${levelIdx + 1}/${LEVELS}`, score: String(totalScore), moves: '0' });
 
     function paint(): void {
@@ -183,7 +213,7 @@ function render(mount: HTMLElement): void {
         const len = Math.hypot(dx, dy);
         const angle = Math.atan2(dy, dx) * (180 / Math.PI);
         const beam = el('div', {
-          class: 'lp-beam',
+          class: 'lp-beam' + (lit.size === targets ? ' lp-beam--win' : ''),
           style: `left:${x1}px;top:${y1}px;width:${len}px;height:3px;transform:rotate(${angle}deg);transform-origin:0 50%`,
         });
         boardWrap.appendChild(beam);

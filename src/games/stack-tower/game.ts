@@ -100,7 +100,8 @@ export class StackTower {
       return;
     }
 
-    const perfect = Math.abs(mover.x - top.x) < 6 && Math.abs(mover.w - top.w) < 4;
+    const tol = Math.max(2, 6 - Math.floor(this.score / 4));
+    const perfect = Math.abs(mover.x - top.x) < tol && Math.abs(mover.w - top.w) < tol + 1;
     if (perfect) {
       this.perfectStreak++;
       this.juice.flashOverlay('rgba(46,204,113,0.35)', 0.35);

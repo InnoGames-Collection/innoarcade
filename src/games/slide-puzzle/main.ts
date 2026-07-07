@@ -2,13 +2,14 @@
 import '../../styles/base.css';
 import '../_lq/lq.css';
 import './style.css';
-import { el, finishLQRound, mulberry32, sound, mountLQ, setLQHeader } from '../_lq/lq';
+import { el, finishLQRound, mulberry32, sound, mountLQ, setLQHeader, toast } from '../_lq/lq';
 import { puzzleCompletionScore } from '../_lq/scoring';
 import { createHost } from '../../platform/gameHost';
 import { slidePuzzleScramble, slidePuzzleSolved } from '../_lq/solvable';
+import { showFirstRunToast } from '../_shared/firstRun';
 
 const SIZE = 4;
-const LEVELS = 3;
+const LEVELS = 5;
 const host = createHost('slide-puzzle');
 
 function render(mountEl: HTMLElement): void {
@@ -22,10 +23,13 @@ function render(mountEl: HTMLElement): void {
   const solved = slidePuzzleSolved(SIZE);
 
   function loadLevel(): void {
-    tiles = slidePuzzleScramble(SIZE, 12 + (levelIdx + 1) * 18, mulberry32(levelIdx * 997 + 3));
+    tiles = slidePuzzleScramble(SIZE, 14 + levelIdx * 16, mulberry32(levelIdx * 997 + 3));
     moves = 0;
     locked = false;
     levelStart = Date.now();
+    if (levelIdx === 0) {
+      showFirstRunToast('slide-puzzle', 'Slide tiles into order. Only tiles next to the empty space move.', toast);
+    }
     setLQHeader({
       round: `${levelIdx + 1}/${LEVELS}`,
       moves: String(moves),

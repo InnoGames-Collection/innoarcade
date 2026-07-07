@@ -47,6 +47,7 @@ function drawKnifeShape(ctx: CanvasRenderingContext2D): void {
 }
 
 interface StuckKnife { angle: number; }
+interface Apple { angle: number; }
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
 
@@ -69,6 +70,7 @@ export class KnifeHit {
   private knivesNeeded = 5;
   private boss = false;
   private juice = new Juice();
+  private apples: Apple[] = [];
 
   start(): void {
     this.score = 0;
@@ -81,6 +83,7 @@ export class KnifeHit {
     this.boss = false;
     this.spinSpeed = 1.2;
     this.juice = new Juice();
+    this.spawnApples();
     this.setState('playing');
   }
 
@@ -129,6 +132,50 @@ export class KnifeHit {
     return false;
   }
 
+  private angleTaken(angle: number, thresh: number): boolean {
+    const a = this.normAngle(angle);
+    for (const k of this.knives) {
+      let diff = Math.abs(this.normAngle(k.angle) - a);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff < thresh) return true;
+    }
+    for (const ap of this.apples) {
+      let diff = Math.abs(this.normAngle(ap.angle) - a);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff < thresh) return true;
+    }
+    return false;
+  }
+
+  private spawnApples(): void {
+    this.apples = [];
+    const count = 1 + (this.stage % 3 === 0 ? 1 : 0);
+    for (let i = 0; i < count; i++) {
+      let angle = 0;
+      for (let t = 0; t < 16; t++) {
+        angle = -Math.PI + Math.random() * Math.PI * 2;
+        if (!this.angleTaken(angle, 0.28)) break;
+      }
+      this.apples.push({ angle });
+    }
+  }
+
+  private hitApple(): boolean {
+    const hit = this.stickLocalAngle();
+    for (let i = 0; i < this.apples.length; i++) {
+      let diff = Math.abs(this.normAngle(this.apples[i].angle) - hit);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff < 0.24) {
+        this.apples.splice(i, 1);
+        this.score += 25;
+        this.juice.burst(CX, CY + LOG_R * 0.5, '#e74c3c', 14, 160, 4);
+        sfx.coin();
+        return true;
+      }
+    }
+    return false;
+  }
+
   private nextStage(): void {
     this.stage++;
     this.knivesThisStage = 0;
@@ -137,6 +184,7 @@ export class KnifeHit {
     this.spinSpeed = 1.2 + this.stage * 0.15 + (this.boss ? 0.8 : 0);
     this.knives = [];
     this.logAngle = 0;
+    this.spawnApples();
   }
 
   update(dt: number): void {
@@ -159,6 +207,7 @@ export class KnifeHit {
         }
         this.knives.push({ angle: this.stickLocalAngle() });
         this.knivesThisStage++;
+        this.hitApple();
         this.score += 10 + (this.boss ? 5 : 0);
         this.juice.burst(CX, CY + LOG_R, '#eceff1', 10, 140, 3);
         sfx.coin();
@@ -192,6 +241,19 @@ export class KnifeHit {
       drawKnifeShape(ctx);
       ctx.restore();
     }
+
+    for (const ap of this.apples) {
+      ctx.save();
+      ctx.rotate(ap.angle);
+      ctx.translate(0, LOG_R - 10);
+      ctx.fillStyle = '#e74c3c';
+      ctx.beginPath();
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#27ae60';
+      ctx.fillRect(-3, -14, 6, 5);
+      ctx.restore();
+    }
     ctx.restore();
 
     if (this.flying || this.state === 'playing') {
@@ -208,7 +270,7 @@ export class KnifeHit {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 16px system-ui,sans-serif';
     ctx.textAlign = 'center';
-    if (this.state === 'playing' && !this.flying) ctx.fillText('Tap to throw', CX, H - 20);
+    if (this.state === 'playing' && !this.flying) ctx.fillText('Tap to throw · 🍎 = bonus', CX, H - 20);
     if (this.boss) {
       ctx.fillStyle = '#f39c12';
       ctx.fillText('BOSS', CX, 40);

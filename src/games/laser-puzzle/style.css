@@ -44,6 +44,17 @@
   z-index: 1;
 }
 
+.lp-beam--win {
+  background: rgba(46, 204, 113, 0.95);
+  box-shadow: 0 0 12px #2ecc71;
+  animation: lp-pulse 0.45s ease infinite;
+}
+
+@keyframes lp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 .lp-hint {
   text-align: center;
   font-size: 13px;

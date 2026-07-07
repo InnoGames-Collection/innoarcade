@@ -19,3 +19,14 @@
 .pc-cell.c1 { background: #1e272e; cursor: default; }
 .pc-cell.c0 { background: transparent; cursor: default; }
 .pc-cell.c2, .pc-cell.c3 { cursor: default; }
+
+.pc-solved .pc-cell.c4,
+.pc-solved .pc-cell.c5 {
+  color: #74b9ff;
+  animation: pc-flow 0.7s ease forwards;
+}
+
+@keyframes pc-flow {
+  from { background: #2d3436; }
+  to { background: #0984e3; box-shadow: inset 0 0 8px rgba(116, 185, 255, 0.6); }
+}

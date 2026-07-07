@@ -3,6 +3,7 @@ import {
   pipeGridConnected,
   slidePuzzleScramble,
   tileConnectCanConnect,
+  tileConnectFindHint,
   tileConnectIsFullySolvable,
 } from './solvable';
 import { adjacentPairBoard, buildSolvableTileBoard } from './levelGen';
@@ -47,6 +48,16 @@ describe('slidePuzzleScramble', () => {
     const scrambled = slidePuzzleScramble(4, 30, rnd);
     expect(scrambled).toHaveLength(16);
     expect(scrambled.includes(0)).toBe(true);
+  });
+});
+
+describe('tileConnectFindHint', () => {
+  it('finds a clearable pair', () => {
+    const board = [
+      ['A', 'A', ''],
+      ['', 'B', 'B'],
+    ];
+    expect(tileConnectFindHint(board)).toEqual([0, 0, 0, 1]);
   });
 });
 

@@ -62,3 +62,13 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.04); }
 }
+
+.bs-undo {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+.bs-undo[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
