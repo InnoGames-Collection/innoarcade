@@ -13,6 +13,7 @@ interface Spike {
 }
 
 const LEVELS = 3;
+const SWING_BTN = { x: W / 2 - 70, y: H - 56, w: 140, h: 44 };
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
 type Phase = 'draw' | 'swing' | 'result';
@@ -22,6 +23,7 @@ export class RopeRescue {
   score = 0;
   level = 1;
   best = 0;
+  hint = '';
 
   onStateChange: (s: GameState) => void = () => {};
   onGameOver: (score: number, record: boolean) => void = () => {};
@@ -30,18 +32,17 @@ export class RopeRescue {
   private rope: Point[] = [];
   private drawing = false;
   private person = { x: 80, y: 180 };
-  private anchor = { x: 400, y: 120 };
-  private safe = { x: 400, y: 520, w: 60, h: 40 };
+  private safe = { x: 340, y: 520, w: 90, h: 50 };
   private spikes: Spike[] = [];
   private swingT = 0;
   private swingPos = { x: 80, y: 180 };
   private resultT = 0;
-
   private swingWon = false;
 
   start(): void {
     this.score = 0;
     this.level = 1;
+    this.hint = '';
     this.resetLevel();
     this.setState('playing');
   }
@@ -58,12 +59,13 @@ export class RopeRescue {
     this.phase = 'draw';
     this.rope = [];
     this.drawing = false;
-    this.person = { x: 80, y: 160 + this.level * 20 };
-    this.anchor = { x: 400, y: 100 };
-    this.safe = { x: 380, y: 500, w: 70, h: 44 };
+    this.swingWon = false;
+    this.hint = 'Draw from the person to the green zone, then tap SWING';
+    this.person = { x: 70, y: 150 + this.level * 15 };
+    this.safe = { x: 320 - this.level * 10, y: 510, w: 100, h: 55 };
     this.spikes = [
-      { x: 100 + this.level * 10, y: 400 + this.level * 8, w: 220 - this.level * 15 },
-      { x: 50, y: 340 + this.level * 12, w: 160 + this.level * 10 },
+      { x: 160, y: 460, w: 120 },
+      { x: 200, y: 400, w: 80 },
     ];
     this.swingT = 0;
     this.swingPos = { ...this.person };
@@ -72,8 +74,16 @@ export class RopeRescue {
 
   pointerDown(x: number, y: number): void {
     if (this.state !== 'playing' || this.phase !== 'draw') return;
+    if (this.hitSwingBtn(x, y)) {
+      this.tapSwing();
+      return;
+    }
     this.drawing = true;
-    this.rope = [{ x, y }];
+    const start = Math.hypot(x - this.person.x, y - this.person.y) < 40
+      ? { ...this.person }
+      : { x, y };
+    this.rope = [start];
+    this.hint = 'Draw to the green safe zone…';
   }
 
   pointerMove(x: number, y: number): void {
@@ -87,10 +97,28 @@ export class RopeRescue {
   }
 
   tapSwing(): void {
-    if (this.state !== 'playing' || this.phase !== 'draw' || this.rope.length < 4) return;
-    if (this.ropeHitsSpike()) return;
+    if (this.state !== 'playing' || this.phase !== 'draw') return;
+    if (this.rope.length < 3) {
+      this.hint = 'Draw a longer rope first';
+      sfx.slide();
+      return;
+    }
+    const end = this.rope[this.rope.length - 1];
+    const nearSafe = end.x >= this.safe.x - 30 && end.x <= this.safe.x + this.safe.w + 30
+      && end.y >= this.safe.y - 40 && end.y <= this.safe.y + this.safe.h + 40;
+    if (!nearSafe) {
+      this.hint = 'End your rope in the green safe zone';
+      sfx.slide();
+      return;
+    }
+    if (this.ropeHitsSpike()) {
+      this.hint = 'Rope crosses spikes — try a different path';
+      sfx.slide();
+      return;
+    }
     this.phase = 'swing';
     this.swingT = 0;
+    this.hint = '';
     sfx.click();
   }
 
@@ -102,21 +130,25 @@ export class RopeRescue {
     }
   }
 
+  private hitSwingBtn(x: number, y: number): boolean {
+    return x >= SWING_BTN.x && x <= SWING_BTN.x + SWING_BTN.w
+      && y >= SWING_BTN.y && y <= SWING_BTN.y + SWING_BTN.h;
+  }
+
   private ropeHitsSpike(): boolean {
     for (let i = 1; i < this.rope.length; i++) {
       const a = this.rope[i - 1];
       const b = this.rope[i];
       for (const s of this.spikes) {
-        if (this.segRectHit(a, b, s.x, s.y, s.w, 16)) return true;
+        if (this.segRectHit(a, b, s.x, s.y, s.w, 18)) return true;
       }
     }
     return false;
   }
 
   private segRectHit(a: Point, b: Point, rx: number, ry: number, rw: number, rh: number): boolean {
-    const samples = 12;
-    for (let i = 0; i <= samples; i++) {
-      const t = i / samples;
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
       const x = a.x + (b.x - a.x) * t;
       const y = a.y + (b.y - a.y) * t;
       if (x >= rx && x <= rx + rw && y >= ry && y <= ry + rh) return true;
@@ -139,7 +171,7 @@ export class RopeRescue {
 
     if (this.phase === 'swing') {
       this.swingT += dt;
-      const t = Math.min(1, this.swingT / 1.8);
+      const t = Math.min(1, this.swingT / 1.6);
       this.swingPos = this.pointOnRope(t);
       if (t >= 1) {
         const inSafe = this.swingPos.x >= this.safe.x && this.swingPos.x <= this.safe.x + this.safe.w
@@ -151,6 +183,7 @@ export class RopeRescue {
           this.score += 80 + this.level * 20;
           sfx.coin();
         } else {
+          this.hint = 'Missed the safe zone!';
           sfx.slide();
           this.endSession(false);
         }
@@ -192,42 +225,63 @@ export class RopeRescue {
 
     ctx.fillStyle = '#27ae60';
     ctx.fillRect(this.safe.x, this.safe.y, this.safe.w, this.safe.h);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('SAFE', this.safe.x + this.safe.w / 2, this.safe.y + this.safe.h / 2 + 4);
 
     ctx.fillStyle = '#e74c3c';
     for (const s of this.spikes) {
       ctx.beginPath();
-      ctx.moveTo(s.x, s.y + 16);
+      ctx.moveTo(s.x, s.y + 18);
       for (let i = 0; i <= s.w; i += 20) {
         ctx.lineTo(s.x + i + 10, s.y);
-        ctx.lineTo(s.x + i + 20, s.y + 16);
+        ctx.lineTo(s.x + i + 20, s.y + 18);
       }
       ctx.fill();
     }
 
-    ctx.fillStyle = '#8B7355';
-    ctx.beginPath();
-    ctx.arc(this.anchor.x, this.anchor.y, 10, 0, Math.PI * 2);
-    ctx.fill();
-
     if (this.rope.length > 1) {
       ctx.strokeStyle = '#f39c12';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.beginPath();
       ctx.moveTo(this.rope[0].x, this.rope[0].y);
       for (let i = 1; i < this.rope.length; i++) ctx.lineTo(this.rope[i].x, this.rope[i].y);
       ctx.stroke();
     }
 
-    const p = this.phase === 'swing' || this.phase === 'result' ? this.swingPos : this.person;
     ctx.fillStyle = '#3498db';
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+    ctx.arc(this.person.x, this.person.y, 18, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('YOU', this.person.x, this.person.y + 4);
+
+    if (this.phase === 'swing' || this.phase === 'result') {
+      ctx.fillStyle = '#e67e22';
+      ctx.beginPath();
+      ctx.arc(this.swingPos.x, this.swingPos.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     if (this.phase === 'draw') {
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.font = '16px system-ui';
-      ctx.fillText('Draw rope → tap SWING', 120, H - 36);
+      ctx.fillStyle = '#f39c12';
+      ctx.fillRect(SWING_BTN.x, SWING_BTN.y, SWING_BTN.w, SWING_BTN.h);
+      ctx.fillStyle = '#1a252f';
+      ctx.font = 'bold 16px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('SWING', W / 2, SWING_BTN.y + 28);
+    }
+
+    if (this.hint) {
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = '14px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(this.hint, W / 2, H - 90);
     }
   }
 }

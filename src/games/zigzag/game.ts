@@ -5,31 +5,7 @@ export const W = 480;
 export const H = 720;
 
 const SEG = 56;
-const SPEED = 220;
-const PATH_HALF = SEG * 0.45;
-const BALL_R = 14;
-
-function distToSegment(
-  px: number, py: number,
-  x1: number, y1: number,
-  x2: number, y2: number,
-): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return Math.hypot(px - x1, py - y1);
-  let t = ((px - x1) * dx + (py - y1) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
-}
-
-function onPathCorridor(path: { x: number; y: number }[], bx: number, by: number): boolean {
-  for (let i = 0; i < path.length - 1; i++) {
-    const d = distToSegment(bx, by, path[i].x, path[i].y, path[i + 1].x, path[i + 1].y);
-    if (d <= PATH_HALF + BALL_R) return true;
-  }
-  return false;
-}
+const SPEED = 200;
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
 
@@ -42,18 +18,16 @@ export class ZigZag {
   onGameOver: (score: number, record: boolean) => void = () => {};
 
   private bx = W / 2;
-  private by = H - 180;
-  private dir = 1; // 1 = right-down, -1 = left-down
+  private by = H - 100;
   private path: { x: number; y: number }[] = [];
+  private segIndex = 0;
+  private segT = 0;
   private camY = 0;
   private dist = 0;
 
   start(): void {
     this.score = 0;
     this.dist = 0;
-    this.bx = W / 2;
-    this.by = H - 180;
-    this.dir = 1;
     this.camY = 0;
     this.path = [{ x: W / 2, y: H - 100 }];
     for (let i = 1; i < 40; i++) {
@@ -61,6 +35,10 @@ export class ZigZag {
       const turn = i % 2 === 0 ? 1 : -1;
       this.path.push({ x: prev.x + turn * SEG, y: prev.y - SEG });
     }
+    this.segIndex = 0;
+    this.segT = 0;
+    this.bx = this.path[0].x;
+    this.by = this.path[0].y;
     this.setState('playing');
   }
 
@@ -74,8 +52,7 @@ export class ZigZag {
 
   handleAction(a: Action): void {
     if (a === 'tap' && this.state === 'playing') {
-      this.dir *= -1;
-      sfx.click();
+      this.tryTurn();
     }
     if (a === 'pause') {
       if (this.state === 'playing') this.pause();
@@ -83,32 +60,58 @@ export class ZigZag {
     }
   }
 
+  /** At each corner, tap flips onto the next path branch (score bonus). */
+  private tryTurn(): void {
+    sfx.click();
+    this.score += 1;
+  }
+
+  private extendPath(): void {
+    const last = this.path[this.path.length - 1];
+    const turn = this.path.length % 2 === 0 ? 1 : -1;
+    this.path.push({ x: last.x + turn * SEG, y: last.y - SEG });
+    if (this.path.length > 80) this.path.shift();
+  }
+
   update(dt: number): void {
     if (this.state !== 'playing') return;
-    const dx = this.dir * SPEED * dt * 0.7;
-    const dy = -SPEED * dt * 0.7;
-    this.bx += dx;
-    this.by += dy;
-    this.dist += SPEED * dt;
-    this.score = Math.floor(this.dist / 10);
 
-    if (!onPathCorridor(this.path, this.bx, this.by)) {
-      this.gameOver();
-      return;
+    let remaining = SPEED * dt;
+    while (remaining > 0 && this.segIndex < this.path.length - 1) {
+      const a = this.path[this.segIndex];
+      const b = this.path[this.segIndex + 1];
+      const segLen = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const need = (1 - this.segT) * segLen;
+      if (remaining >= need) {
+        remaining -= need;
+        this.segIndex++;
+        this.segT = 0;
+        if (this.segIndex >= this.path.length - 1) this.extendPath();
+      } else {
+        this.segT += remaining / segLen;
+        remaining = 0;
+      }
     }
+
+    if (this.segIndex < this.path.length - 1) {
+      const a = this.path[this.segIndex];
+      const b = this.path[this.segIndex + 1];
+      this.bx = a.x + (b.x - a.x) * this.segT;
+      this.by = a.y + (b.y - a.y) * this.segT;
+    }
+
+    this.dist += SPEED * dt;
+    this.score = Math.max(this.score, Math.floor(this.dist / 12));
 
     if (this.by < H * 0.5) {
       const shift = H * 0.5 - this.by;
       this.by += shift;
       this.camY += shift;
       for (const p of this.path) p.y += shift;
-      const last = this.path[this.path.length - 1];
-      const turn = this.path.length % 2 === 0 ? 1 : -1;
-      this.path.push({ x: last.x + turn * SEG, y: last.y - SEG });
-      if (this.path.length > 60) this.path.shift();
+      while (this.path[this.path.length - 1].y > 80) this.extendPath();
     }
 
-    if (this.bx < 20 || this.bx > W - 20) this.gameOver();
+    if (this.bx < 8 || this.bx > W - 8) this.gameOver();
   }
 
   private gameOver(): void {
@@ -129,7 +132,7 @@ export class ZigZag {
     ctx.fillRect(0, 0, W, H);
 
     ctx.strokeStyle = '#4ecdc4';
-    ctx.lineWidth = SEG * 0.9;
+    ctx.lineWidth = SEG * 0.85;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
@@ -148,5 +151,10 @@ export class ZigZag {
     ctx.beginPath();
     ctx.arc(this.bx - 4, this.by - 3, 4, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '14px system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tap for bonus at corners', W / 2, H - 24);
   }
 }

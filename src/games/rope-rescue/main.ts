@@ -52,7 +52,6 @@ function toCanvas(e: PointerEvent): [number, number] {
 }
 canvas.addEventListener('pointerdown', (e) => {
   const [x, y] = toCanvas(e);
-  if (y > H - 64) { game.tapSwing(); return; }
   canvas.setPointerCapture(e.pointerId);
   game.pointerDown(x, y);
 });

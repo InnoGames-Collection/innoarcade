@@ -5,11 +5,12 @@ import { mulberry32 } from '../_lq/lq';
 export const W = 480;
 export const H = 720;
 
+const PLAYER_H = 36;
+
 interface Platform {
   x: number;
   y: number;
   w: number;
-  /** One bounce then the platform crumbles away. */
   crumbling: boolean;
 }
 
@@ -30,19 +31,23 @@ export class DoodleJump {
   private camY = 0;
   private platforms: Platform[] = [];
   private rnd = mulberry32(42);
-  private maxHeight = 0;
 
   start(): void {
     this.score = 0;
-    this.maxHeight = 0;
-    this.px = W / 2;
-    this.py = H - 120;
-    this.vx = 0;
-    this.vy = -420;
     this.camY = 0;
     this.rnd = mulberry32((Math.random() * 1e9) | 0);
     this.platforms = [];
-    for (let i = 0; i < 12; i++) this.addPlatform(H - 80 - i * 95);
+
+    const startY = H - 72;
+    this.platforms.push({ x: W / 2 - 55, y: startY, w: 110, crumbling: false });
+    for (let i = 1; i < 14; i++) {
+      this.addPlatform(startY - i * 92);
+    }
+
+    this.px = W / 2;
+    this.py = startY - PLAYER_H;
+    this.vx = 0;
+    this.vy = 0;
     this.setState('playing');
   }
 
@@ -69,27 +74,30 @@ export class DoodleJump {
 
   private addPlatform(y: number): void {
     this.platforms.push({
-      x: 40 + this.rnd() * (W - 120),
+      x: 30 + this.rnd() * (W - 130),
       y,
-      w: 70 + this.rnd() * 40,
-      crumbling: this.rnd() < 0.12 && y < H - 200,
+      w: 72 + this.rnd() * 36,
+      crumbling: this.rnd() < 0.15 && y < H - 320,
     });
   }
 
   update(dt: number): void {
     if (this.state !== 'playing') return;
-    this.vy += 980 * dt;
+    const prevFeet = this.py + PLAYER_H;
+    this.vy += 900 * dt;
     this.px += this.vx * dt;
     this.py += this.vy * dt;
-    if (this.px < 12) this.px = W - 12;
-    if (this.px > W - 12) this.px = 12;
+    if (this.px < 16) this.px = W - 16;
+    if (this.px > W - 16) this.px = 16;
 
-    const feet = this.py + 18;
     if (this.vy > 0) {
+      const feet = this.py + PLAYER_H;
       for (const p of this.platforms) {
-        if (feet >= p.y && feet <= p.y + 14 && this.px > p.x && this.px < p.x + p.w) {
-          this.vy = -520;
-          this.py = p.y - 18;
+        if (p.y > H + 50) continue;
+        if (prevFeet <= p.y + 6 && feet >= p.y && feet <= p.y + 16
+          && this.px + 10 > p.x && this.px - 10 < p.x + p.w) {
+          this.vy = -480;
+          this.py = p.y - PLAYER_H;
           sfx.click();
           if (p.crumbling) p.y = H + 999;
           break;
@@ -97,25 +105,20 @@ export class DoodleJump {
       }
     }
 
-    const height = Math.max(0, Math.floor((H - 120 - this.py + this.camY) / 8));
-    if (height > this.maxHeight) {
-      this.maxHeight = height;
-      this.score = this.maxHeight;
-    }
-
-    if (this.py < H * 0.45) {
-      const shift = H * 0.45 - this.py;
+    if (this.py < H * 0.42) {
+      const shift = H * 0.42 - this.py;
       this.py += shift;
       this.camY += shift;
       for (const p of this.platforms) p.y += shift;
+      this.score = Math.floor(this.camY / 10);
       while (this.platforms[this.platforms.length - 1].y > 60) {
-        const top = this.platforms[this.platforms.length - 1].y;
-        this.addPlatform(top - (85 + this.rnd() * 35));
+        const lastY = this.platforms[this.platforms.length - 1].y;
+        this.addPlatform(lastY - (82 + this.rnd() * 30));
       }
     }
 
-    this.platforms = this.platforms.filter((p) => p.y < H + 40);
-    if (this.py > H + 60) this.gameOver();
+    this.platforms = this.platforms.filter((p) => p.y < H + 800);
+    if (this.py > H + 80) this.gameOver();
   }
 
   private gameOver(): void {
@@ -139,6 +142,7 @@ export class DoodleJump {
     ctx.fillRect(0, 0, W, H);
 
     for (const p of this.platforms) {
+      if (p.y > H + 40) continue;
       ctx.fillStyle = p.crumbling ? '#8B4513' : '#2ecc71';
       ctx.fillRect(p.x, p.y, p.w, 12);
       ctx.fillStyle = p.crumbling ? '#6d3a1f' : '#27ae60';
@@ -147,17 +151,17 @@ export class DoodleJump {
 
     ctx.fillStyle = '#6c5ce7';
     ctx.beginPath();
-    ctx.ellipse(this.px, this.py, 16, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(this.px, this.py + 10, 16, 18, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(this.px - 5, this.py - 6, 4, 0, Math.PI * 2);
-    ctx.arc(this.px + 5, this.py - 6, 4, 0, Math.PI * 2);
+    ctx.arc(this.px - 5, this.py + 4, 4, 0, Math.PI * 2);
+    ctx.arc(this.px + 5, this.py + 4, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#2d3436';
     ctx.beginPath();
-    ctx.arc(this.px - 5, this.py - 6, 2, 0, Math.PI * 2);
-    ctx.arc(this.px + 5, this.py - 6, 2, 0, Math.PI * 2);
+    ctx.arc(this.px - 5, this.py + 4, 2, 0, Math.PI * 2);
+    ctx.arc(this.px + 5, this.py + 4, 2, 0, Math.PI * 2);
     ctx.fill();
   }
 }

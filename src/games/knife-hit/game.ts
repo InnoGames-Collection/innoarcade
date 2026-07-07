@@ -6,7 +6,44 @@ export const H = 720;
 const CX = W / 2;
 const CY = 280;
 const LOG_R = 72;
-const KNIFE_LEN = 90;
+const KNIFE_BLADE = 72;
+const KNIFE_HANDLE = 26;
+
+/** Draw a knife pointing upward (tip at local origin, blade extends +y). */
+function drawKnifeShape(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = '#4e342e';
+  ctx.fillRect(-8, -KNIFE_HANDLE, 16, KNIFE_HANDLE);
+  ctx.fillStyle = '#3e2723';
+  ctx.fillRect(-8, -KNIFE_HANDLE, 16, 5);
+
+  ctx.fillStyle = '#9e9e9e';
+  ctx.fillRect(-13, 0, 26, 7);
+
+  const blade = ctx.createLinearGradient(-10, 0, 10, 0);
+  blade.addColorStop(0, '#78909c');
+  blade.addColorStop(0.45, '#eceff1');
+  blade.addColorStop(1, '#546e7a');
+  ctx.fillStyle = blade;
+  ctx.beginPath();
+  ctx.moveTo(0, 7);
+  ctx.lineTo(-10, 12);
+  ctx.lineTo(-7, KNIFE_BLADE);
+  ctx.lineTo(0, KNIFE_BLADE + 8);
+  ctx.lineTo(7, KNIFE_BLADE);
+  ctx.lineTo(10, 12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#455a64';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-2, 14);
+  ctx.lineTo(-1, KNIFE_BLADE - 4);
+  ctx.stroke();
+}
 
 interface StuckKnife { angle: number; }
 
@@ -106,7 +143,7 @@ export class KnifeHit {
     if (this.flying) {
       this.flyT += dt;
       this.flyY -= 520 * dt;
-      if (this.flyY <= CY + LOG_R + 10) {
+      if (this.flyY <= CY + LOG_R + KNIFE_BLADE + 14) {
         this.flying = false;
         if (this.collide()) {
           sfx.crash();
@@ -141,31 +178,20 @@ export class KnifeHit {
 
     for (const k of this.knives) {
       ctx.save();
-      ctx.rotate(k.angle + Math.PI / 2);
-      ctx.fillStyle = '#ccc';
-      ctx.fillRect(-4, LOG_R - 4, 8, KNIFE_LEN);
-      ctx.fillStyle = '#e74c3c';
-      ctx.beginPath();
-      ctx.moveTo(0, LOG_R + KNIFE_LEN);
-      ctx.lineTo(-8, LOG_R + KNIFE_LEN - 16);
-      ctx.lineTo(8, LOG_R + KNIFE_LEN - 16);
-      ctx.closePath();
-      ctx.fill();
+      ctx.rotate(k.angle);
+      ctx.translate(0, LOG_R);
+      ctx.rotate(Math.PI / 2);
+      drawKnifeShape(ctx);
       ctx.restore();
     }
     ctx.restore();
 
     if (this.flying || this.state === 'playing') {
       const y = this.flying ? this.flyY : H - 60;
-      ctx.fillStyle = '#ddd';
-      ctx.fillRect(CX - 4, y, 8, KNIFE_LEN);
-      ctx.fillStyle = '#3498db';
-      ctx.beginPath();
-      ctx.moveTo(CX, y + KNIFE_LEN);
-      ctx.lineTo(CX - 10, y + KNIFE_LEN - 18);
-      ctx.lineTo(CX + 10, y + KNIFE_LEN - 18);
-      ctx.closePath();
-      ctx.fill();
+      ctx.save();
+      ctx.translate(CX, y);
+      drawKnifeShape(ctx);
+      ctx.restore();
     }
 
     ctx.fillStyle = '#fff';
