@@ -556,6 +556,11 @@ export const CATEGORY_CHIPS: { id: GameCategory | 'all'; icon: string; labelEn: 
   { id: 'kids', icon: '👶', labelEn: 'Kids', labelAm: 'ልጆች' },
 ];
 
+/** Browse dropdown options — excludes tournament (those live under the Tournament tab). */
+export const FREE_BROWSE_CATEGORIES: { id: GameCategory; icon: string; labelEn: string; labelAm: string }[] =
+  CATEGORY_CHIPS.filter((c): c is { id: GameCategory; icon: string; labelEn: string; labelAm: string } =>
+    c.id !== 'all' && c.id !== 'tournament' && c.id !== 'kids' && c.id !== 'sports');
+
 const TRENDING_IDS = [
   'temple-dash', 'fruit-slice', 'memory-match', 'bubble-pop', 'popblast',
   'orbit-blast', 'ethiopian-quiz', 'merge-2048',
@@ -571,10 +576,8 @@ const EST_MINUTES: Record<string, number> = {
 };
 const DEFAULT_EST_MINUTES = 2;
 
-/** Resolve a game's hub category from explicit metadata or its genre label. */
-export function gameCategory(g: GameMeta): GameCategory {
-  if (g.category) return g.category;
-  if (g.mode === 'tournament') return 'tournament';
+/** Resolve category from genre — never returns tournament (free-games browse only). */
+function deriveCategoryFromGenre(g: GameMeta): GameCategory {
   const g0 = g.genreEn.toLowerCase();
   if (g0.includes('puzzle') || g0.includes('match-3') || g0.includes('match')) return 'puzzle';
   if (g0.includes('brain') || g0.includes('logic') || g0.includes('math')) return 'brain';
@@ -585,6 +588,37 @@ export function gameCategory(g: GameMeta): GameCategory {
   if (g0.includes('sport')) return 'sports';
   if (g0.includes('kids')) return 'kids';
   return 'arcade';
+}
+
+/** Resolve a game's hub category from explicit metadata or its genre label. */
+export function gameCategory(g: GameMeta): GameCategory {
+  if (g.category) return g.category;
+  if (g.mode === 'tournament') return 'tournament';
+  return deriveCategoryFromGenre(g);
+}
+
+/** Category for free-games browse — tournament tab uses mode filter instead. */
+export function freeGameCategory(g: GameMeta): GameCategory {
+  if (g.category) return g.category;
+  return deriveCategoryFromGenre(g);
+}
+
+/** Categories that have at least one free game (for dropdown; no empty shelves). */
+export function activeFreeCategories(): typeof FREE_BROWSE_CATEGORIES {
+  const counts = new Map<GameCategory, number>();
+  for (const g of CATALOG) {
+    if (g.mode !== 'free') continue;
+    const c = freeGameCategory(g);
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
+  return FREE_BROWSE_CATEGORIES.filter((c) => (counts.get(c.id) ?? 0) > 0);
+}
+
+/** Free games in a browse category (tournament titles excluded). */
+export function freeGamesInCategory(cat: GameCategory | 'all'): GameMeta[] {
+  const free = orderedCatalog().filter((g) => g.mode === 'free');
+  if (cat === 'all') return free;
+  return free.filter((g) => freeGameCategory(g) === cat);
 }
 
 export function estMinutesFor(g: GameMeta): number {
@@ -648,6 +682,7 @@ for (const g of CATALOG) {
   }
   if (!g.rating) g.rating = ratingFor(g);
   if (!g.estMinutes) g.estMinutes = estMinutesFor(g);
+  if (g.mode === 'free' && !g.category) g.category = freeGameCategory(g);
 }
 for (const id of RECENT_IDS) {
   const g = getGame(id);

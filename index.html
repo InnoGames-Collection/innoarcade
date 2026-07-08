@@ -11,9 +11,6 @@
       <div class="brand">
         <img class="brand-logo" src="/brand/goplay-logo.png" alt="GoPlay" />
       </div>
-      <div class="topbar-search">
-        <input id="gameSearch" class="game-search game-search--header" type="search" data-i18n-placeholder="hub.searchGames" placeholder="Search games" aria-label="Search games" />
-      </div>
       <nav class="topnav">
         <a href="#games" class="nav-link active" data-i18n="hub.available">Games</a>
         <a href="#lbPreview" class="nav-link" data-i18n="hub.topPlayers">Top players</a>
@@ -29,8 +26,6 @@
       </button>
     </header>
 
-    <div id="activityTickerHost" class="activity-ticker-host" aria-label="Live activity"></div>
-
     <div class="hub-shell">
       <section id="promo" class="promo-section" aria-label="Promotions">
         <div class="promo-track" id="promoTrack"></div>
@@ -39,23 +34,13 @@
 
       <section id="playerBar" class="player-bar-section" aria-label="Your balances"></section>
 
-      <nav class="quick-actions" id="quickActions" aria-label="Quick links"></nav>
-
       <div class="hub-body">
         <div class="hub-primary">
           <div id="hubMainTop">
             <section id="games" class="games-section portal-section" aria-label="Games">
-              <div class="section-head">
-                <h2 class="section-title">🎮 <span data-i18n="hub.featuredGames">Featured games</span></h2>
-              </div>
-              <div class="games-head">
-                <div class="seg" id="gameSeg" role="tablist" aria-label="Game modes">
-                  <button class="seg-btn active" data-filter="tournament" data-i18n="hub.tournament">Tournament</button>
-                  <button class="seg-btn" data-filter="free" data-i18n="hub.freeGames">Free Games</button>
-                </div>
-              </div>
-              <div class="category-chips" id="categoryChips" role="toolbar" aria-label="Categories"></div>
+              <div id="gamesToolbarHost"></div>
               <div id="gameGrid"></div>
+              <div id="activityTickerHost" class="activity-ticker-host activity-ticker-host--below" aria-label="Live activity"></div>
             </section>
 
             <section id="trending" class="portal-section" aria-label="Trending games">

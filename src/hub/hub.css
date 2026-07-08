@@ -425,6 +425,8 @@ body {
   margin-bottom: 1rem;
 }
 .games-head .seg { flex-shrink: 0; }
+.games-head .cat-dropdown { flex-shrink: 0; }
+.games-head .game-search { margin-left: auto; }
 .seg { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .seg-btn { border: none; background: none; color: var(--muted); font: inherit; font-size: 0.84rem; font-weight: 700; padding: 0.34rem 0.85rem; border-radius: 999px; cursor: pointer; white-space: nowrap; }
 .seg-btn.active { background: var(--accent); color: #fff; }
@@ -441,6 +443,66 @@ body {
   color: var(--text);
 }
 .game-search:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+
+/* category dropdown (Free Games tab only) */
+.cat-dropdown { position: relative; }
+.cat-dropdown.is-disabled { opacity: 0.45; pointer-events: none; }
+.cat-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.34rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: min(160px, 32vw);
+}
+.cat-dropdown-lbl { color: var(--muted); font-weight: 600; }
+.cat-dropdown-val { overflow: hidden; text-overflow: ellipsis; }
+.cat-dropdown-chev { color: var(--muted); font-size: 0.7rem; margin-left: 0.1rem; }
+.cat-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 11rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.cat-dropdown-menu[hidden] { display: none; }
+.cat-dd-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cat-dd-item:hover { background: #f2f7ec; }
+.cat-dd-item.on { background: var(--grad-brand); color: #fff; }
+.cat-dd-ico { font-size: 0.95rem; }
 
 /* Poster-style game cards (tournament showcase layout) */
 .cat-shelf .game-card--poster {
@@ -652,9 +714,32 @@ body {
 
 /* compact balance chips in topbar */
 .top-balances { display: flex; align-items: center; gap: 0.25rem; margin-inline: auto; }
-/* player balance bar (Level / XP / RP) — sits under the promo banner */
-.player-bar-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.55rem; justify-items: stretch; }
+/* player balance bar — compact single-row strip */
+.player-bar-section { margin-top: 0.35rem; }
 .player-bar-section:empty { display: none; }
+.player-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.5rem 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+.ps-seg { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+.ps-ico { font-size: 0.95rem; line-height: 1; flex-shrink: 0; }
+.ps-lbl { font-size: 0.68rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.ps-val { font-size: 0.95rem; font-weight: 900; line-height: 1; }
+.ps-level .ps-val { color: #3f8f12; }
+.ps-rp .ps-val { color: #1a5fa8; }
+.ps-rp:last-child .ps-val { color: #6b3fa0; }
+.ps-xp { flex: 1 1 8rem; min-width: 6rem; }
+.ps-bar-wrap { display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0; }
+.ps-bar { flex: 1; height: 5px; border-radius: 999px; background: #edf2e8; overflow: hidden; min-width: 3rem; }
+.ps-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f2c94c, #e0a800); transition: width 0.25s ease; }
+.ps-sub { font-size: 0.62rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .stat-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 0.65rem 0.75rem;
   box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
 .stat-card-head { display: flex; align-items: center; gap: 0.35rem; }
@@ -718,11 +803,11 @@ body {
   .brand-logo { height: 2rem; }
   .brand-logo-et { height: 1.5rem; }
   .top-balances { margin-inline: auto 0; gap: 0.25rem; min-width: 0; }
-  .player-bar-section { gap: 0.35rem; padding-inline: 0.2rem; grid-template-columns: 1fr 1fr; }
-  .stat-card { padding: 0.5rem 0.55rem; }
-  .stat-lbl { font-size: 0.66rem; }
-  .stat-val { font-size: 0.95rem; }
-  .stat-sub { font-size: 0.62rem; }
+  .player-bar-section { padding-inline: 0.2rem; }
+  .player-strip { gap: 0.4rem 0.55rem; padding: 0.45rem 0.6rem; }
+  .ps-lbl { font-size: 0.62rem; }
+  .ps-val { font-size: 0.85rem; }
+  .ps-sub { font-size: 0.58rem; }
   .auth-btn { font-size: 0.78rem !important; padding: 0.34rem 0.7rem !important; }
   .settings-btn { width: 2rem; height: 2rem; }
 }
@@ -746,9 +831,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .bn-ico { font-size: 1.2rem; line-height: 1; }
   .bn-item.active { color: var(--accent); }
   .hub-main { padding-bottom: 4.5rem; }
-  .games-head { gap: 0.4rem; }
+  .games-head { gap: 0.4rem; flex-wrap: wrap; }
   .games-head .seg-btn { padding: 0.3rem 0.5rem; font-size: 0.72rem; }
+  .cat-dropdown-btn { padding: 0.3rem 0.55rem; font-size: 0.72rem; max-width: min(130px, 28vw); }
   .game-search { width: min(168px, 34vw); padding: 0.34rem 0.65rem; font-size: 0.78rem; }
+  .games-head .game-search { margin-left: auto; }
 }
 
 /* ---- how-to-play ℹ️ button on cards ---- */
@@ -1146,6 +1233,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 /* Phase 3 — activity ticker + notifications */
 .activity-ticker-host { border-bottom: 1px solid var(--line); background: #f6faf0; }
+.activity-ticker-host--below {
+  border-bottom: none;
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  border-radius: 0 0 14px 14px;
+}
 .activity-ticker {
   display: flex; align-items: center; gap: 0.65rem;
   max-width: 1280px; margin: 0 auto; padding: 0.35rem clamp(0.75rem, 3vw, 1.5rem);

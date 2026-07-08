@@ -4,7 +4,7 @@
 import { t, type Lang, type I18nKey } from '../i18n';
 import {
   trendingGames, recentlyAddedGames, COMING_SOON, CATEGORY_CHIPS,
-  type GameMeta, type GameCategory, type ComingSoonMeta, getGame,
+  activeFreeCategories, type GameMeta, type GameCategory, type ComingSoonMeta, getGame,
 } from '../platform/catalog';
 import {
   countdown, type Tournament,
@@ -51,6 +51,49 @@ export function sectionHead(emoji: string, titleKey: I18nKey, link?: { href: str
     </div>`;
 }
 
+export function gamesToolbarHtml(opts: {
+  gameFilter: 'tournament' | 'free';
+  categoryFilter: GameCategory | 'all';
+  langCode: Lang;
+  searchQuery?: string;
+}): string {
+  const cats = activeFreeCategories();
+  const catDisabled = opts.gameFilter === 'tournament';
+  const allLabel = t('hub.catAll');
+  let selectedLabel = allLabel;
+  if (opts.categoryFilter !== 'all') {
+    const meta = cats.find((c) => c.id === opts.categoryFilter);
+    if (meta) selectedLabel = opts.langCode === 'am' ? meta.labelAm : meta.labelEn;
+  }
+  const menuItems = [
+    `<button type="button" class="cat-dd-item${opts.categoryFilter === 'all' ? ' on' : ''}" data-cat="all" role="option">${escapeHtml(allLabel)}</button>`,
+    ...cats.map((c) => {
+      const label = opts.langCode === 'am' ? c.labelAm : c.labelEn;
+      const on = opts.categoryFilter === c.id ? ' on' : '';
+      return `<button type="button" class="cat-dd-item${on}" data-cat="${c.id}" role="option"><span class="cat-dd-ico">${c.icon}</span>${escapeHtml(label)}</button>`;
+    }),
+  ].join('');
+  const q = opts.searchQuery ?? '';
+  return `
+    <div class="games-head" id="gamesToolbar">
+      <div class="seg" id="gameSeg" role="tablist" aria-label="Game modes">
+        <button type="button" class="seg-btn${opts.gameFilter === 'tournament' ? ' active' : ''}" data-filter="tournament" data-i18n="hub.tournament">${t('hub.tournament')}</button>
+        <button type="button" class="seg-btn${opts.gameFilter === 'free' ? ' active' : ''}" data-filter="free" data-i18n="hub.freeGames">${t('hub.freeGames')}</button>
+      </div>
+      <div class="cat-dropdown${catDisabled ? ' is-disabled' : ''}" id="catDropdown">
+        <button type="button" class="cat-dropdown-btn" id="catDropdownBtn" aria-haspopup="listbox" ${catDisabled ? 'disabled' : ''}>
+          <span class="cat-dropdown-lbl" data-i18n="hub.categories">${t('hub.categories')}</span>
+          <span class="cat-dropdown-val">${escapeHtml(selectedLabel)}</span>
+          <span class="cat-dropdown-chev" aria-hidden="true">▾</span>
+        </button>
+        <div class="cat-dropdown-menu" id="catDropdownMenu" role="listbox" hidden>${menuItems}</div>
+      </div>
+      <input id="gameSearch" class="game-search game-search--toolbar" type="search" value="${escapeHtml(q)}"
+        data-i18n-placeholder="hub.searchGames" placeholder="${t('hub.searchGames')}" aria-label="${t('hub.searchGames')}" />
+    </div>`;
+}
+
+/** @deprecated chips replaced by gamesToolbarHtml dropdown */
 export function categoryChipsHtml(active: GameCategory | 'all', lang: Lang): string {
   return CATEGORY_CHIPS.map((c) => {
     const label = lang === 'am' ? c.labelAm : c.labelEn;

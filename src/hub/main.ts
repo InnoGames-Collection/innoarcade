@@ -18,11 +18,11 @@ import {
 import { balance, balanceSync, onWalletChange, setBalanceFromServer } from '../platform/wallet';
 import { activeDraws, myTickets, enterDraw, NotEnoughPointsError, hydrateTickets, loadDraws, myOdds } from '../platform/draws';
 import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, setRpWeekly, setRpMonthly, xpLifetime, rpWeekly, rpMonthly } from '../platform/currency';
-import { orderedCatalog, getGame, gamesInCategory, trendingGames, recentlyAddedGames, ratingFor, estMinutesFor, type GameMeta, type TournamentCadence, type GameCategory } from '../platform/catalog';
+import { orderedCatalog, getGame, freeGamesInCategory, trendingGames, recentlyAddedGames, ratingFor, estMinutesFor, type GameMeta, type TournamentCadence, type GameCategory } from '../platform/catalog';
 import { getSupabase, isConfigured } from '../platform/supabase';
 import { bootstrapHubData, type HubBootstrapResult } from '../platform/hubBootstrap';
 import {
-  escapeHtml, fmtPlayCount, starsHtml, categoryChipsHtml, quickActionsHtml,
+  escapeHtml, fmtPlayCount, starsHtml, gamesToolbarHtml,
   weeklyTournamentBannerHtml, dailyChallengeHtml, sidebarDashboardHtml,
   dailyMissionsHtml, nextRewardHtml, newsFeedHtml, sidebarNewsHtml,
   rewardsTiersHtml, lbPreviewRow, hScrollShelf, comingSoonShelfHtml, continuePlayingHtml,
@@ -214,42 +214,33 @@ function renderMyStats(): void {
   const nextXp = ceiling;
 
   bar.innerHTML = `
-    <article class="stat-card stat-level">
-      <div class="stat-card-head">
-        <span class="stat-ico" aria-hidden="true">🛡️</span>
-        <span class="stat-lbl">${t('hub.statLevel')}</span>
-        <strong class="stat-val">${level}</strong>
+    <div class="player-strip">
+      <div class="ps-seg ps-level">
+        <span class="ps-ico" aria-hidden="true">🛡️</span>
+        <span class="ps-lbl">${t('hub.statLevel')}</span>
+        <strong class="ps-val">${level}</strong>
       </div>
-      <div class="stat-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
-        <div class="stat-bar-fill stat-bar-fill--green" style="width:${pct}%"></div>
+      <div class="ps-seg ps-xp">
+        <span class="ps-ico" aria-hidden="true">⭐</span>
+        <span class="ps-lbl">${t('hub.progress')}</span>
+        <div class="ps-bar-wrap">
+          <div class="ps-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+            <div class="ps-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="ps-sub">${xp.toLocaleString()} / ${nextXp.toLocaleString()}</span>
+        </div>
       </div>
-      <span class="stat-sub">${t('hub.points')} ${xp.toLocaleString()} / ${nextXp.toLocaleString()}</span>
-    </article>
-    <article class="stat-card stat-progress">
-      <div class="stat-card-head">
-        <span class="stat-ico" aria-hidden="true">⭐</span>
-        <span class="stat-lbl">${t('hub.progress')}</span>
-        <strong class="stat-val">${xp.toLocaleString()}</strong>
+      <div class="ps-seg ps-rp">
+        <span class="ps-ico" aria-hidden="true">🏅</span>
+        <span class="ps-lbl">${t('hub.rpWeekly')}</span>
+        <strong class="ps-val">${fmtRp(rpWeekly())}</strong>
       </div>
-      <div class="stat-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
-        <div class="stat-bar-fill stat-bar-fill--gold" style="width:${pct}%"></div>
+      <div class="ps-seg ps-rp">
+        <span class="ps-ico" aria-hidden="true">🏆</span>
+        <span class="ps-lbl">${t('hub.rpMonthly')}</span>
+        <strong class="ps-val">${fmtRp(rpMonthly())}</strong>
       </div>
-      <span class="stat-sub">${t('hub.nextXp')}: ${nextXp.toLocaleString()} ${t('hub.points')}</span>
-    </article>
-    <article class="stat-card stat-rp-weekly">
-      <div class="stat-card-head">
-        <span class="stat-ico" aria-hidden="true">🏅</span>
-        <span class="stat-lbl">${t('hub.rpWeekly')}</span>
-        <strong class="stat-val">${fmtRp(rpWeekly())}</strong>
-      </div>
-    </article>
-    <article class="stat-card stat-rp-monthly">
-      <div class="stat-card-head">
-        <span class="stat-ico" aria-hidden="true">🏆</span>
-        <span class="stat-lbl">${t('hub.rpMonthly')}</span>
-        <strong class="stat-val">${fmtRp(rpMonthly())}</strong>
-      </div>
-    </article>`;
+    </div>`;
 
   const host = document.querySelector('#topBalances');
   if (host) host.innerHTML = '';
@@ -516,15 +507,40 @@ let gameQuery = '';
 function renderGames(): void {
   const host = $('#gameGrid');
   const q = gameQuery.trim().toLowerCase();
-  const base = categoryFilter === 'all' ? orderedCatalog() : gamesInCategory(categoryFilter);
-  const pool = base.filter((g) => {
-    const matchesSearch = !q || `${g.nameEn} ${g.nameAm} ${g.genreEn} ${g.genreAm}`.toLowerCase().includes(q);
-    const matchesTab = q ? true : g.mode === gameFilter;
-    return matchesTab && matchesSearch;
-  });
+  let pool: GameMeta[];
+  if (q) {
+    pool = orderedCatalog().filter((g) =>
+      `${g.nameEn} ${g.nameAm} ${g.genreEn} ${g.genreAm}`.toLowerCase().includes(q));
+  } else if (gameFilter === 'tournament') {
+    pool = orderedCatalog().filter((g) => g.mode === 'tournament');
+  } else {
+    pool = freeGamesInCategory(categoryFilter);
+  }
   host.innerHTML = pool.length
     ? `<div class="cat-shelf">${pool.map((g) => gameCard(g)).join('')}</div>`
     : `<p class="cat-empty">${t('hub.noResults')}</p>`;
+}
+
+function renderGamesToolbar(): void {
+  const host = document.querySelector('#gamesToolbarHost');
+  if (!host) return;
+  const prevSearch = document.querySelector<HTMLInputElement>('#gameSearch');
+  const focusSearch = prevSearch === document.activeElement;
+  const selStart = prevSearch?.selectionStart ?? null;
+  host.innerHTML = gamesToolbarHtml({
+    gameFilter,
+    categoryFilter,
+    langCode: lang(),
+    searchQuery: gameQuery,
+  });
+  const search = host.querySelector<HTMLInputElement>('#gameSearch');
+  if (search) {
+    search.placeholder = t('hub.searchGames');
+    if (focusSearch) {
+      search.focus();
+      if (selStart != null) search.setSelectionRange(selStart, selStart);
+    }
+  }
 }
 
 // --- Portal sections (Phase 1) ----------------------------------------------
@@ -607,18 +623,6 @@ function renderWeeklyBanner(): void {
     tour,
     title: tTitle(tour),
   });
-}
-
-function renderCategoryChips(): void {
-  const host = document.querySelector('#categoryChips');
-  if (!host) return;
-  host.innerHTML = categoryChipsHtml(categoryFilter, lang());
-}
-
-function renderQuickActions(): void {
-  const host = document.querySelector('#quickActions');
-  if (!host) return;
-  host.innerHTML = quickActionsHtml();
 }
 
 function renderSidebar(): void {
@@ -740,8 +744,6 @@ function renderLbPreview(opts?: { fetch?: boolean }): void {
 }
 
 function renderPortalSections(): void {
-  renderQuickActions();
-  renderCategoryChips();
   renderTrending();
   renderWeeklyBanner();
   renderContinuePlaying();
@@ -882,6 +884,7 @@ function tickCountdowns(): void {
 function renderAll(): void {
   renderPromo();
   renderMyStats();
+  renderGamesToolbar();
   wireEntryCtas();
   renderGames();
   renderPortalSections();
@@ -1080,32 +1083,45 @@ function syncNavActive(): void {
 }
 window.addEventListener('scroll', syncNavActive, { passive: true });
 
-// Browse controls (segmented filter + search) and the bottom-nav account tab.
+// Browse controls (segmented filter + category dropdown + inline search).
 function setupBrowse(): void {
-  const search = document.querySelector<HTMLInputElement>('#gameSearch');
-  if (search) {
-    search.placeholder = t('hub.searchGames');
-    search.addEventListener('input', () => { gameQuery = search.value; renderGames(); });
-  }
-  document.querySelectorAll<HTMLButtonElement>('#gameSeg .seg-btn').forEach((b) => {
-    b.addEventListener('click', () => {
-      gameFilter = (b.dataset.filter as typeof gameFilter) ?? 'tournament';
-      document.querySelectorAll('#gameSeg .seg-btn').forEach((x) => x.classList.remove('active'));
-      b.classList.add('active');
-      renderGames();
-    });
-  });
-  document.querySelector('#categoryChips')?.addEventListener('click', (e) => {
-    const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('.cat-chip');
-    if (!chip) return;
-    categoryFilter = (chip.dataset.cat as GameCategory | 'all') ?? 'all';
-    renderCategoryChips();
+  const gamesSection = document.querySelector('#games');
+  gamesSection?.addEventListener('input', (e) => {
+    const search = (e.target as HTMLElement).closest<HTMLInputElement>('#gameSearch');
+    if (!search) return;
+    gameQuery = search.value;
     renderGames();
-    applyTranslations();
   });
-  document.querySelector('#quickActions')?.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-qa-account]');
-    if (btn) { e.preventDefault(); void openAccount(); }
+  gamesSection?.addEventListener('click', (e) => {
+    const seg = (e.target as HTMLElement).closest<HTMLButtonElement>('#gameSeg .seg-btn');
+    if (seg) {
+      gameFilter = (seg.dataset.filter as typeof gameFilter) ?? 'tournament';
+      if (gameFilter === 'tournament') categoryFilter = 'all';
+      renderGamesToolbar();
+      renderGames();
+      return;
+    }
+    const ddBtn = (e.target as HTMLElement).closest('#catDropdownBtn');
+    if (ddBtn && gameFilter === 'free') {
+      const menu = document.querySelector('#catDropdownMenu');
+      if (!menu) return;
+      const opening = menu.hasAttribute('hidden');
+      menu.toggleAttribute('hidden', !opening);
+      return;
+    }
+    const catItem = (e.target as HTMLElement).closest<HTMLButtonElement>('.cat-dd-item');
+    if (catItem) {
+      categoryFilter = (catItem.dataset.cat as GameCategory | 'all') ?? 'all';
+      document.querySelector('#catDropdownMenu')?.setAttribute('hidden', '');
+      renderGamesToolbar();
+      renderGames();
+      applyTranslations();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('#catDropdown')) {
+      document.querySelector('#catDropdownMenu')?.setAttribute('hidden', '');
+    }
   });
   document.querySelector('#bnAccount')?.addEventListener('click', () => void openAccount());
   document.querySelector('#footerFaq')?.addEventListener('click', (e) => e.preventDefault());

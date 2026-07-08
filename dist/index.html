@@ -5,20 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>" />
     <title>GoPlay — Play & Compete</title>
-    <script type="module" crossorigin src="./assets/hub-BjP8IibN.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/index-DLM4r4N6.js">
-    <link rel="modulepreload" crossorigin href="./assets/tournaments-BM-BQ8S_.js">
-    <link rel="modulepreload" crossorigin href="./assets/signInGate-DqYb8f6g.js">
+    <script type="module" crossorigin src="./assets/hub-C5UFpPrj.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-Df9TtnSh.js">
+    <link rel="modulepreload" crossorigin href="./assets/tournaments-CiwM9_Mb.js">
+    <link rel="modulepreload" crossorigin href="./assets/signInGate-l-VH6mlH.js">
     <link rel="stylesheet" crossorigin href="./assets/signInGate-CW9ugQCN.css">
-    <link rel="stylesheet" crossorigin href="./assets/hub-DFAxZHaK.css">
+    <link rel="stylesheet" crossorigin href="./assets/hub-Dgs2bl38.css">
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" src="./brand/goplay-logo.png" alt="GoPlay" />
-      </div>
-      <div class="topbar-search">
-        <input id="gameSearch" class="game-search game-search--header" type="search" data-i18n-placeholder="hub.searchGames" placeholder="Search games" aria-label="Search games" />
       </div>
       <nav class="topnav">
         <a href="#games" class="nav-link active" data-i18n="hub.available">Games</a>
@@ -35,8 +32,6 @@
       </button>
     </header>
 
-    <div id="activityTickerHost" class="activity-ticker-host" aria-label="Live activity"></div>
-
     <div class="hub-shell">
       <section id="promo" class="promo-section" aria-label="Promotions">
         <div class="promo-track" id="promoTrack"></div>
@@ -45,23 +40,13 @@
 
       <section id="playerBar" class="player-bar-section" aria-label="Your balances"></section>
 
-      <nav class="quick-actions" id="quickActions" aria-label="Quick links"></nav>
-
       <div class="hub-body">
         <div class="hub-primary">
           <div id="hubMainTop">
             <section id="games" class="games-section portal-section" aria-label="Games">
-              <div class="section-head">
-                <h2 class="section-title">🎮 <span data-i18n="hub.featuredGames">Featured games</span></h2>
-              </div>
-              <div class="games-head">
-                <div class="seg" id="gameSeg" role="tablist" aria-label="Game modes">
-                  <button class="seg-btn active" data-filter="tournament" data-i18n="hub.tournament">Tournament</button>
-                  <button class="seg-btn" data-filter="free" data-i18n="hub.freeGames">Free Games</button>
-                </div>
-              </div>
-              <div class="category-chips" id="categoryChips" role="toolbar" aria-label="Categories"></div>
+              <div id="gamesToolbarHost"></div>
               <div id="gameGrid"></div>
+              <div id="activityTickerHost" class="activity-ticker-host activity-ticker-host--below" aria-label="Live activity"></div>
             </section>
 
             <section id="trending" class="portal-section" aria-label="Trending games">
