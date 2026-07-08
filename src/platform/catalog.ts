@@ -8,6 +8,9 @@ export type GameMode = 'free' | 'tournament';
 /** Tournament cadence — each tournament game runs exactly one of these. */
 export type TournamentCadence = 'daily' | 'weekly' | 'monthly';
 
+/** Hub category chips — used for browse shelves and filters. */
+export type GameCategory = 'puzzle' | 'arcade' | 'brain' | 'action' | 'sports' | 'kids' | 'trivia' | 'tournament';
+
 export interface GameMeta {
   id: string;
   /** Path to the game's page, relative to the hub root. */
@@ -37,6 +40,16 @@ export interface GameMeta {
   scoreAm: string;
   /** Marks the flagship builds we polished for the partner demo. */
   featured?: boolean;
+  /** Hub browse category — derived from genre when omitted. */
+  category?: GameCategory;
+  /** ISO date for "Recently added" shelves and NEW badges. */
+  addedAt?: string;
+  /** Estimated session length shown on catalog cards (minutes). */
+  estMinutes?: number;
+  /** Manual portal badge until analytics-driven trending ships. */
+  badge?: 'hot' | 'new';
+  /** Display rating (0–5) on catalog cards — static default until player ratings exist. */
+  rating?: number;
   /** Frozen release tag — do not change game code unless the operator explicitly requests it. */
   stable?: string;
   /** Per-game play tuning for the shared game host (platform/gameHost.ts):
@@ -510,4 +523,120 @@ export function freeGames(): GameMeta[] {
 
 export function tournamentGames(): GameMeta[] {
   return CATALOG.filter((g) => g.mode === 'tournament');
+}
+
+// --- Portal metadata (hub shelves, chips, teasers) ---------------------------
+
+/** Teaser tiles for titles not yet in the storefront. */
+export interface ComingSoonMeta {
+  id: string;
+  nameEn: string;
+  nameAm: string;
+  icon: string;
+  thumb: [string, string];
+  etaEn?: string;
+  etaAm?: string;
+}
+
+export const COMING_SOON: ComingSoonMeta[] = [
+  { id: 'traffic-master', nameEn: 'Traffic Master', nameAm: 'Traffic Master', icon: '🚦', thumb: ['#c0392b', '#2a0808'], etaEn: 'Coming Q3', etaAm: 'በቅርብ Q3' },
+  { id: 'city-rush', nameEn: 'City Rush', nameAm: 'City Rush', icon: '🏙️', thumb: ['#3498db', '#0c1a2a'], etaEn: 'Coming soon', etaAm: 'በቅርብ ቀን' },
+  { id: 'mega-match', nameEn: 'Mega Match', nameAm: 'Mega Match', icon: '💥', thumb: ['#9b59b6', '#1a0c2a'], etaEn: 'Coming soon', etaAm: 'በቅርብ ቀን' },
+  { id: 'ninja-dash', nameEn: 'Ninja Dash', nameAm: 'Ninja Dash', icon: '🥷', thumb: ['#2c3e50', '#0a1018'], etaEn: 'Coming soon', etaAm: 'በቅርብ ቀን' },
+];
+
+export const CATEGORY_CHIPS: { id: GameCategory | 'all'; icon: string; labelEn: string; labelAm: string }[] = [
+  { id: 'all', icon: '🎮', labelEn: 'All', labelAm: 'ሁሉም' },
+  { id: 'puzzle', icon: '🧩', labelEn: 'Puzzle', labelAm: 'እንቆቅልሽ' },
+  { id: 'arcade', icon: '👾', labelEn: 'Arcade', labelAm: 'አርኬድ' },
+  { id: 'brain', icon: '🧠', labelEn: 'Brain', labelAm: 'አእምሮ' },
+  { id: 'action', icon: '⚡', labelEn: 'Action', labelAm: 'እርምጃ' },
+  { id: 'trivia', icon: '❓', labelEn: 'Trivia', labelAm: 'ጥያቄ' },
+  { id: 'tournament', icon: '🏆', labelEn: 'Tournament', labelAm: 'ውድድር' },
+  { id: 'kids', icon: '👶', labelEn: 'Kids', labelAm: 'ልጆች' },
+];
+
+const TRENDING_IDS = [
+  'temple-dash', 'fruit-slice', 'memory-match', 'bubble-pop', 'popblast',
+  'orbit-blast', 'ethiopian-quiz', 'merge-2048',
+];
+
+const RECENT_IDS = [
+  'race-car', 'slide-puzzle', 'arrow-shot', 'ball-maze', 'pipe-connect', 'rope-rescue',
+];
+
+const EST_MINUTES: Record<string, number> = {
+  'ethiopian-quiz': 3, 'sudoku': 5, 'spell': 3, 'vocab': 3, 'memory-match': 4,
+  'fruit-slice': 2, 'temple-dash': 2, 'merge-2048': 4, 'tower-defense': 8,
+};
+const DEFAULT_EST_MINUTES = 2;
+
+/** Resolve a game's hub category from explicit metadata or its genre label. */
+export function gameCategory(g: GameMeta): GameCategory {
+  if (g.category) return g.category;
+  if (g.mode === 'tournament') return 'tournament';
+  const g0 = g.genreEn.toLowerCase();
+  if (g0.includes('puzzle') || g0.includes('match-3') || g0.includes('match')) return 'puzzle';
+  if (g0.includes('brain') || g0.includes('logic') || g0.includes('math')) return 'brain';
+  if (g0.includes('trivia') || g0.includes('word') || g0.includes('spelling') || g0.includes('vocabulary') || g0.includes('rhyme')) return 'trivia';
+  if (g0.includes('runner') || g0.includes('shooter') || g0.includes('skill') || g0.includes('reflex')
+    || g0.includes('racing') || g0.includes('platform') || g0.includes('maze') || g0.includes('strategy')
+    || g0.includes('physics')) return 'action';
+  if (g0.includes('sport')) return 'sports';
+  if (g0.includes('kids')) return 'kids';
+  return 'arcade';
+}
+
+export function estMinutesFor(g: GameMeta): number {
+  return g.estMinutes ?? EST_MINUTES[g.id] ?? DEFAULT_EST_MINUTES;
+}
+
+export function ratingFor(g: GameMeta): number {
+  return g.rating ?? 4.5;
+}
+
+/** Horizontal-scroll trending row — curated order, catalog-backed only. */
+export function trendingGames(): GameMeta[] {
+  const picked = TRENDING_IDS.map((id) => getGame(id)).filter((g): g is GameMeta => !!g);
+  if (picked.length >= 5) return picked.slice(0, 8);
+  const extra = orderedCatalog().filter((g) => !TRENDING_IDS.includes(g.id));
+  return [...picked, ...extra].slice(0, 8);
+}
+
+/** Recently added shelf — explicit `addedAt` first, then curated fallbacks. */
+export function recentlyAddedGames(): GameMeta[] {
+  const withDate = CATALOG.filter((g) => g.addedAt)
+    .sort((a, b) => (b.addedAt ?? '').localeCompare(a.addedAt ?? ''));
+  const curated = RECENT_IDS.map((id) => getGame(id)).filter((g): g is GameMeta => !!g);
+  const seen = new Set<string>();
+  const out: GameMeta[] = [];
+  for (const g of [...withDate, ...curated, ...orderedCatalog()]) {
+    if (seen.has(g.id)) continue;
+    seen.add(g.id);
+    out.push(g);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+/** Filter the storefront by hub category chip. */
+export function gamesInCategory(cat: GameCategory | 'all'): GameMeta[] {
+  if (cat === 'all') return orderedCatalog();
+  return orderedCatalog().filter((g) => gameCategory(g) === cat);
+}
+
+// Portal card defaults — attached after catalog assembly.
+const BADGE_HOT = new Set(['fruit-slice', 'memory-match', 'temple-dash']);
+const BADGE_NEW = new Set(RECENT_IDS);
+for (const g of CATALOG) {
+  if (!g.badge) {
+    if (BADGE_HOT.has(g.id)) g.badge = 'hot';
+    else if (BADGE_NEW.has(g.id)) g.badge = 'new';
+  }
+  if (!g.rating) g.rating = ratingFor(g);
+  if (!g.estMinutes) g.estMinutes = estMinutesFor(g);
+}
+for (const id of RECENT_IDS) {
+  const g = getGame(id);
+  if (g && !g.addedAt) g.addedAt = '2026-06-01';
 }

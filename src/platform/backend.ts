@@ -440,3 +440,20 @@ export async function playerStandingRemote(tournamentId: string): Promise<Leader
     isPlayer: true,
   };
 }
+
+/** Aggregate play counts per game — read-only, for hub catalog cards. */
+export async function fetchGameStats(): Promise<Record<string, number>> {
+  if (!isConfigured()) return {};
+  try {
+    const sb = await getSupabase();
+    const { data } = await sb.from('game_stats').select('game_id, n');
+    const out: Record<string, number> = {};
+    for (const row of data ?? []) {
+      const id = row.game_id as string;
+      out[id] = Math.max(0, Number(row.n ?? 0));
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}

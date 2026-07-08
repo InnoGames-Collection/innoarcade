@@ -11,9 +11,12 @@
       <div class="brand">
         <img class="brand-logo" src="/brand/goplay-logo.png" alt="GoPlay" />
       </div>
+      <div class="topbar-search">
+        <input id="gameSearch" class="game-search game-search--header" type="search" data-i18n-placeholder="hub.searchGames" placeholder="Search games" aria-label="Search games" />
+      </div>
       <nav class="topnav">
         <a href="#games" class="nav-link active" data-i18n="hub.available">Games</a>
-        <a href="#topPlayers" class="nav-link" data-i18n="hub.topPlayers">Top players</a>
+        <a href="#lbPreview" class="nav-link" data-i18n="hub.topPlayers">Top players</a>
         <a href="#winners" class="nav-link" data-i18n="hub.winners">Winners</a>
       </nav>
       <div id="topBalances" class="top-balances"></div>
@@ -22,7 +25,7 @@
       </button>
     </header>
 
-    <main class="hub-main">
+    <div class="hub-shell">
       <section id="promo" class="promo-section" aria-label="Promotions">
         <div class="promo-track" id="promoTrack"></div>
         <div class="promo-dots" id="promoDots"></div>
@@ -30,62 +33,146 @@
 
       <section id="playerBar" class="player-bar-section" aria-label="Your balances"></section>
 
-      <section id="games" class="games-section" aria-label="Games">
-        <div class="games-head">
-          <div class="seg" id="gameSeg" role="tablist" aria-label="Game categories">
-            <button class="seg-btn active" data-filter="tournament" data-i18n="hub.tournament">Tournament</button>
-            <button class="seg-btn" data-filter="free" data-i18n="hub.freeGames">Free Games</button>
+      <nav class="quick-actions" id="quickActions" aria-label="Quick links"></nav>
+
+      <div class="hub-body">
+        <div class="hub-primary">
+          <div id="hubMainTop">
+            <section id="games" class="games-section portal-section" aria-label="Games">
+              <div class="section-head">
+                <h2 class="section-title">🎮 <span data-i18n="hub.featuredGames">Featured games</span></h2>
+              </div>
+              <div class="games-head">
+                <div class="seg" id="gameSeg" role="tablist" aria-label="Game modes">
+                  <button class="seg-btn active" data-filter="tournament" data-i18n="hub.tournament">Tournament</button>
+                  <button class="seg-btn" data-filter="free" data-i18n="hub.freeGames">Free Games</button>
+                </div>
+              </div>
+              <div class="category-chips" id="categoryChips" role="toolbar" aria-label="Categories"></div>
+              <div id="gameGrid"></div>
+            </section>
+
+            <section id="trending" class="portal-section" aria-label="Trending games">
+              <div class="section-head">
+                <h2 class="section-title">🔥 <span data-i18n="hub.trending">Trending games</span></h2>
+                <a class="section-link" href="#games" data-i18n="hub.viewAll">View all →</a>
+              </div>
+              <div id="trendingShelf" class="hscroll-wrap"></div>
+            </section>
+
+            <section id="weeklyTournament" class="portal-section" aria-label="Weekly tournament"></section>
           </div>
-          <input id="gameSearch" class="game-search" type="search" data-i18n-placeholder="hub.searchGames" placeholder="Search games" aria-label="Search games" />
-        </div>
-        <div id="gameGrid"></div>
-      </section>
 
-      <section id="draws" class="draws-section phase2-hidden" hidden>
-        <h2 class="section-title">🎁 <span data-i18n="hub.draws">Draws</span></h2>
-        <p class="section-sub" data-i18n="hub.drawIntro">Spend points on tickets — more tickets, more chances.</p>
-        <div id="drawList" class="draw-cards"></div>
-      </section>
+          <aside class="hub-sidebar" id="hubSidebar" aria-label="Your dashboard">
+            <div id="sidebarChallenge"></div>
+            <div id="sidebarDashboard"></div>
+            <div id="sidebarMissions"></div>
+            <div id="sidebarNextReward"></div>
+            <div id="sidebarNews"></div>
+          </aside>
 
-      <section id="topPlayers" class="leaderboard-section">
-        <h2 class="section-title">🥇 <span data-i18n="hub.topPlayers">Top players</span></h2>
-        <p class="section-sub" data-i18n="hub.topPlayersSub">Live tournament leaderboards — ranked by RP.</p>
-        <div id="liveBoardSeg" class="seg winners-seg" role="tablist">
-          <button type="button" class="seg-btn active" data-cadence="weekly" role="tab" data-i18n="hub.winTabWeekly">Weekly</button>
-          <button type="button" class="seg-btn" data-cadence="monthly" role="tab" data-i18n="hub.winTabMonthly">Monthly</button>
-        </div>
-        <div id="liveBoardBanner" class="season-banner"></div>
-        <div id="globalBoard" class="leaderboard-list"></div>
-      </section>
+          <div id="hubMainBottom">
+            <section id="recentlyAdded" class="portal-section" aria-label="Recently added">
+              <div class="section-head">
+                <h2 class="section-title">🆕 <span data-i18n="hub.recentlyAdded">Recently added</span></h2>
+                <a class="section-link" href="#games" data-i18n="hub.viewAll">View all →</a>
+              </div>
+              <div id="recentShelf" class="hscroll-wrap"></div>
+            </section>
 
-      <section id="winners" class="leaderboard-section">
-        <div class="winners-panel">
-          <h2 class="winners-title" data-i18n="hub.winners">WINNERS</h2>
-          <p class="section-sub winners-sub" data-i18n="hub.winnersSub">Previous tournament window — top finishers.</p>
-          <div id="winnersSeg" class="seg winners-seg" role="tablist">
-            <button type="button" class="seg-btn active" data-cadence="weekly" role="tab" data-i18n="hub.winTabWeekly">Weekly</button>
-            <button type="button" class="seg-btn" data-cadence="monthly" role="tab" data-i18n="hub.winTabMonthly">Monthly</button>
+            <section id="lbPreview" class="portal-section leaderboard-preview-section" aria-label="Leaderboard preview">
+              <div class="section-head">
+                <h2 class="section-title">🏅 <span data-i18n="hub.lbPreview">Today's top players</span></h2>
+                <a class="section-link" href="#topPlayers" data-i18n="hub.seeFullLb">See full leaderboard →</a>
+              </div>
+              <div id="lbPreviewBoard" class="lb-preview-list"></div>
+            </section>
+
+            <section id="rewards" class="portal-section rewards-section" aria-label="Rewards">
+              <div class="section-head">
+                <h2 class="section-title">🎁 <span data-i18n="hub.rewards">Available rewards</span></h2>
+              </div>
+              <div id="rewardTiers"></div>
+              <div id="drawList" class="draw-cards"></div>
+            </section>
+
+            <div id="newsHost"></div>
+
+            <section id="comingSoon" class="portal-section" aria-label="Coming soon">
+              <div class="section-head">
+                <h2 class="section-title">🚀 <span data-i18n="hub.comingSoonTitle">Coming soon</span></h2>
+              </div>
+              <div id="comingSoonShelf" class="hscroll-wrap"></div>
+            </section>
+
+            <section id="topPlayers" class="leaderboard-section portal-section">
+              <h2 class="section-title">🥇 <span data-i18n="hub.topPlayers">Top players</span></h2>
+              <p class="section-sub" data-i18n="hub.topPlayersSub">Live tournament leaderboards — ranked by RP.</p>
+              <div id="liveBoardSeg" class="seg winners-seg" role="tablist">
+                <button type="button" class="seg-btn active" data-cadence="weekly" role="tab" data-i18n="hub.winTabWeekly">Weekly</button>
+                <button type="button" class="seg-btn" data-cadence="monthly" role="tab" data-i18n="hub.winTabMonthly">Monthly</button>
+              </div>
+              <div id="liveBoardBanner" class="season-banner"></div>
+              <div id="globalBoard" class="leaderboard-list"></div>
+            </section>
+
+            <section id="winners" class="leaderboard-section portal-section">
+              <div class="winners-panel">
+                <h2 class="winners-title" data-i18n="hub.winners">WINNERS</h2>
+                <p class="section-sub winners-sub" data-i18n="hub.winnersSub">Previous tournament window — top finishers.</p>
+                <div id="winnersSeg" class="seg winners-seg" role="tablist">
+                  <button type="button" class="seg-btn active" data-cadence="weekly" role="tab" data-i18n="hub.winTabWeekly">Weekly</button>
+                  <button type="button" class="seg-btn" data-cadence="monthly" role="tab" data-i18n="hub.winTabMonthly">Monthly</button>
+                </div>
+                <div class="winners-table-wrap">
+                  <table class="winners-table" aria-label="Winners">
+                    <thead>
+                      <tr>
+                        <th data-i18n="hub.colNo">No.</th>
+                        <th data-i18n="hub.colPhone">Phone Number</th>
+                        <th data-i18n="hub.colRewards">Rewards</th>
+                      </tr>
+                    </thead>
+                    <tbody id="winnerList"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
           </div>
-          <div class="winners-table-wrap">
-            <table class="winners-table" aria-label="Winners">
-              <thead>
-                <tr>
-                  <th data-i18n="hub.colNo">No.</th>
-                  <th data-i18n="hub.colPhone">Phone Number</th>
-                  <th data-i18n="hub.colRewards">Rewards</th>
-                </tr>
-              </thead>
-              <tbody id="winnerList"></tbody>
-            </table>
+        </div>
+      </div>
+    </div>
+
+    <footer class="hub-footer hub-footer--full">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <img class="footer-logo" src="/brand/goplay-logo.png" alt="GoPlay" />
+          <p class="footer-tagline" data-i18n="hub.footerTagline">Play, compete & win real prizes.</p>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="hub.footerPlatform">Platform</h4>
+          <a href="#games" data-i18n="hub.games">Games</a>
+          <a href="#weeklyTournament" data-i18n="hub.tournaments">Tournaments</a>
+          <a href="#lbPreview" data-i18n="hub.leaderboard">Leaderboard</a>
+          <a href="#rewards" data-i18n="hub.rewards">Rewards</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="hub.footerSupport">Support</h4>
+          <a href="#" id="footerFaq" data-i18n="set.faq">FAQ</a>
+          <a href="#" id="footerTerms" data-i18n="set.terms">Terms & conditions</a>
+          <a href="#bnAccount" data-i18n="hub.footerContact">Contact</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="hub.footerFollow">Follow us</h4>
+          <div class="footer-social">
+            <a href="#" aria-label="Facebook">Facebook</a>
+            <a href="#" aria-label="Telegram">Telegram</a>
+            <a href="#" aria-label="YouTube">YouTube</a>
           </div>
         </div>
-      </section>
-
-    </main>
-
-    <footer class="hub-footer">
+      </div>
       <div class="footer-brand">
-        <img class="footer-logo" src="/brand/ethio-telecom.png" alt="Ethio Telecom" />
+        <img class="footer-logo-et" src="/brand/ethio-telecom.png" alt="Ethio Telecom" />
         <span>Powered by <strong>Ethio Telecom</strong></span>
       </div>
     </footer>
@@ -93,7 +180,7 @@
     <nav class="bottomnav" aria-label="Primary">
       <a href="#games" class="bn-item active"><span class="bn-ico">🏠</span><span data-i18n="nav.home">Home</span></a>
       <a href="#games" class="bn-item"><span class="bn-ico">🎮</span><span data-i18n="nav.games">Games</span></a>
-      <a href="#topPlayers" class="bn-item"><span class="bn-ico">🥇</span><span data-i18n="nav.topPlayers">Top</span></a>
+      <a href="#lbPreview" class="bn-item"><span class="bn-ico">🥇</span><span data-i18n="nav.topPlayers">Top</span></a>
       <a href="#winners" class="bn-item"><span class="bn-ico">🏆</span><span data-i18n="nav.winners">Winners</span></a>
       <button class="bn-item" id="bnAccount"><span class="bn-ico">👤</span><span data-i18n="nav.account">Account</span></button>
     </nav>

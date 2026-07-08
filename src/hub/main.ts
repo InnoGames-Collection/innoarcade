@@ -6,20 +6,26 @@ import { openAccount } from './account';
 import { mountWallet } from './wallet';
 import { onAuthChange, currentUser, signOut } from '../platform/auth';
 import { sfx } from '../engine/audio';
-import { leaderboardRemote, fetchWallets, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote } from '../platform/backend';
-import { orderedCatalog, getGame, type GameMeta, type TournamentCadence } from '../platform/catalog';
+import { leaderboardRemote, fetchWallets, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote, fetchGameStats } from '../platform/backend';
+import { orderedCatalog, getGame, gamesInCategory, trendingGames, recentlyAddedGames, ratingFor, estMinutesFor, type GameMeta, type TournamentCadence, type GameCategory } from '../platform/catalog';
 import {
   activeTournaments, tournamentGame, getTournamentForGame, getLiveTournamentByCadence,
   countdown, loadTournaments, loadMyEntries,
   tournamentState, enterTournament,
   type Tournament, type LeaderEntry,
 } from '../platform/tournaments';
-import { balance, onWalletChange } from '../platform/wallet';
+import { balance, balanceSync, onWalletChange } from '../platform/wallet';
 import { activeDraws, myTickets, enterDraw, NotEnoughPointsError, hydrateTickets, loadDraws, myOdds } from '../platform/draws';
 import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, setRpWeekly, setRpMonthly, xpLifetime, rpWeekly, rpMonthly } from '../platform/currency';
 import { levelFor, LEVEL_THRESHOLDS, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, type WinnerCadence } from '../platform/config';
 import { getSupabase, isConfigured } from '../platform/supabase';
 import { bootstrapHubData, type HubBootstrapResult } from '../platform/hubBootstrap';
+import {
+  escapeHtml, fmtPlayCount, starsHtml, categoryChipsHtml, quickActionsHtml,
+  weeklyTournamentBannerHtml, dailyChallengeHtml, sidebarDashboardHtml,
+  dailyMissionsHtml, nextRewardHtml, newsFeedHtml, sidebarNewsHtml,
+  rewardsTiersHtml, lbPreviewRow, hScrollShelf, comingSoonShelfHtml,
+} from './portalSections';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const lang = (): Lang => getLang();
@@ -27,9 +33,10 @@ const name = (g: GameMeta): string => (lang() === 'am' ? g.nameAm : g.nameEn);
 const genre = (g: GameMeta): string => (lang() === 'am' ? g.genreAm : g.genreEn);
 const tTitle = (x: Tournament): string => (lang() === 'am' ? x.titleAm : x.titleEn);
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-}
+/** Server play counts per game — hydrated after bootstrap. */
+let gamePlayCounts: Record<string, number> = {};
+/** Personal bests per game — filled on demand for enriched cards. */
+const userBests: Record<string, number> = {};
 
 // --- Promo banner carousel --------------------------------------------------
 const PROMOS = [
@@ -400,7 +407,29 @@ function topPrizeBadge(g: GameMeta): string {
   return `<span class="gc-prize-badge gc-prize-badge--${cadence}">${t('hub.topPrize')} ${escapeHtml(top)}</span>`;
 }
 
-function gameCard(g: GameMeta): string {
+function badgeTag(g: GameMeta): string {
+  if (g.badge === 'hot') return `<span class="gc-badge gc-badge--hot">HOT</span>`;
+  if (g.badge === 'new') return `<span class="gc-badge gc-badge--new">NEW</span>`;
+  return '';
+}
+
+function gameCardStats(g: GameMeta): string {
+  const plays = gamePlayCounts[g.id];
+  const playStr = plays != null && plays > 0 ? fmtPlayCount(plays) : '—';
+  const best = userBests[g.id];
+  const bestStr = best != null && best > 0 ? best.toLocaleString() : '—';
+  const rating = starsHtml(ratingFor(g));
+  const mins = estMinutesFor(g);
+  return `
+    <div class="gc-stats">
+      <span class="gc-stat" title="Rating"><span class="gc-stat-ico">⭐</span>${rating}</span>
+      <span class="gc-stat" title="Plays"><span class="gc-stat-ico">👥</span>${playStr}</span>
+      <span class="gc-stat" title="Duration"><span class="gc-stat-ico">⏱</span>${mins}m</span>
+      <span class="gc-stat" title="High score"><span class="gc-stat-ico">🏆</span>${bestStr}</span>
+    </div>`;
+}
+
+function gameCard(g: GameMeta, opts?: { compact?: boolean }): string {
   const cadence = cadenceKey(g);
   const cover = gameCover(g);
   const tour = g.mode === 'tournament' ? getTournamentForGame(g.id) : undefined;
@@ -415,16 +444,18 @@ function gameCard(g: GameMeta): string {
           ? `<img class="gc-cover" src="${cover}" alt="" loading="lazy" />`
           : `<span class="gc-glyph">${g.icon}</span>`}
         ${cadenceRibbon(g)}
+        ${badgeTag(g)}
         ${liveBadge}
         ${g.mode === 'tournament' ? topPrizeBadge(g) : ''}
         <button type="button" class="gc-info" data-howto="${g.id}" aria-label="${t('hub.howToPlay')}">?</button>
       </div>`;
   return `
-    <a class="game-card game-card--poster game-card--${cadence}" href="${g.route}">
+    <a class="game-card game-card--poster game-card--${cadence}${opts?.compact ? ' game-card--compact' : ''}" href="${g.route}">
       ${thumb}
       <div class="gc-body">
         <h4 class="gc-title">${escapeHtml(name(g))}</h4>
         <p class="gc-sub gc-sub--${cadence}">${cadenceSubtitle(g)}</p>
+        ${gameCardStats(g)}
         <span class="gc-play-btn gc-play-btn--${cadence}">
           <span class="gc-play-label">${t('hub.playNow')}</span>
           <span class="gc-play-arrow" aria-hidden="true">▶</span>
@@ -456,6 +487,7 @@ function openHowTo(g: GameMeta): void {
 
 // Browse state: segmented menu filters by tournament / free (default: tournament).
 let gameFilter: 'tournament' | 'free' = 'tournament';
+let categoryFilter: GameCategory | 'all' = 'all';
 let gameQuery = '';
 
 // A single flat library (no category sections), ordered by the catalog's
@@ -463,14 +495,146 @@ let gameQuery = '';
 function renderGames(): void {
   const host = $('#gameGrid');
   const q = gameQuery.trim().toLowerCase();
-  const pool = orderedCatalog().filter((g) => {
+  const base = categoryFilter === 'all' ? orderedCatalog() : gamesInCategory(categoryFilter);
+  const pool = base.filter((g) => {
     const matchesSearch = !q || `${g.nameEn} ${g.nameAm} ${g.genreEn} ${g.genreAm}`.toLowerCase().includes(q);
     const matchesTab = q ? true : g.mode === gameFilter;
     return matchesTab && matchesSearch;
   });
   host.innerHTML = pool.length
-    ? `<div class="cat-shelf">${pool.map(gameCard).join('')}</div>`
+    ? `<div class="cat-shelf">${pool.map((g) => gameCard(g)).join('')}</div>`
     : `<p class="cat-empty">${t('hub.noResults')}</p>`;
+}
+
+// --- Portal sections (Phase 1) ----------------------------------------------
+let lbPreviewSeen = false;
+
+function renderTrending(): void {
+  const host = document.querySelector('#trendingShelf');
+  if (!host) return;
+  host.innerHTML = hScrollShelf(trendingGames(), (g) => gameCard(g, { compact: true }));
+}
+
+function renderRecentlyAdded(): void {
+  const host = document.querySelector('#recentShelf');
+  if (!host) return;
+  host.innerHTML = hScrollShelf(recentlyAddedGames(), (g) => gameCard(g, { compact: true }));
+}
+
+function renderComingSoon(): void {
+  const host = document.querySelector('#comingSoonShelf');
+  if (!host) return;
+  host.innerHTML = comingSoonShelfHtml(lang());
+}
+
+function renderWeeklyBanner(): void {
+  const host = document.querySelector('#weeklyTournament');
+  if (!host) return;
+  const tour = getLiveTournamentByCadence('weekly');
+  const game = tour ? getGame(tour.gameId) : undefined;
+  if (!tour || !game) {
+    host.innerHTML = '';
+    return;
+  }
+  host.innerHTML = weeklyTournamentBannerHtml({
+    lang: lang(),
+    gameName: name(game),
+    gameIcon: game.icon,
+    gameRoute: game.route,
+    tour,
+    title: tTitle(tour),
+  });
+}
+
+function renderCategoryChips(): void {
+  const host = document.querySelector('#categoryChips');
+  if (!host) return;
+  host.innerHTML = categoryChipsHtml(categoryFilter, lang());
+}
+
+function renderQuickActions(): void {
+  const host = document.querySelector('#quickActions');
+  if (!host) return;
+  host.innerHTML = quickActionsHtml();
+}
+
+function renderSidebar(): void {
+  const xp = xpLifetime();
+  const { level, floor, ceiling } = xpLevelBounds(xp);
+  const span = Math.max(1, ceiling - floor);
+  const pct = Math.min(100, Math.round(((xp - floor) / span) * 100));
+  const xpToNext = Math.max(0, ceiling - xp);
+
+  const challenge = document.querySelector('#sidebarChallenge');
+  if (challenge) challenge.innerHTML = dailyChallengeHtml();
+
+  const dash = document.querySelector('#sidebarDashboard');
+  if (dash) {
+    dash.innerHTML = sidebarDashboardHtml({
+      level,
+      xpPct: pct,
+      xp,
+      nextXp: ceiling,
+      coins: balanceSync(),
+      gamesPlayed: Object.keys(userBests).length,
+    });
+  }
+
+  const missions = document.querySelector('#sidebarMissions');
+  if (missions) missions.innerHTML = dailyMissionsHtml();
+
+  const next = document.querySelector('#sidebarNextReward');
+  if (next) next.innerHTML = nextRewardHtml(level, xpToNext);
+
+  const news = document.querySelector('#sidebarNews');
+  if (news) news.innerHTML = sidebarNewsHtml();
+}
+
+function renderNews(): void {
+  const host = document.querySelector('#newsHost');
+  if (!host) return;
+  host.innerHTML = newsFeedHtml();
+}
+
+function renderRewardTiers(): void {
+  const host = document.querySelector('#rewardTiers');
+  if (!host) return;
+  host.innerHTML = rewardsTiersHtml(lang());
+}
+
+function renderLbPreview(opts?: { fetch?: boolean }): void {
+  const host = document.querySelector('#lbPreviewBoard');
+  if (!host) return;
+  const mayFetch = opts?.fetch ?? lbPreviewSeen;
+  if (!mayFetch) return;
+  const tour = getLiveTournamentByCadence('weekly');
+  if (!tour) {
+    host.innerHTML = `<p class="pd-empty">${t('hub.noBoardYet')}</p>`;
+    return;
+  }
+  void Promise.all([leaderboardRemote(tour.id, 3), playerStandingRemote(tour.id)]).then(([rows, me]) => {
+    const playerInBoard = rows.some((r) => r.isPlayer);
+    let html = rows.length
+      ? rows.map(lbPreviewRow).join('')
+      : `<p class="pd-empty">${t('hub.noBoardYet')}</p>`;
+    if (me && !playerInBoard) {
+      html += lbPreviewRow({ ...me, isPlayer: true, rp: me.rp });
+    }
+    host.innerHTML = html;
+  });
+}
+
+function renderPortalSections(): void {
+  renderQuickActions();
+  renderCategoryChips();
+  renderTrending();
+  renderWeeklyBanner();
+  renderSidebar();
+  renderRecentlyAdded();
+  renderRewardTiers();
+  renderNews();
+  renderComingSoon();
+  renderLbPreview({ fetch: lbPreviewSeen });
 }
 
 // --- Draws / lottery --------------------------------------------------------
@@ -593,6 +757,7 @@ function renderAll(): void {
   renderMyStats();
   wireEntryCtas();
   renderGames();
+  renderPortalSections();
   renderDraws();
   renderLiveBoard({ fetch: liveBoardSeen });
   renderWinners({ fetch: winnersSeen });
@@ -696,6 +861,10 @@ function setupDeferredSections(): void {
     liveBoardSeen = true;
     renderLiveBoard({ fetch: true });
   });
+  arm('lbPreview', () => {
+    lbPreviewSeen = true;
+    renderLbPreview({ fetch: true });
+  });
   arm('winners', () => {
     winnersSeen = true;
     renderWinners({ fetch: true });
@@ -703,7 +872,7 @@ function setupDeferredSections(): void {
 }
 
 // Nav active-state on scroll (top nav + mobile bottom nav).
-const sections = ['games', 'topPlayers', 'winners'];
+const sections = ['games', 'lbPreview', 'topPlayers', 'winners'];
 function syncNavActive(): void {
   let current = sections[0];
   for (const id of sections) {
@@ -732,18 +901,34 @@ function setupBrowse(): void {
       renderGames();
     });
   });
+  document.querySelector('#categoryChips')?.addEventListener('click', (e) => {
+    const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('.cat-chip');
+    if (!chip) return;
+    categoryFilter = (chip.dataset.cat as GameCategory | 'all') ?? 'all';
+    renderCategoryChips();
+    renderGames();
+    applyTranslations();
+  });
+  document.querySelector('#quickActions')?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-qa-account]');
+    if (btn) { e.preventDefault(); void openAccount(); }
+  });
   document.querySelector('#bnAccount')?.addEventListener('click', () => void openAccount());
+  document.querySelector('#footerFaq')?.addEventListener('click', (e) => e.preventDefault());
+  document.querySelector('#footerTerms')?.addEventListener('click', (e) => e.preventDefault());
   // Delegated ℹ️ "how to play" — intercept before the card link navigates.
-  document.querySelector('#gameGrid')?.addEventListener('click', (e) => {
+  const howToHost = (e: Event): void => {
     const info = (e.target as HTMLElement).closest<HTMLElement>('.gc-info');
     if (info) {
       e.preventDefault();
       e.stopPropagation();
       const g = getGame(info.dataset.howto!);
       if (g) openHowTo(g);
-      return;
     }
-  });
+  };
+  document.querySelector('#gameGrid')?.addEventListener('click', howToHost);
+  document.querySelector('#trendingShelf')?.addEventListener('click', howToHost);
+  document.querySelector('#recentShelf')?.addEventListener('click', howToHost);
 }
 
 // One-time cleanup — the economy is now 100% server-sourced, so wipe every
@@ -769,8 +954,8 @@ document.documentElement.lang = getLang();
 syncLangButtons();
 renderAll();
 // Keep the top balances strip live as coins/points/gold change.
-onWalletChange(renderMyStats);
-onCurrencyChange(renderMyStats);
+onWalletChange(() => { renderMyStats(); renderSidebar(); });
+onCurrencyChange(() => { renderMyStats(); renderSidebar(); });
 setupBrowse();
 setupLiveBoardTabs();
 setupWinnersTabs();
@@ -800,7 +985,14 @@ function hydratePointsAfterBootstrap(boot: HubBootstrapResult): void {
     });
   }
   void loadDraws().then(() => hydrateTickets()).then(() => renderDraws());
+  void fetchGameStats().then((stats) => {
+    gamePlayCounts = stats;
+    renderGames();
+    renderTrending();
+    renderRecentlyAdded();
+  });
   if (winnersSeen) renderWinners({ fetch: true });
+  if (lbPreviewSeen) renderLbPreview({ fetch: true });
   renderGames();
 }
 
