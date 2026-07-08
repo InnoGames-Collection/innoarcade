@@ -13,7 +13,6 @@ import {
 } from '../platform/subscription';
 import { paymentMethodsEnabled } from '../platform/config';
 import { PAY_METHOD_LABEL, type PayMethod } from '../platform/payments';
-import { activeDraws, myTickets } from '../platform/draws';
 import { fetchReferral, redeemReferralRemote } from '../platform/backend';
 import { balance } from '../platform/wallet';
 
@@ -296,7 +295,6 @@ export async function openAccount(): Promise<void> {
   shell(`
     ${accountCardHtml(user)}
     ${referralHtml(ref)}
-    ${entriesHtml()}
     <nav class="acct-nav">
       <div class="acct-nav-sec">SUPPORT &amp; LEGAL</div>
       <button class="acct-nav-row" id="aTerms"><span class="acct-nav-ico">📋</span><span class="acct-nav-label">${t('terms')}</span></button>
@@ -490,16 +488,6 @@ function openInfo(kind: 'terms' | 'faq'): void {
     <div class="acct-card info-body ${kind === 'terms' ? 'tc-body' : 'faq-body'}">${body}</div>
     <button class="acct-primary" id="infoDone">${t('close')}</button>`);
   m.querySelector('#infoDone')!.addEventListener('click', () => m.remove());
-}
-
-// The player's current draw entries (tickets bought in active windows).
-function entriesHtml(): string {
-  const mine = activeDraws().map((d) => ({ d, n: myTickets(d.id) })).filter((x) => x.n > 0);
-  if (!mine.length) return '';
-  return `<div class="acct-sec">${t('myEntries')}</div>
-    <div class="acct-card"><div class="entry-rows">
-      ${mine.map(({ d, n }) => `<div class="acct-row"><span>${periodLabel(d.period)} · ${d.prizeEtb.toLocaleString()} ETB</span><strong>${n} 🎟️</strong></div>`).join('')}
-    </div></div>`;
 }
 
 function injectStyles(): void {

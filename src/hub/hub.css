@@ -346,24 +346,7 @@ body {
 .promo-track { cursor: grab; touch-action: pan-y; user-select: none; }
 .promo-dot.on { background: var(--accent); width: 18px; border-radius: 999px; }
 
-/* draws / lottery */
-.section-sub { color: rgba(255, 255, 255, 0.92); font-size: 0.9rem; margin: -0.5rem 0 1rem; }
-.draw-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 1rem; }
-.draw-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem 1rem 1.25rem;
-  box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.55rem; position: relative; overflow: hidden; }
-.draw-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
-.draw-daily::before { background: #2f8fe6; }
-.draw-weekly::before { background: var(--accent); }
-.draw-monthly::before { background: var(--gold); }
-.dc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
-.dc-period { font-weight: 800; font-size: 1rem; }
-.dc-prize { font-weight: 900; color: var(--accent); font-size: 1.05rem; white-space: nowrap; }
-.dc-count { font-size: 0.82rem; color: var(--muted); }
-.dc-count strong { color: var(--text); font-variant-numeric: tabular-nums; }
-.dc-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.15rem; }
-.dc-tickets { font-size: 0.82rem; color: var(--muted); }
-.dc-tickets strong { color: var(--text); }
-.dc-enter { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
+.section-sub { color: var(--muted); font-size: 0.9rem; margin: -0.25rem 0 1rem; }
 
 /* winners / leaderboard (unified) */
 .leaderboard-section { margin-bottom: 2rem; }

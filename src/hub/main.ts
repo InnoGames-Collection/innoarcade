@@ -16,8 +16,7 @@ import {
   type Tournament, type LeaderEntry,
 } from '../platform/tournaments';
 import { balance, balanceSync, onWalletChange, setBalanceFromServer } from '../platform/wallet';
-import { activeDraws, myTickets, enterDraw, NotEnoughPointsError, hydrateTickets, loadDraws, myOdds } from '../platform/draws';
-import { xp as xpBal, onCurrencyChange, setBalance, setLifetime, setRpWeekly, setRpMonthly, xpLifetime, rpWeekly, rpMonthly } from '../platform/currency';
+import { onCurrencyChange, setBalance, setLifetime, setRpWeekly, setRpMonthly, xpLifetime, rpWeekly, rpMonthly } from '../platform/currency';
 import { orderedCatalog, getGame, freeGamesInCategory, trendingGames, recentlyAddedGames, ratingFor, estMinutesFor, type GameMeta, type TournamentCadence, type GameCategory } from '../platform/catalog';
 import { getSupabase, isConfigured } from '../platform/supabase';
 import { bootstrapHubData, type HubBootstrapResult } from '../platform/hubBootstrap';
@@ -777,53 +776,6 @@ function paintSkeletons(): void {
   if (lb && !lb.innerHTML.trim()) lb.innerHTML = lbSkeletonHtml(3);
 }
 
-// --- Draws / lottery --------------------------------------------------------
-function renderDraws(): void {
-  const section = document.querySelector<HTMLElement>('#rewards');
-  const host = document.querySelector('#drawList');
-  if (!host) return;
-  const draws = activeDraws();
-  if (!draws.length) {
-    if (section) section.hidden = true;
-    host.innerHTML = '';
-    return;
-  }
-  if (section) section.hidden = false;
-  host.innerHTML = draws.map((d) => {
-    const tickets = myTickets(d.id);
-    const afford = xpBal() >= d.ticketCostPoints;
-    const atCap = tickets >= d.maxTicketsPerUser;
-    const odds = myOdds(d.id);
-    const oddsPct = odds > 0 ? (odds * 100).toFixed(odds < 0.01 ? 2 : 1) : null;
-    const canEnter = afford && !atCap;
-    const label = atCap ? t('hub.ticketCap') : `${t('hub.enterDraw')} · ${d.ticketCostPoints} ⭐`;
-    return `
-      <article class="draw-card draw-${d.period}">
-        <div class="dc-top">
-          <span class="dc-period">${escapeHtml(lang() === 'am' ? d.titleAm : d.titleEn)}</span>
-          <span class="dc-prize">${d.prizeEtb.toLocaleString()} ETB</span>
-        </div>
-        <div class="dc-count" data-ends="${d.endsAt}"></div>
-        <div class="dc-foot">
-          <span class="dc-tickets">🎟️ ${t('hub.yourTickets')}: <strong>${tickets}</strong>${oddsPct ? ` · ${t('hub.yourOdds')}: <strong>${oddsPct}%</strong>` : ''}</span>
-          <button class="btn primary dc-enter${canEnter ? '' : ' disabled'}"${canEnter ? '' : ' disabled'} data-draw="${d.id}">${label}</button>
-        </div>
-      </article>`;
-  }).join('');
-  host.querySelectorAll<HTMLButtonElement>('.dc-enter').forEach((b) => {
-    b.addEventListener('click', () => {
-      const d = draws.find((x) => x.id === b.dataset.draw);
-      if (!d) return;
-      b.disabled = true;
-      void enterDraw(d).then(() => { renderMyStats(); renderDraws(); })
-        .catch((e) => {
-          if (e instanceof NotEnoughPointsError) { b.textContent = t('hub.needPoints'); b.classList.add('disabled'); }
-          else b.disabled = false;
-        });
-    });
-  });
-}
-
 // Winners tab: weekly / monthly ETB prizes for the latest tournament window.
 let winnerCadence: WinnerCadence = 'weekly';
 /** Set when #winners enters the viewport — gates the initial winners fetch. */
@@ -888,11 +840,10 @@ function fmt(end: number): string {
 }
 
 function tickCountdowns(): void {
-  document.querySelectorAll<HTMLElement>('.tc-count, .dc-count').forEach((el) => {
+  document.querySelectorAll<HTMLElement>('.tc-count').forEach((el) => {
     const end = Number(el.dataset.ends);
     el.innerHTML = `<span class="cd-label">${t('hub.endsIn')}</span> <strong>${fmt(end)}</strong>`;
   });
-  // Value-only countdowns (live board banner + draw cards).
   document.querySelectorAll<HTMLElement>('strong[data-ends]').forEach((el) => {
     el.textContent = fmt(Number(el.dataset.ends));
   });
@@ -907,7 +858,6 @@ function renderAll(): void {
   wireEntryCtas();
   renderGames();
   renderPortalSections();
-  renderDraws();
   renderLiveBoard({ fetch: liveBoardSeen });
   renderWinners({ fetch: winnersSeen });
   applyTranslations();
@@ -1215,7 +1165,6 @@ function hydratePointsAfterBootstrap(boot: HubBootstrapResult): void {
       if (d && d.award > 0) { setBalance('xp', d.xp); setLifetime(d.lifetime); }
     });
   }
-  void loadDraws().then(() => hydrateTickets()).then(() => renderDraws());
   void fetchGameStats().then((stats) => {
     gamePlayCounts = stats;
     renderGames();

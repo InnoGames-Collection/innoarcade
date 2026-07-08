@@ -106,7 +106,6 @@ export function quickActionsHtml(): string {
   const items: { href?: string; icon: string; key: I18nKey; isBtn?: boolean }[] = [
     { href: '#featuredTournaments', icon: '🏆', key: 'hub.quickTournaments' },
     { href: '#lbPreview', icon: '🥇', key: 'hub.quickLeaderboard' },
-    { href: '#rewards', icon: '🎁', key: 'hub.quickRewards' },
     { href: '#dailyChallenge', icon: '🎯', key: 'hub.quickMissions' },
     { href: '#games', icon: '🎮', key: 'hub.quickGames' },
     { icon: '👤', key: 'hub.quickAccount', isBtn: true },
