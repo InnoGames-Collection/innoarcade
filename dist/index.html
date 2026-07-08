@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>" />
     <title>GoPlay — Play & Compete</title>
-    <script type="module" crossorigin src="./assets/hub-Cl310Ot8.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/index-DKuSwI9G.js">
-    <link rel="modulepreload" crossorigin href="./assets/tournaments-BO_qgac0.js">
-    <link rel="modulepreload" crossorigin href="./assets/signInGate-BSacae8k.js">
+    <script type="module" crossorigin src="./assets/hub-BaPlIpx9.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-BoPA0MZM.js">
+    <link rel="modulepreload" crossorigin href="./assets/tournaments-DFWK9e10.js">
+    <link rel="modulepreload" crossorigin href="./assets/signInGate-CF4YZwfX.js">
     <link rel="stylesheet" crossorigin href="./assets/signInGate-CW9ugQCN.css">
-    <link rel="stylesheet" crossorigin href="./assets/hub-DghAPM03.css">
+    <link rel="stylesheet" crossorigin href="./assets/hub-CKMuTWYT.css">
   </head>
   <body>
     <header class="topbar">
@@ -26,10 +26,16 @@
         <a href="#winners" class="nav-link" data-i18n="hub.winners">Winners</a>
       </nav>
       <div id="topBalances" class="top-balances"></div>
+      <button id="notifBell" class="notif-btn" type="button" aria-label="Notifications" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span id="notifBadge" class="notif-badge" hidden>0</span>
+      </button>
       <button id="settingsBtn" class="settings-btn" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
     </header>
+
+    <div id="activityTickerHost" class="activity-ticker-host" aria-label="Live activity"></div>
 
     <div class="hub-shell">
       <section id="promo" class="promo-section" aria-label="Promotions">

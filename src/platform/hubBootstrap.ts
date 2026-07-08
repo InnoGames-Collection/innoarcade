@@ -11,7 +11,7 @@ import {
   applyTournamentsBootstrap, applyMyEntriesBootstrap,
   type TournamentRow, type PoolRow, type EntryRow,
 } from './tournaments';
-import { applyPortalBootstrap, type RecentGameRow, type ChallengeProgress } from './portalState';
+import { applyPortalBootstrap, type RecentGameRow, type ChallengeProgress, type HubNotification } from './portalState';
 
 export interface HubBootstrapUser {
   coins: number;
@@ -23,12 +23,14 @@ export interface HubBootstrapUser {
   entries: EntryRow[];
   recentGames?: RecentGameRow[];
   challenge?: ChallengeProgress | null;
+  notifications?: HubNotification[];
 }
 
 export interface HubBootstrapPayload {
   config?: Partial<AppConfig>;
   tournaments?: TournamentRow[];
   pools?: PoolRow[];
+  activity?: unknown;
   user?: HubBootstrapUser | null;
 }
 
@@ -46,7 +48,7 @@ function applyHubBootstrap(payload: HubBootstrapPayload): HubBootstrapResult {
   if (!user) {
     setBalanceFromServer(0);
     applyMyEntriesBootstrap([]);
-    applyPortalBootstrap({ recentGames: [], challenge: null });
+    applyPortalBootstrap({ recentGames: [], challenge: null, activity: payload.activity });
     return { ok: true, hadUser: false, unlocks: [] };
   }
 
@@ -59,6 +61,8 @@ function applyHubBootstrap(payload: HubBootstrapPayload): HubBootstrapResult {
   applyPortalBootstrap({
     recentGames: user.recentGames ?? [],
     challenge: user.challenge ?? null,
+    activity: payload.activity,
+    notifications: user.notifications ?? [],
   });
   const unlocks = Array.isArray(user.unlocks) ? user.unlocks : [];
   return { ok: true, hadUser: true, unlocks };

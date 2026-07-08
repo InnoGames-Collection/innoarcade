@@ -35,6 +35,8 @@ export async function render(host: HTMLElement): Promise<void> {
   const trending = (portal.trendingGameIds ?? []).join(', ');
   const recent = (portal.recentlyAddedGameIds ?? []).join(', ');
   const reward = portal.dailyChallenge?.rewardCoins ?? 200;
+  const trendingMode = portal.trendingMode ?? 'analytics';
+  const mr = portal.missionRewards ?? {};
 
   host.innerHTML = `
     <div class="a-card">
@@ -57,7 +59,13 @@ export async function render(host: HTMLElement): Promise<void> {
 
     <div class="a-card">
       <div class="a-form a-form-grid">
-        <label>Trending game IDs (comma-separated)
+        <label>Trending mode
+          <select id="trendingMode">
+            <option value="analytics"${trendingMode === 'analytics' ? ' selected' : ''}>Analytics (play volume)</option>
+            <option value="curated"${trendingMode === 'curated' ? ' selected' : ''}>Curated IDs</option>
+          </select>
+        </label>
+        <label>Trending game IDs (comma-separated, curated mode)
           <input id="trending" type="text" value="${trending}" placeholder="temple-dash, fruit-slice" />
         </label>
         <label>Recently added IDs
@@ -65,6 +73,15 @@ export async function render(host: HTMLElement): Promise<void> {
         </label>
         <label>Daily challenge reward (coins)
           <input id="reward" type="number" min="0" value="${reward}" />
+        </label>
+        <label>Mission: Play 5 (coins)
+          <input id="mPlay5" type="number" min="0" value="${mr.play5 ?? 50}" />
+        </label>
+        <label>Mission: Win 2 (coins)
+          <input id="mWin2" type="number" min="0" value="${mr.win2 ?? 80}" />
+        </label>
+        <label>Mission: Tournament (coins)
+          <input id="mTour" type="number" min="0" value="${mr.tournament ?? 100}" />
         </label>
       </div>
       <p class="a-note">Game IDs must match catalog.ts entries. Changes appear on hub reload.</p>
@@ -124,10 +141,16 @@ export async function render(host: HTMLElement): Promise<void> {
     const portalNext = {
       promos: readPromos(),
       news: readNews(),
+      trendingMode: (host.querySelector<HTMLSelectElement>('#trendingMode')!).value as 'analytics' | 'curated',
       trendingGameIds: splitIds((host.querySelector<HTMLInputElement>('#trending')!).value),
       recentlyAddedGameIds: splitIds((host.querySelector<HTMLInputElement>('#recent')!).value),
       dailyChallenge: {
         rewardCoins: Number((host.querySelector<HTMLInputElement>('#reward')!).value) || 200,
+      },
+      missionRewards: {
+        play5: Number((host.querySelector<HTMLInputElement>('#mPlay5')!).value) || 50,
+        win2: Number((host.querySelector<HTMLInputElement>('#mWin2')!).value) || 80,
+        tournament: Number((host.querySelector<HTMLInputElement>('#mTour')!).value) || 100,
       },
     };
 

@@ -75,6 +75,9 @@ export interface PortalConfig {
   trendingGameIds?: string[];
   recentlyAddedGameIds?: string[];
   dailyChallenge?: { rewardCoins: number };
+  /** Curated shelf order vs sort by game_stats play volume. */
+  trendingMode?: 'curated' | 'analytics';
+  missionRewards?: { play5?: number; win2?: number; tournament?: number };
 }
 
 export interface AppConfig {
@@ -124,6 +127,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     trendingGameIds: ['temple-dash', 'fruit-slice', 'memory-match', 'bubble-pop', 'popblast', 'orbit-blast', 'ethiopian-quiz', 'merge-2048'],
     recentlyAddedGameIds: ['race-car', 'slide-puzzle', 'arrow-shot', 'ball-maze', 'pipe-connect', 'rope-rescue'],
     dailyChallenge: { rewardCoins: 200 },
+    trendingMode: 'analytics',
+    missionRewards: { play5: 50, win2: 80, tournament: 100 },
   },
 };
 

@@ -443,7 +443,8 @@ const en = {
   'hub.missionPlay5': 'Play 5 games',
   'hub.missionWin2': 'Win 2 games',
   'hub.missionTournament': 'Enter a tournament',
-  'hub.missionsNote': 'Mission rewards unlock automatically in Phase 2.',
+  'hub.missionClaimed': 'Claimed',
+  'hub.missionsNote': 'Mission coins are awarded automatically when you complete each goal.',
   'hub.nextReward': 'Next Reward',
   'hub.nextRewardSub': '{n} XP to next level',
   'hub.dashScore': 'Total XP',
@@ -472,6 +473,15 @@ const en = {
   'hub.challengeClaimed': 'Reward claimed today!',
   'hub.continuePlaying': 'Continue playing',
   'hub.continue': 'Continue',
+  'hub.liveActivity': 'Live',
+  'hub.activityPlaying': 'is playing',
+  'hub.activityScored': 'scored',
+  'hub.activityIn': 'in',
+  'hub.activityTournament': 'entered',
+  'hub.notifEmpty': 'No notifications yet.',
+  'hub.notifTitle': 'Notifications',
+  'hub.notifMarkRead': 'Mark all read',
+  'hub.trendingAnalytics': 'Sorted by play volume',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -917,7 +927,8 @@ const am: Dict = {
   'hub.missionPlay5': '5 ጨዋታዎች ይጫወቱ',
   'hub.missionWin2': '2 ጨዋታዎች ያሸንፉ',
   'hub.missionTournament': 'ውድድር ይግቡ',
-  'hub.missionsNote': 'የተልዕኮ ሽልማቶች በሚቀጥለው ወቅት በራስ-ሰር ይከፈታሉ።',
+  'hub.missionClaimed': 'ተገኝቷል',
+  'hub.missionsNote': 'የተልዕኮ ሳንቲሞች እያንዳንዱን ግብ ሲያሟሉ በራስ-ሰር ይሰጣሉ።',
   'hub.nextReward': 'ቀጣይ ሽልማት',
   'hub.nextRewardSub': 'ወደ ቀጣይ ደረጃ {n} XP',
   'hub.dashScore': 'ጠቅላላ XP',
@@ -945,7 +956,16 @@ const am: Dict = {
   'hub.claimReward': 'ሽልማት ይውሰዱ',
   'hub.challengeClaimed': 'ሽልማት ዛሬ ተወስዷል!',
   'hub.continuePlaying': 'መጫወት ይቀጥሉ',
-  'hub.continue': 'Continue',
+  'hub.continue': 'ይቀጥሉ',
+  'hub.liveActivity': 'ቀጥታ',
+  'hub.activityPlaying': 'እየተጫወተ ነው',
+  'hub.activityScored': 'አስመዝግቧል',
+  'hub.activityIn': 'በ',
+  'hub.activityTournament': 'ገብቷል',
+  'hub.notifEmpty': 'ማሳወቂያ የለም።',
+  'hub.notifTitle': 'ማሳወቂያዎች',
+  'hub.notifMarkRead': 'ሁሉንም አንብብ',
+  'hub.trendingAnalytics': 'በተጫዋች ብዛት ተደርድሯል',
 };
 
 const dicts: Record<Lang, Dict> = { en, am };

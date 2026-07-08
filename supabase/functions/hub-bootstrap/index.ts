@@ -32,10 +32,11 @@ Deno.serve(async (req: Request) => {
   const { data: u } = await userClient.auth.getUser();
   const user = u.user;
 
-  const [configRes, tourRes, poolRes] = await Promise.all([
+  const [configRes, tourRes, poolRes, activityRes] = await Promise.all([
     admin.from('app_config').select('value').eq('key', 'app').maybeSingle(),
     admin.from('tournaments').select(TOURNAMENT_SELECT).eq('state', 'live').order('starts_at', { ascending: false }),
     admin.from('tournament_pools').select('tournament_id, entrants, fees_total, pool'),
+    admin.rpc('get_public_activity_feed', { p_limit: 20 }),
   ]);
 
   let userPayload = null;
@@ -56,7 +57,7 @@ Deno.serve(async (req: Request) => {
       );
     } else { rpQueries.push(Promise.resolve({ data: null })); }
 
-    const [profRes, entriesRes, weeklyRpRes, monthlyRpRes, recentRes, challengeRes] = await Promise.all([
+    const [profRes, entriesRes, weeklyRpRes, monthlyRpRes, recentRes, challengeRes, notifRes] = await Promise.all([
       admin.from('profiles').select('coins, xp, xp_lifetime, unlocks').eq('id', user.id).maybeSingle(),
       admin
         .from('tournament_entries')
@@ -70,6 +71,7 @@ Deno.serve(async (req: Request) => {
         .order('last_played_at', { ascending: false })
         .limit(5),
       admin.rpc('get_daily_challenge_progress', { p_user: user.id }),
+      admin.rpc('get_user_hub_notifications', { p_user: user.id, p_limit: 20 }),
     ]);
     userPayload = {
       coins: Number(profRes.data?.coins ?? 0),
@@ -86,6 +88,7 @@ Deno.serve(async (req: Request) => {
         playCount: Number(r.play_count ?? 1),
       })),
       challenge: challengeRes.data ?? null,
+      notifications: notifRes.data ?? [],
     };
   }
 
@@ -93,6 +96,7 @@ Deno.serve(async (req: Request) => {
     config: configRes.data?.value ?? {},
     tournaments: tourRes.data ?? [],
     pools: poolRes.data ?? [],
+    activity: activityRes.data ?? [],
     user: userPayload,
   });
 });

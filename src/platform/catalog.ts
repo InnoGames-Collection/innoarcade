@@ -595,8 +595,19 @@ export function ratingFor(g: GameMeta): number {
   return g.rating ?? 4.5;
 }
 
-/** Horizontal-scroll trending row — portal override, then curated catalog order. */
-export function trendingGames(portalIds?: string[]): GameMeta[] {
+/** Horizontal-scroll trending row — analytics sort, portal override, or curated defaults. */
+export function trendingGames(
+  portalIds?: string[],
+  playCounts?: Record<string, number>,
+  mode?: 'curated' | 'analytics',
+): GameMeta[] {
+  const trendingMode = mode ?? 'curated';
+  if (trendingMode === 'analytics' && playCounts && Object.keys(playCounts).length > 0) {
+    return orderedCatalog()
+      .slice()
+      .sort((a, b) => (playCounts[b.id] ?? 0) - (playCounts[a.id] ?? 0))
+      .slice(0, 8);
+  }
   const ids = portalIds?.length ? portalIds : TRENDING_IDS;
   const picked = ids.map((id) => getGame(id)).filter((g): g is GameMeta => !!g);
   if (picked.length >= 5) return picked.slice(0, 8);

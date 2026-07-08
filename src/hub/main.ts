@@ -7,8 +7,8 @@ import { mountWallet } from './wallet';
 import { onAuthChange, currentUser, signOut } from '../platform/auth';
 import { sfx } from '../engine/audio';
 import { levelFor, LEVEL_THRESHOLDS, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, config, type WinnerCadence } from '../platform/config';
-import { getRecentGames, getChallengeProgress, getGamesPlayedToday, setChallengeProgress, type ChallengeProgress } from '../platform/portalState';
-import { leaderboardRemote, fetchWallets, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote, fetchGameStats, claimChallengeRemote } from '../platform/backend';
+import { getRecentGames, getChallengeProgress, getGamesPlayedToday, setChallengeProgress, getActivityFeed, applyActivityRaw, getNotifications, setNotifications, unreadNotifCount, getWeeklyRank, setWeeklyRank, type ChallengeProgress } from '../platform/portalState';
+import { leaderboardRemote, fetchWallets, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote, fetchGameStats, claimChallengeRemote, fetchActivityFeed, markNotificationsRead, refreshPortalRemote } from '../platform/backend';
 import {
   activeTournaments, tournamentGame, getTournamentForGame, getLiveTournamentByCadence,
   countdown, loadTournaments, loadMyEntries,
@@ -26,6 +26,7 @@ import {
   weeklyTournamentBannerHtml, dailyChallengeHtml, sidebarDashboardHtml,
   dailyMissionsHtml, nextRewardHtml, newsFeedHtml, sidebarNewsHtml,
   rewardsTiersHtml, lbPreviewRow, hScrollShelf, comingSoonShelfHtml, continuePlayingHtml,
+  activityTickerHtml, notificationsPanelHtml,
 } from './portalSections';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
@@ -532,8 +533,13 @@ let lbPreviewSeen = false;
 function renderTrending(): void {
   const host = document.querySelector('#trendingShelf');
   if (!host) return;
-  const ids = config().portal?.trendingGameIds;
-  host.innerHTML = hScrollShelf(trendingGames(ids), (g) => gameCard(g, { compact: true }));
+  const portal = config().portal;
+  const mode = portal?.trendingMode ?? 'analytics';
+  const ids = portal?.trendingGameIds;
+  host.innerHTML = hScrollShelf(
+    trendingGames(ids, gamePlayCounts, mode),
+    (g) => gameCard(g, { compact: true }),
+  );
 }
 
 function renderRecentlyAdded(): void {
@@ -637,7 +643,8 @@ function renderSidebar(): void {
       xp,
       nextXp: ceiling,
       coins: balanceSync(),
-      gamesPlayed: getRecentGames().length || getGamesPlayedToday(),
+      gamesPlayed: getGamesPlayedToday() || getRecentGames().length,
+      rank: getWeeklyRank(),
     });
   }
 
@@ -645,10 +652,33 @@ function renderSidebar(): void {
   if (missions) missions.innerHTML = dailyMissionsHtml(challenge);
 
   const next = document.querySelector('#sidebarNextReward');
-  if (next) next.innerHTML = nextRewardHtml(level, xpToNext);
+  if (next) next.innerHTML = nextRewardHtml(level, xpToNext, pct);
 
   const news = document.querySelector('#sidebarNews');
   if (news) news.innerHTML = sidebarNewsHtml(lang());
+
+  renderNotifBadge();
+}
+
+function renderActivityTicker(): void {
+  const host = document.querySelector('#activityTickerHost');
+  if (!host) return;
+  const items = getActivityFeed();
+  host.innerHTML = activityTickerHtml(items, lang());
+}
+
+function renderNotifBadge(): void {
+  const bell = document.querySelector<HTMLButtonElement>('#notifBell');
+  const badge = document.querySelector<HTMLElement>('#notifBadge');
+  if (!bell || !badge) return;
+  const n = unreadNotifCount();
+  bell.hidden = !isConfigured();
+  if (n > 0) {
+    badge.hidden = false;
+    badge.textContent = n > 9 ? '9+' : String(n);
+  } else {
+    badge.hidden = true;
+  }
 }
 
 function parseChallengePayload(raw: unknown): ChallengeProgress | null {
@@ -704,6 +734,7 @@ function renderPortalSections(): void {
   renderWeeklyBanner();
   renderContinuePlaying();
   renderSidebar();
+  renderActivityTicker();
   renderRecentlyAdded();
   renderRewardTiers();
   renderNews();
@@ -915,6 +946,73 @@ function mountSettings(): void {
   window.addEventListener('resize', () => { if (!menu.hidden) position(); });
 }
 
+function mountNotifications(): void {
+  const btn = document.querySelector<HTMLButtonElement>('#notifBell');
+  if (!btn) return;
+  const panel = document.createElement('div');
+  panel.className = 'notif-menu';
+  panel.hidden = true;
+  document.body.appendChild(panel);
+
+  const close = (): void => { panel.hidden = true; };
+  const position = (): void => {
+    const r = btn.getBoundingClientRect();
+    panel.style.top = `${r.bottom + 8}px`;
+    const w = panel.offsetWidth || 300;
+    const left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8);
+    panel.style.left = `${Math.max(8, left)}px`;
+  };
+
+  function build(): void {
+    const items = getNotifications();
+    panel.innerHTML = `
+      <div class="notif-head">
+        <strong data-i18n="hub.notifTitle">${t('hub.notifTitle')}</strong>
+        <button type="button" class="notif-mark" id="notifMarkAll">${t('hub.notifMarkRead')}</button>
+      </div>
+      ${notificationsPanelHtml(items)}`;
+    panel.querySelector('#notifMarkAll')?.addEventListener('click', () => {
+      void markNotificationsRead().then(() => {
+        setNotifications(items.map((n) => ({ ...n, read: true })));
+        build();
+        renderNotifBadge();
+      });
+    });
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (panel.hidden) { build(); position(); panel.hidden = false; }
+    else close();
+  });
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target as Node) && e.target !== btn) close();
+  });
+  window.addEventListener('resize', () => { if (!panel.hidden) position(); });
+}
+
+let tickerPollTimer: number | undefined;
+function startActivityPolling(): void {
+  if (tickerPollTimer != null) return;
+  tickerPollTimer = window.setInterval(() => {
+    void fetchActivityFeed(20).then((raw) => {
+      applyActivityRaw(raw);
+      renderActivityTicker();
+    });
+  }, 45_000);
+}
+
+async function refreshSidebarRank(): Promise<void> {
+  const weeklyTour = getLiveTournamentByCadence('weekly');
+  if (!weeklyTour) {
+    setWeeklyRank(undefined);
+    return;
+  }
+  const me = await playerStandingRemote(weeklyTour.id);
+  setWeeklyRank(me?.rank);
+  renderSidebar();
+}
+
 // Mandatory sign-in gate: the whole portal is subscription/OTP based, so an
 // unauthenticated visitor sees a blocking sign-in surface and cannot reach the
 // games until they sign in with a phone number + OTP. (Only enforced when an
@@ -1036,6 +1134,7 @@ setupWinnersTabs();
 setupDeferredSections();
 syncNavActive();
 mountSettings();
+mountNotifications();
 mountSignInGate();
 
 // Hydrate the points balance from the server (the authority); refresh on load
@@ -1065,6 +1164,10 @@ function hydratePointsAfterBootstrap(boot: HubBootstrapResult): void {
     renderTrending();
     renderRecentlyAdded();
   });
+  void refreshSidebarRank();
+  renderActivityTicker();
+  renderNotifBadge();
+  startActivityPolling();
   if (winnersSeen) renderWinners({ fetch: true });
   if (lbPreviewSeen) renderLbPreview({ fetch: true });
   renderGames();
@@ -1116,6 +1219,13 @@ onAuthChange(() => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && isConfigured()) {
     void refreshPlayerRp();
+    void refreshPortalRemote().then((ok) => {
+      if (!ok) return;
+      renderContinuePlaying();
+      renderSidebar();
+      renderActivityTicker();
+      renderMyStats();
+    });
   }
 });
 setInterval(tickCountdowns, 1000);

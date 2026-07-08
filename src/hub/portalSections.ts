@@ -4,13 +4,13 @@
 import { t, type Lang, type I18nKey } from '../i18n';
 import {
   trendingGames, recentlyAddedGames, COMING_SOON, CATEGORY_CHIPS,
-  type GameMeta, type GameCategory, type ComingSoonMeta,
+  type GameMeta, type GameCategory, type ComingSoonMeta, getGame,
 } from '../platform/catalog';
 import {
   countdown, type Tournament,
 } from '../platform/tournaments';
 import { etbPrizesForCadence, formatEtbPrize, config } from '../platform/config';
-import { getChallengeProgress, type ChallengeProgress, type ProgressItem } from '../platform/portalState';
+import { getChallengeProgress, type ChallengeProgress, type ProgressItem, type ActivityItem, type HubNotification } from '../platform/portalState';
 import { type LeaderEntry } from '../platform/tournaments';
 
 export function escapeHtml(s: string): string {
@@ -204,11 +204,16 @@ export function dailyMissionsHtml(progress?: ChallengeProgress | null): string {
   const rows = missions.map((m) => {
     const pct = m.target > 0 ? Math.min(100, Math.round((m.current / m.target) * 100)) : 0;
     const reward = m.reward ?? 0;
+    const doneCls = m.done ? ' mission-row--done' : '';
+    const claimedCls = m.claimed ? ' mission-row--claimed' : '';
+    const rewardLbl = m.claimed
+      ? `<span class="mission-claimed">✔ ${t('hub.missionClaimed')}</span>`
+      : `<span class="mission-reward">+${reward} 🪙</span>`;
     return `
-      <div class="mission-row">
+      <div class="mission-row${doneCls}${claimedCls}">
         <div class="mission-top">
           <span>${escapeHtml(missionLabel(m.id))}</span>
-          <span class="mission-reward">+${reward} 🪙</span>
+          ${rewardLbl}
         </div>
         <div class="mission-bar"><div class="mission-bar-fill" style="width:${pct}%"></div></div>
         <span class="mission-prog">${m.current}/${m.target}</span>
@@ -218,18 +223,73 @@ export function dailyMissionsHtml(progress?: ChallengeProgress | null): string {
     <article class="widget-card missions-card">
       <h3 class="widget-title">📋 <span data-i18n="hub.dailyMissions">${t('hub.dailyMissions')}</span></h3>
       ${rows}
+      <p class="widget-note" data-i18n="hub.missionsNote">${t('hub.missionsNote')}</p>
     </article>`;
 }
 
-export function nextRewardHtml(level: number, xpToNext: number): string {
-  const pct = xpToNext > 0 ? Math.min(95, Math.round((1 - xpToNext / (xpToNext + 500)) * 100)) : 80;
+export function nextRewardHtml(level: number, xpToNext: number, xpPct: number): string {
+  const pct = Math.min(100, Math.max(0, xpPct));
   return `
     <article class="widget-card reward-next-card">
       <h3 class="widget-title">🎁 <span data-i18n="hub.nextReward">${t('hub.nextReward')}</span></h3>
       <div class="reward-chest" aria-hidden="true">🧰</div>
-      <p class="reward-next-txt">${t('hub.nextRewardSub').replace('{n}', String(level + 1))}</p>
+      <p class="reward-next-txt">${t('hub.nextRewardSub').replace('{n}', String(xpToNext.toLocaleString()))}</p>
       <div class="mission-bar"><div class="mission-bar-fill mission-bar-fill--gold" style="width:${pct}%"></div></div>
+      <p class="reward-level-hint">${t('hub.statLevel')} ${level} → ${level + 1}</p>
     </article>`;
+}
+
+function gameDisplayName(gameId: string, langCode: Lang): string {
+  const g = getGame(gameId);
+  if (!g) return gameId;
+  return langCode === 'am' ? g.nameAm : g.nameEn;
+}
+
+function formatActivityLine(item: ActivityItem, langCode: Lang): string {
+  const gname = escapeHtml(gameDisplayName(item.game, langCode));
+  const player = escapeHtml(item.player);
+  if (item.event === 'tournament_play') {
+    return `<span class="ticker-item">🏆 ${player} ${t('hub.activityTournament')} ${gname}</span>`;
+  }
+  if (item.score >= 1000) {
+    return `<span class="ticker-item">⭐ ${player} ${t('hub.activityScored')} ${item.score.toLocaleString()} ${t('hub.activityIn')} ${gname}</span>`;
+  }
+  return `<span class="ticker-item">🎮 ${player} ${t('hub.activityPlaying')} ${gname}</span>`;
+}
+
+/** Marquee strip of recent anonymized plays. */
+export function activityTickerHtml(items: ActivityItem[], langCode: Lang): string {
+  if (!items.length) return '';
+  const chunks = items.map((item) => formatActivityLine(item, langCode));
+  const track = [...chunks, ...chunks].join('<span class="ticker-sep">•</span>');
+  return `
+    <div class="activity-ticker" aria-live="polite">
+      <span class="activity-ticker-label" data-i18n="hub.liveActivity">${t('hub.liveActivity')}</span>
+      <div class="activity-ticker-viewport">
+        <div class="activity-ticker-track">${track}</div>
+      </div>
+    </div>`;
+}
+
+export function notificationsPanelHtml(items: HubNotification[]): string {
+  if (!items.length) {
+    return `<p class="notif-empty" data-i18n="hub.notifEmpty">${t('hub.notifEmpty')}</p>`;
+  }
+  const rows = items.map((n) => `
+    <button type="button" class="notif-row${n.read ? '' : ' unread'}" data-notif-id="${n.id}">
+      <span class="notif-kind">${notifIcon(n.kind)}</span>
+      <span class="notif-body">
+        <strong>${escapeHtml(n.title)}</strong>
+        <span>${escapeHtml(n.body)}</span>
+      </span>
+    </button>`).join('');
+  return `<div class="notif-list">${rows}</div>`;
+}
+
+function notifIcon(kind: string): string {
+  if (kind === 'mission') return '🪙';
+  if (kind === 'challenge_ready') return '🎯';
+  return '🔔';
 }
 
 function newsItems(lang: Lang) {

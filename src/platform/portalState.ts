@@ -1,4 +1,4 @@
-// Hub portal runtime state — recent games + daily challenge progress from bootstrap.
+// Hub portal runtime state — recent games, challenge, activity feed, notifications.
 
 export interface RecentGameRow {
   gameId: string;
@@ -13,6 +13,7 @@ export interface ProgressItem {
   target: number;
   done: boolean;
   reward?: number;
+  claimed?: boolean;
 }
 
 export interface ChallengeProgress {
@@ -23,9 +24,32 @@ export interface ChallengeProgress {
   missions: ProgressItem[];
 }
 
+export interface ActivityItem {
+  id: number;
+  player: string;
+  game: string;
+  event: string;
+  score: number;
+  win: boolean;
+  ts: string;
+}
+
+export interface HubNotification {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  read: boolean;
+  created_at: string;
+  meta?: Record<string, unknown>;
+}
+
 let recentGames: RecentGameRow[] = [];
 let challengeProgress: ChallengeProgress | null = null;
 let gamesPlayedToday = 0;
+let activityFeed: ActivityItem[] = [];
+let notifications: HubNotification[] = [];
+let weeklyRank: number | undefined;
 
 function parseChallenge(raw: unknown): ChallengeProgress | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -41,14 +65,50 @@ function parseChallenge(raw: unknown): ChallengeProgress | null {
   };
 }
 
+function parseActivity(raw: unknown): ActivityItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      id: Number(r.id ?? 0),
+      player: String(r.player ?? 'Player'),
+      game: String(r.game ?? ''),
+      event: String(r.event ?? 'play'),
+      score: Number(r.score ?? 0),
+      win: Boolean(r.win),
+      ts: String(r.ts ?? ''),
+    };
+  });
+}
+
+function parseNotifications(raw: unknown): HubNotification[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      id: Number(r.id ?? 0),
+      kind: String(r.kind ?? ''),
+      title: String(r.title ?? ''),
+      body: String(r.body ?? ''),
+      read: Boolean(r.read),
+      created_at: String(r.created_at ?? ''),
+      meta: (r.meta && typeof r.meta === 'object') ? r.meta as Record<string, unknown> : undefined,
+    };
+  });
+}
+
 export function applyPortalBootstrap(data: {
   recentGames?: RecentGameRow[];
   challenge?: unknown;
+  activity?: unknown;
+  notifications?: unknown;
 }): void {
   recentGames = Array.isArray(data.recentGames) ? data.recentGames : [];
   challengeProgress = parseChallenge(data.challenge);
   const playTask = challengeProgress?.tasks.find((t) => t.id === 'play3');
   gamesPlayedToday = playTask?.current ?? 0;
+  if (data.activity != null) activityFeed = parseActivity(data.activity);
+  if (data.notifications != null) notifications = parseNotifications(data.notifications);
 }
 
 export function getRecentGames(): RecentGameRow[] {
@@ -67,4 +127,36 @@ export function setChallengeProgress(next: ChallengeProgress | null): void {
   challengeProgress = next;
   const playTask = next?.tasks.find((t) => t.id === 'play3');
   gamesPlayedToday = playTask?.current ?? gamesPlayedToday;
+}
+
+export function getActivityFeed(): ActivityItem[] {
+  return activityFeed;
+}
+
+export function setActivityFeed(items: ActivityItem[]): void {
+  activityFeed = items;
+}
+
+export function applyActivityRaw(raw: unknown): void {
+  activityFeed = parseActivity(raw);
+}
+
+export function getNotifications(): HubNotification[] {
+  return notifications;
+}
+
+export function setNotifications(items: HubNotification[]): void {
+  notifications = items;
+}
+
+export function unreadNotifCount(): number {
+  return notifications.filter((n) => !n.read).length;
+}
+
+export function setWeeklyRank(rank: number | undefined): void {
+  weeklyRank = rank;
+}
+
+export function getWeeklyRank(): number | undefined {
+  return weeklyRank;
 }

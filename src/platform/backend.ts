@@ -9,6 +9,8 @@
 import { isConfigured, getSupabase } from './supabase';
 import { userId } from './auth';
 import { type LeaderEntry } from './tournaments';
+import { setBalanceFromServer } from './wallet';
+import { applyPortalBootstrap, type RecentGameRow } from './portalState';
 
 export function backendReady(): boolean {
   return isConfigured();
@@ -455,6 +457,55 @@ export async function fetchGameStats(): Promise<Record<string, number>> {
     return out;
   } catch {
     return {};
+  }
+}
+
+/** Live activity feed for the hub ticker (public, anonymized). */
+export async function fetchActivityFeed(limit = 20): Promise<unknown[]> {
+  if (!isConfigured()) return [];
+  try {
+    const sb = await getSupabase();
+    const { data } = await sb.rpc('get_public_activity_feed', { p_limit: limit });
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Mark all or selected notifications as read. */
+export async function markNotificationsRead(ids?: number[]): Promise<void> {
+  if (!isConfigured()) return;
+  try {
+    const sb = await getSupabase();
+    await sb.rpc('mark_my_notifications_read', {
+      p_ids: ids?.length ? ids : null,
+    });
+  } catch { /* non-fatal */ }
+}
+
+/** Lightweight portal refresh (challenge, notifications, activity, coins). */
+export async function refreshPortalRemote(): Promise<boolean> {
+  if (!isConfigured()) return false;
+  try {
+    const sb = await getSupabase();
+    const { data, error } = await sb.functions.invoke('hub-bootstrap', { body: {} });
+    if (error || !data) return false;
+    const payload = data as {
+      activity?: unknown;
+      user?: { coins?: number; challenge?: unknown; notifications?: unknown; recentGames?: unknown };
+    };
+    if (payload.user?.coins != null) setBalanceFromServer(Number(payload.user.coins));
+    applyPortalBootstrap({
+      recentGames: Array.isArray(payload.user?.recentGames)
+        ? payload.user.recentGames as RecentGameRow[]
+        : undefined,
+      challenge: payload.user?.challenge,
+      activity: payload.activity,
+      notifications: payload.user?.notifications,
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
