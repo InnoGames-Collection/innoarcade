@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>" />
     <title>GoPlay — Play & Compete</title>
-    <script type="module" crossorigin src="./assets/hub-C5UFpPrj.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/index-Df9TtnSh.js">
-    <link rel="modulepreload" crossorigin href="./assets/tournaments-CiwM9_Mb.js">
-    <link rel="modulepreload" crossorigin href="./assets/signInGate-l-VH6mlH.js">
+    <script type="module" crossorigin src="./assets/hub-Cgouj_Gs.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-C1SLHC2u.js">
+    <link rel="modulepreload" crossorigin href="./assets/tournaments-D_McnvFt.js">
+    <link rel="modulepreload" crossorigin href="./assets/signInGate-FkmPjV-S.js">
     <link rel="stylesheet" crossorigin href="./assets/signInGate-CW9ugQCN.css">
-    <link rel="stylesheet" crossorigin href="./assets/hub-Dgs2bl38.css">
+    <link rel="stylesheet" crossorigin href="./assets/hub-D2fq-quE.css">
   </head>
   <body>
     <header class="topbar">
@@ -38,6 +38,10 @@
         <div class="promo-dots" id="promoDots"></div>
       </section>
 
+      <section id="featuredTournaments" class="featured-tournaments-section portal-section" aria-label="Featured tournaments" hidden>
+        <div id="featuredTournamentsHost"></div>
+      </section>
+
       <section id="playerBar" class="player-bar-section" aria-label="Your balances"></section>
 
       <div class="hub-body">
@@ -49,6 +53,13 @@
               <div id="activityTickerHost" class="activity-ticker-host activity-ticker-host--below" aria-label="Live activity"></div>
             </section>
 
+            <section id="continuePlaying" class="portal-section" aria-label="Continue playing" hidden>
+              <div class="section-head">
+                <h2 class="section-title">⭐ <span data-i18n="hub.continuePlaying">Continue playing</span></h2>
+              </div>
+              <div id="continueShelf"></div>
+            </section>
+
             <section id="trending" class="portal-section" aria-label="Trending games">
               <div class="section-head">
                 <h2 class="section-title">🔥 <span data-i18n="hub.trending">Trending games</span></h2>
@@ -56,8 +67,6 @@
               </div>
               <div id="trendingShelf" class="hscroll-wrap"></div>
             </section>
-
-            <section id="weeklyTournament" class="portal-section" aria-label="Weekly tournament"></section>
           </div>
 
           <aside class="hub-sidebar" id="hubSidebar" aria-label="Your dashboard">
@@ -69,13 +78,6 @@
           </aside>
 
           <div id="hubMainBottom">
-            <section id="continuePlaying" class="portal-section" aria-label="Continue playing" hidden>
-              <div class="section-head">
-                <h2 class="section-title">⭐ <span data-i18n="hub.continuePlaying">Continue playing</span></h2>
-              </div>
-              <div id="continueShelf"></div>
-            </section>
-
             <section id="recentlyAdded" class="portal-section" aria-label="Recently added">
               <div class="section-head">
                 <h2 class="section-title">🆕 <span data-i18n="hub.recentlyAdded">Recently added</span></h2>
@@ -156,7 +158,7 @@
         <div class="footer-col">
           <h4 data-i18n="hub.footerPlatform">Platform</h4>
           <a href="#games" data-i18n="hub.games">Games</a>
-          <a href="#weeklyTournament" data-i18n="hub.tournaments">Tournaments</a>
+          <a href="#featuredTournaments" data-i18n="hub.tournaments">Tournaments</a>
           <a href="#lbPreview" data-i18n="hub.leaderboard">Leaderboard</a>
           <a href="#rewards" data-i18n="hub.rewards">Rewards</a>
         </div>

@@ -416,13 +416,14 @@ body {
 .ca-sub { font-size: 0.8rem; opacity: 0.92; }
 .ca-pot { font-weight: 900; font-size: 1.15rem; white-space: nowrap; }
 
-/* games toolbar — Tournament / Free tabs + search (no section heading) */
+/* games toolbar — tabs + category + search on one row */
 .games-head {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.55rem;
   margin-bottom: 1rem;
+  min-width: 0;
 }
 .games-head .seg { flex-shrink: 0; }
 .games-head .cat-dropdown { flex-shrink: 0; }
@@ -718,25 +719,29 @@ body {
 .player-bar-section { margin-top: 0.35rem; }
 .player-bar-section:empty { display: none; }
 .player-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas: "level xp wrp mrp";
   align-items: center;
   gap: 0.5rem 0.75rem;
-  flex-wrap: wrap;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 0.5rem 0.75rem;
   box-shadow: var(--shadow-sm);
 }
+.ps-level { grid-area: level; }
+.ps-xp { grid-area: xp; min-width: 0; }
+.ps-rp-weekly { grid-area: wrp; }
+.ps-rp-monthly { grid-area: mrp; }
+.ps-rp-monthly .ps-val { color: #6b3fa0; }
+.ps-rp-weekly .ps-val { color: #1a5fa8; }
+.ps-level .ps-val { color: #3f8f12; }
 .ps-seg { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
 .ps-ico { font-size: 0.95rem; line-height: 1; flex-shrink: 0; }
 .ps-lbl { font-size: 0.68rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
 .ps-val { font-size: 0.95rem; font-weight: 900; line-height: 1; }
-.ps-level .ps-val { color: #3f8f12; }
-.ps-rp .ps-val { color: #1a5fa8; }
-.ps-rp:last-child .ps-val { color: #6b3fa0; }
-.ps-xp { flex: 1 1 8rem; min-width: 6rem; }
-.ps-bar-wrap { display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0; }
+.ps-bar-wrap { display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0; width: 100%; }
 .ps-bar { flex: 1; height: 5px; border-radius: 999px; background: #edf2e8; overflow: hidden; min-width: 3rem; }
 .ps-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f2c94c, #e0a800); transition: width 0.25s ease; }
 .ps-sub { font-size: 0.62rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
@@ -804,10 +809,22 @@ body {
   .brand-logo-et { height: 1.5rem; }
   .top-balances { margin-inline: auto 0; gap: 0.25rem; min-width: 0; }
   .player-bar-section { padding-inline: 0.2rem; }
-  .player-strip { gap: 0.4rem 0.55rem; padding: 0.45rem 0.6rem; }
-  .ps-lbl { font-size: 0.62rem; }
-  .ps-val { font-size: 0.85rem; }
-  .ps-sub { font-size: 0.58rem; }
+  .player-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      "level wrp mrp"
+      "xp xp xp";
+    gap: 0.35rem 0.4rem;
+    padding: 0.45rem 0.55rem;
+  }
+  .ps-seg { justify-content: center; }
+  .ps-xp .ps-ico,
+  .ps-xp .ps-lbl { display: none; }
+  .ps-xp .ps-bar-wrap { width: 100%; }
+  .ps-lbl { font-size: 0.58rem; }
+  .ps-val { font-size: 0.8rem; }
+  .ps-sub { font-size: 0.55rem; }
+  .ps-bar { min-width: 0; }
   .auth-btn { font-size: 0.78rem !important; padding: 0.34rem 0.7rem !important; }
   .settings-btn { width: 2rem; height: 2rem; }
 }
@@ -831,11 +848,30 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .bn-ico { font-size: 1.2rem; line-height: 1; }
   .bn-item.active { color: var(--accent); }
   .hub-main { padding-bottom: 4.5rem; }
-  .games-head { gap: 0.4rem; flex-wrap: wrap; }
-  .games-head .seg-btn { padding: 0.3rem 0.5rem; font-size: 0.72rem; }
-  .cat-dropdown-btn { padding: 0.3rem 0.55rem; font-size: 0.72rem; max-width: min(130px, 28vw); }
-  .game-search { width: min(168px, 34vw); padding: 0.34rem 0.65rem; font-size: 0.78rem; }
-  .games-head .game-search { margin-left: auto; }
+  .games-head {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) minmax(68px, 24%);
+    gap: 0.3rem;
+    align-items: center;
+  }
+  .games-head .seg { min-width: 0; }
+  .games-head .seg-btn { padding: 0.28rem 0.42rem; font-size: 0.65rem; }
+  .cat-dropdown-lbl { display: none; }
+  .cat-dropdown-btn {
+    padding: 0.28rem 0.42rem;
+    font-size: 0.65rem;
+    max-width: none;
+    min-width: 0;
+  }
+  .cat-dropdown-val { max-width: 3.8rem; overflow: hidden; text-overflow: ellipsis; }
+  .game-search {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin-left: 0;
+    padding: 0.28rem 0.48rem;
+    font-size: 0.68rem;
+  }
 }
 
 /* ---- how-to-play ℹ️ button on cards ---- */
@@ -1166,6 +1202,21 @@ html, body { max-width: 100%; overflow-x: hidden; }
   color: #fff;
   box-shadow: var(--shadow-lg);
 }
+.monthly-banner {
+  background: linear-gradient(135deg, #1a1848 0%, #4a2d8a 45%, #7b45c4 100%);
+}
+.featured-tournaments-section { margin-top: 0.35rem; }
+.featured-tournaments-section[hidden] { display: none; }
+.featured-tournaments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 0.75rem;
+}
+.featured-tournament-card { padding: clamp(1rem, 3vw, 1.6rem); }
+.featured-tournament-card .wb-title { font-size: clamp(1.1rem, 3.5vw, 1.6rem); }
+.featured-tournament-card .wb-game { margin-bottom: 0.65rem; font-size: 0.82rem; }
+.featured-tournament-card .wb-meta { gap: 0.75rem 1.25rem; margin-bottom: 0.85rem; }
+.featured-tournament-card .wb-cta { font-size: 0.82rem; padding: 0.45rem 0.9rem; }
 .wb-glow { position: absolute; right: -1rem; bottom: -1.5rem; font-size: 8rem; opacity: 0.18; pointer-events: none; }
 .wb-body { position: relative; z-index: 1; }
 .wb-eyebrow { display: inline-block; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; background: rgba(255,255,255,0.18); padding: 0.2rem 0.65rem; border-radius: 999px; }
@@ -1174,6 +1225,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .wb-meta { display: flex; flex-wrap: wrap; gap: 1.25rem 2rem; margin-bottom: 1.1rem; }
 .wb-stat-lbl { display: block; font-size: 0.72rem; opacity: 0.8; }
 .wb-stat-val { font-size: 1.35rem; font-weight: 900; color: #ffd66b; }
+.wb-stat-val--sub { font-size: 1rem; }
+.wb-stat--hero .wb-stat-val { font-size: clamp(1.2rem, 4vw, 1.5rem); }
+@media (max-width: 720px) {
+  .featured-tournaments-grid { grid-template-columns: 1fr; }
+  .featured-tournament-card .wb-glow { font-size: 5rem; }
+}
 
 .widget-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 0.9rem 1rem; box-shadow: var(--shadow-sm); }
 .widget-title { font-size: 0.92rem; font-weight: 800; margin: 0 0 0.65rem; }

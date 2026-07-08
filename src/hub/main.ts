@@ -23,7 +23,7 @@ import { getSupabase, isConfigured } from '../platform/supabase';
 import { bootstrapHubData, type HubBootstrapResult } from '../platform/hubBootstrap';
 import {
   escapeHtml, fmtPlayCount, starsHtml, gamesToolbarHtml,
-  weeklyTournamentBannerHtml, dailyChallengeHtml, sidebarDashboardHtml,
+  featuredTournamentBannerHtml, featuredTournamentsHtml, dailyChallengeHtml, sidebarDashboardHtml,
   dailyMissionsHtml, nextRewardHtml, newsFeedHtml, sidebarNewsHtml,
   rewardsTiersHtml, lbPreviewRow, hScrollShelf, comingSoonShelfHtml, continuePlayingHtml,
   activityTickerHtml, notificationsPanelHtml, shelfSkeletonHtml, lbSkeletonHtml,
@@ -44,9 +44,9 @@ const userBests: Record<string, number> = {};
 interface PromoSlide { img: string; alt: string; href?: string }
 const PROMOS_FALLBACK: PromoSlide[] = [
   { img: '/brand/ad-banner-1.png', alt: 'Every Score Counts — climb the leaderboard', href: '#games' },
-  { img: '/brand/ad-banner-2.png', alt: 'Weekly Fruit Slice Tournament', href: '#weeklyTournament' },
-  { img: '/brand/ad-banner-3.png', alt: 'Monthly Memory Match Tournament', href: '#weeklyTournament' },
-  { img: '/brand/ad-banner-4.png', alt: 'Win up to 50,000 ETB — Monthly & Weekly Tournaments', href: '#weeklyTournament' },
+  { img: '/brand/ad-banner-2.png', alt: 'Weekly Fruit Slice Tournament', href: '#featuredTournaments' },
+  { img: '/brand/ad-banner-3.png', alt: 'Monthly Memory Match Tournament', href: '#featuredTournaments' },
+  { img: '/brand/ad-banner-4.png', alt: 'Win up to 50,000 ETB — Monthly & Weekly Tournaments', href: '#featuredTournaments' },
 ];
 function promosFromConfig(): PromoSlide[] {
   const portal = config().portal;
@@ -220,6 +220,16 @@ function renderMyStats(): void {
         <span class="ps-lbl">${t('hub.statLevel')}</span>
         <strong class="ps-val">${level}</strong>
       </div>
+      <div class="ps-seg ps-rp ps-rp-weekly">
+        <span class="ps-ico" aria-hidden="true">🏅</span>
+        <span class="ps-lbl">${t('hub.rpWeekly')}</span>
+        <strong class="ps-val">${fmtRp(rpWeekly())}</strong>
+      </div>
+      <div class="ps-seg ps-rp ps-rp-monthly">
+        <span class="ps-ico" aria-hidden="true">🏆</span>
+        <span class="ps-lbl">${t('hub.rpMonthly')}</span>
+        <strong class="ps-val">${fmtRp(rpMonthly())}</strong>
+      </div>
       <div class="ps-seg ps-xp">
         <span class="ps-ico" aria-hidden="true">⭐</span>
         <span class="ps-lbl">${t('hub.progress')}</span>
@@ -229,16 +239,6 @@ function renderMyStats(): void {
           </div>
           <span class="ps-sub">${xp.toLocaleString()} / ${nextXp.toLocaleString()}</span>
         </div>
-      </div>
-      <div class="ps-seg ps-rp">
-        <span class="ps-ico" aria-hidden="true">🏅</span>
-        <span class="ps-lbl">${t('hub.rpWeekly')}</span>
-        <strong class="ps-val">${fmtRp(rpWeekly())}</strong>
-      </div>
-      <div class="ps-seg ps-rp">
-        <span class="ps-ico" aria-hidden="true">🏆</span>
-        <span class="ps-lbl">${t('hub.rpMonthly')}</span>
-        <strong class="ps-val">${fmtRp(rpMonthly())}</strong>
       </div>
     </div>`;
 
@@ -606,23 +606,33 @@ function renderComingSoon(): void {
   host.innerHTML = comingSoonShelfHtml(lang());
 }
 
-function renderWeeklyBanner(): void {
-  const host = document.querySelector('#weeklyTournament');
-  if (!host) return;
-  const tour = getLiveTournamentByCadence('weekly');
-  const game = tour ? getGame(tour.gameId) : undefined;
-  if (!tour || !game) {
+function renderFeaturedTournaments(): void {
+  const host = document.querySelector('#featuredTournamentsHost');
+  const section = document.querySelector<HTMLElement>('#featuredTournaments');
+  if (!host || !section) return;
+  const cards: string[] = [];
+  for (const cadence of ['weekly', 'monthly'] as const) {
+    const tour = getLiveTournamentByCadence(cadence);
+    const game = tour ? getGame(tour.gameId) : undefined;
+    if (!tour || !game) continue;
+    cards.push(featuredTournamentBannerHtml({
+      cadence,
+      lang: lang(),
+      gameName: name(game),
+      gameIcon: game.icon,
+      gameRoute: game.route,
+      gameId: game.id,
+      tour,
+      title: tTitle(tour),
+    }));
+  }
+  if (!cards.length) {
+    section.hidden = true;
     host.innerHTML = '';
     return;
   }
-  host.innerHTML = weeklyTournamentBannerHtml({
-    lang: lang(),
-    gameName: name(game),
-    gameIcon: game.icon,
-    gameRoute: game.route,
-    tour,
-    title: tTitle(tour),
-  });
+  section.hidden = false;
+  host.innerHTML = featuredTournamentsHtml(cards);
 }
 
 function renderSidebar(): void {
@@ -744,8 +754,8 @@ function renderLbPreview(opts?: { fetch?: boolean }): void {
 }
 
 function renderPortalSections(): void {
+  renderFeaturedTournaments();
   renderTrending();
-  renderWeeklyBanner();
   renderContinuePlaying();
   renderSidebar();
   renderActivityTicker();
@@ -883,6 +893,7 @@ function tickCountdowns(): void {
 // --- Render all + language --------------------------------------------------
 function renderAll(): void {
   renderPromo();
+  renderFeaturedTournaments();
   renderMyStats();
   renderGamesToolbar();
   wireEntryCtas();

@@ -9,7 +9,7 @@ import {
 import {
   countdown, type Tournament,
 } from '../platform/tournaments';
-import { etbPrizesForCadence, formatEtbPrize, config } from '../platform/config';
+import { etbPrizesForCadence, formatEtbPrize, config, TOURNAMENT_ETB_PRIZES } from '../platform/config';
 import { getChallengeProgress, type ChallengeProgress, type ProgressItem, type ActivityItem, type HubNotification } from '../platform/portalState';
 import { type LeaderEntry } from '../platform/tournaments';
 
@@ -104,7 +104,7 @@ export function categoryChipsHtml(active: GameCategory | 'all', lang: Lang): str
 
 export function quickActionsHtml(): string {
   const items: { href?: string; icon: string; key: I18nKey; isBtn?: boolean }[] = [
-    { href: '#weeklyTournament', icon: '🏆', key: 'hub.quickTournaments' },
+    { href: '#featuredTournaments', icon: '🏆', key: 'hub.quickTournaments' },
     { href: '#lbPreview', icon: '🥇', key: 'hub.quickLeaderboard' },
     { href: '#rewards', icon: '🎁', key: 'hub.quickRewards' },
     { href: '#dailyChallenge', icon: '🎯', key: 'hub.quickMissions' },
@@ -128,30 +128,65 @@ export interface WeeklyBannerOpts {
   title: string;
 }
 
-export function weeklyTournamentBannerHtml(opts: WeeklyBannerOpts): string {
-  const prizes = etbPrizesForCadence('weekly');
+export interface FeaturedBannerOpts {
+  cadence: 'weekly' | 'monthly';
+  lang: Lang;
+  gameName: string;
+  gameIcon: string;
+  gameRoute: string;
+  gameId: string;
+  tour: Tournament;
+  title: string;
+}
+
+export function featuredTournamentBannerHtml(opts: FeaturedBannerOpts): string {
+  const prizes = TOURNAMENT_ETB_PRIZES[opts.gameId] ?? etbPrizesForCadence(opts.cadence);
+  const top = prizes[0] ?? 0;
   const pool = prizes.reduce((s, p) => s + p, 0);
-  const poolStr = formatEtbPrize(pool, opts.lang);
+  const eyebrowKey = opts.cadence === 'weekly' ? 'hub.weeklyChampionship' : 'hub.monthlyChampionship';
+  const bannerClass = opts.cadence === 'weekly' ? 'weekly-banner' : 'weekly-banner monthly-banner';
   return `
-    <article class="weekly-banner" style="--wb-accent:${opts.tour.gameId ? '' : ''}">
+    <article class="${bannerClass} featured-tournament-card">
       <div class="wb-glow" aria-hidden="true">${opts.gameIcon}</div>
       <div class="wb-body">
-        <span class="wb-eyebrow" data-i18n="hub.weeklyChampionship">${t('hub.weeklyChampionship')}</span>
+        <span class="wb-eyebrow" data-i18n="${eyebrowKey}">${t(eyebrowKey)}</span>
         <h2 class="wb-title">${escapeHtml(opts.title)}</h2>
         <p class="wb-game">${escapeHtml(opts.gameName)}</p>
         <div class="wb-meta">
+          <div class="wb-stat wb-stat--hero">
+            <span class="wb-stat-lbl" data-i18n="hub.topPrize">${t('hub.topPrize')}</span>
+            <strong class="wb-stat-val">${escapeHtml(formatEtbPrize(top, opts.lang))}</strong>
+          </div>
           <div class="wb-stat">
-            <span class="wb-stat-lbl" data-i18n="hub.pool">${t('hub.pool')}</span>
-            <strong class="wb-stat-val">${escapeHtml(poolStr)}</strong>
+            <span class="wb-stat-lbl" data-i18n="hub.totalPrizesTop5">${t('hub.totalPrizesTop5')}</span>
+            <strong class="wb-stat-val wb-stat-val--sub">${escapeHtml(formatEtbPrize(pool, opts.lang))}</strong>
           </div>
           <div class="wb-stat">
             <span class="wb-stat-lbl" data-i18n="hub.endsIn">${t('hub.endsIn')}</span>
-            <strong class="wb-stat-val" data-ends="${opts.tour.endsAt}">${fmtCountdown(opts.tour.endsAt, opts.lang)}</strong>
+            <strong class="wb-stat-val wb-stat-val--sub" data-ends="${opts.tour.endsAt}">${fmtCountdown(opts.tour.endsAt, opts.lang)}</strong>
           </div>
         </div>
         <a class="btn primary wb-cta" href="${opts.gameRoute}" data-i18n="hub.joinTournament">${t('hub.joinTournament')}</a>
       </div>
     </article>`;
+}
+
+export function featuredTournamentsHtml(cards: string[]): string {
+  return `<div class="featured-tournaments-grid">${cards.join('')}</div>`;
+}
+
+/** @deprecated use featuredTournamentBannerHtml */
+export function weeklyTournamentBannerHtml(opts: WeeklyBannerOpts): string {
+  return featuredTournamentBannerHtml({
+    cadence: 'weekly',
+    lang: opts.lang,
+    gameName: opts.gameName,
+    gameIcon: opts.gameIcon,
+    gameRoute: opts.gameRoute,
+    gameId: opts.tour.gameId,
+    tour: opts.tour,
+    title: opts.title,
+  });
 }
 
 const TASK_LABELS: Record<string, I18nKey> = {

@@ -32,6 +32,10 @@
         <div class="promo-dots" id="promoDots"></div>
       </section>
 
+      <section id="featuredTournaments" class="featured-tournaments-section portal-section" aria-label="Featured tournaments" hidden>
+        <div id="featuredTournamentsHost"></div>
+      </section>
+
       <section id="playerBar" class="player-bar-section" aria-label="Your balances"></section>
 
       <div class="hub-body">
@@ -43,6 +47,13 @@
               <div id="activityTickerHost" class="activity-ticker-host activity-ticker-host--below" aria-label="Live activity"></div>
             </section>
 
+            <section id="continuePlaying" class="portal-section" aria-label="Continue playing" hidden>
+              <div class="section-head">
+                <h2 class="section-title">⭐ <span data-i18n="hub.continuePlaying">Continue playing</span></h2>
+              </div>
+              <div id="continueShelf"></div>
+            </section>
+
             <section id="trending" class="portal-section" aria-label="Trending games">
               <div class="section-head">
                 <h2 class="section-title">🔥 <span data-i18n="hub.trending">Trending games</span></h2>
@@ -50,8 +61,6 @@
               </div>
               <div id="trendingShelf" class="hscroll-wrap"></div>
             </section>
-
-            <section id="weeklyTournament" class="portal-section" aria-label="Weekly tournament"></section>
           </div>
 
           <aside class="hub-sidebar" id="hubSidebar" aria-label="Your dashboard">
@@ -63,13 +72,6 @@
           </aside>
 
           <div id="hubMainBottom">
-            <section id="continuePlaying" class="portal-section" aria-label="Continue playing" hidden>
-              <div class="section-head">
-                <h2 class="section-title">⭐ <span data-i18n="hub.continuePlaying">Continue playing</span></h2>
-              </div>
-              <div id="continueShelf"></div>
-            </section>
-
             <section id="recentlyAdded" class="portal-section" aria-label="Recently added">
               <div class="section-head">
                 <h2 class="section-title">🆕 <span data-i18n="hub.recentlyAdded">Recently added</span></h2>
@@ -150,7 +152,7 @@
         <div class="footer-col">
           <h4 data-i18n="hub.footerPlatform">Platform</h4>
           <a href="#games" data-i18n="hub.games">Games</a>
-          <a href="#weeklyTournament" data-i18n="hub.tournaments">Tournaments</a>
+          <a href="#featuredTournaments" data-i18n="hub.tournaments">Tournaments</a>
           <a href="#lbPreview" data-i18n="hub.leaderboard">Leaderboard</a>
           <a href="#rewards" data-i18n="hub.rewards">Rewards</a>
         </div>
