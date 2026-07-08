@@ -25,7 +25,7 @@ import {
   escapeHtml, fmtPlayCount, starsHtml, gamesToolbarHtml,
   featuredTournamentBannerHtml, featuredTournamentsHtml, dailyChallengeHtml, sidebarDashboardHtml,
   dailyMissionsHtml, nextRewardHtml, newsFeedHtml, sidebarNewsHtml,
-  rewardsTiersHtml, lbPreviewRow, hScrollShelf, comingSoonShelfHtml, continuePlayingHtml,
+  lbPreviewRow, hScrollShelf, comingSoonShelfHtml, continuePlayingHtml,
   activityTickerHtml, notificationsPanelHtml, shelfSkeletonHtml, lbSkeletonHtml,
 } from './portalSections';
 
@@ -721,12 +721,6 @@ function renderNews(): void {
   host.innerHTML = newsFeedHtml(lang());
 }
 
-function renderRewardTiers(): void {
-  const host = document.querySelector('#rewardTiers');
-  if (!host) return;
-  host.innerHTML = rewardsTiersHtml(lang());
-}
-
 function renderLbPreview(opts?: { fetch?: boolean }): void {
   const host = document.querySelector('#lbPreviewBoard');
   if (!host) return;
@@ -760,7 +754,6 @@ function renderPortalSections(): void {
   renderSidebar();
   renderActivityTicker();
   renderRecentlyAdded();
-  renderRewardTiers();
   renderNews();
   renderComingSoon();
   renderLbPreview({ fetch: lbPreviewSeen });
@@ -778,9 +771,16 @@ function paintSkeletons(): void {
 
 // --- Draws / lottery --------------------------------------------------------
 function renderDraws(): void {
+  const section = document.querySelector<HTMLElement>('#rewards');
   const host = document.querySelector('#drawList');
   if (!host) return;
   const draws = activeDraws();
+  if (!draws.length) {
+    if (section) section.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
+  if (section) section.hidden = false;
   host.innerHTML = draws.map((d) => {
     const tickets = myTickets(d.id);
     const afford = xpBal() >= d.ticketCostPoints;
@@ -1217,6 +1217,7 @@ function hydratePointsAfterBootstrap(boot: HubBootstrapResult): void {
   void refreshSidebarRank();
   renderActivityTicker();
   renderNotifBadge();
+  renderContinuePlaying();
   startActivityPolling();
   if (winnersSeen) renderWinners({ fetch: true });
   if (lbPreviewSeen) renderLbPreview({ fetch: true });
@@ -1260,6 +1261,7 @@ onAuthChange(() => {
     } else {
       wireEntryCtas();
       renderGames();
+      renderContinuePlaying();
       renderLiveBoard({ fetch: liveBoardSeen });
     }
     await refreshPlayerRp();

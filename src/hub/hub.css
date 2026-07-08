@@ -850,7 +850,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .hub-main { padding-bottom: 4.5rem; }
   .games-head {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) minmax(68px, 24%);
+    grid-template-columns: auto auto minmax(0, 0.72fr) minmax(96px, 34%);
     gap: 0.3rem;
     align-items: center;
   }
@@ -863,14 +863,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
     max-width: none;
     min-width: 0;
   }
-  .cat-dropdown-val { max-width: 3.8rem; overflow: hidden; text-overflow: ellipsis; }
+  .cat-dropdown-val { max-width: 3.2rem; overflow: hidden; text-overflow: ellipsis; }
   .game-search {
     width: 100%;
     max-width: none;
     min-width: 0;
     margin-left: 0;
-    padding: 0.28rem 0.48rem;
-    font-size: 0.68rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.72rem;
   }
 }
 
@@ -1203,7 +1203,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   box-shadow: var(--shadow-lg);
 }
 .monthly-banner {
-  background: linear-gradient(135deg, #1a1848 0%, #4a2d8a 45%, #7b45c4 100%);
+  background: var(--grad-cta);
 }
 .featured-tournaments-section { margin-top: 0.35rem; }
 .featured-tournaments-section[hidden] { display: none; }
