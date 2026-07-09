@@ -3,6 +3,14 @@
 import './liquidPour.css';
 import { sfx } from '../../engine/audio';
 import { gemClassesByIndex } from './premiumGems';
+import {
+  clearStreamCanvas,
+  drawLiquidStream,
+  easeInOutCubic,
+  ensureStreamCanvas,
+  tubeMouthOnBoard,
+  type WaterBottleManager,
+} from './tubeSort/waterFluid';
 
 export interface PourTheme {
   variant: 'liquid' | 'sphere';
@@ -36,13 +44,20 @@ export interface PourAnimOptions {
   colorId: number;
   amount: number;
   theme?: PourTheme;
-  /** Called after each liquid segment visually transfers (water sort). */
+  /** Called after each liquid unit transfers (water sort). */
   onSegment?: () => void;
+  fluidManager?: WaterBottleManager;
+  tubes?: number[][];
+  fromCap?: number;
+  toCap?: number;
+  fromHidden?: number;
+  toHidden?: number;
 }
 
-const TILT_MS = 220;
-const UNTILT_MS = 300;
-const LIQUID_SEG_MS = 240;
+const TILT_MS = 240;
+const UNTILT_MS = 320;
+const POUR_BASE_MS = 380;
+const POUR_PER_UNIT_MS = 140;
 const BALL_ARC_MS = 280;
 const BALL_GAP_MS = 95;
 
@@ -58,11 +73,6 @@ function relRect(el: HTMLElement, board: HTMLElement): DOMRect {
   const b = board.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   return new DOMRect(r.left - b.left, r.top - b.top, r.width, r.height);
-}
-
-function tubeMouth(board: HTMLElement, tube: HTMLElement): { x: number; y: number } {
-  const t = relRect(tube, board);
-  return { x: t.left + t.width / 2, y: t.top + 6 };
 }
 
 export function playPourSound(kind: 'start' | 'land' | 'complete'): void {
@@ -93,98 +103,104 @@ export function playPourSound(kind: 'start' | 'land' | 'complete'): void {
   } catch { /* audio unavailable */ }
 }
 
-/** Lift the pourable top run when a tube is selected. */
+/** Selection highlight — fluid renderer handles this via canvas. */
 export function applyHeldPieces(
-  row: HTMLElement,
-  tubeIdx: number,
-  amount: number,
+  _row: HTMLElement,
+  _tubeIdx: number,
+  _amount: number,
   theme: PourTheme,
 ): void {
-  const tube = row.children[tubeIdx] as HTMLElement | undefined;
-  if (!tube || amount <= 0) return;
-  const stack = tube.querySelector(theme.stackSelector);
-  if (!stack) return;
-  const pieces = Array.from(stack.querySelectorAll(theme.pieceSelector));
-  pieces.slice(-amount).forEach((p) => p.classList.add(theme.heldClass));
+  if (theme.variant === 'sphere') {
+    const row = _row;
+    const tube = row.children[_tubeIdx] as HTMLElement | undefined;
+    if (!tube || _amount <= 0) return;
+    const stack = tube.querySelector(theme.stackSelector);
+    if (!stack) return;
+    const pieces = Array.from(stack.querySelectorAll(theme.pieceSelector));
+    pieces.slice(-_amount).forEach((p) => p.classList.add(theme.heldClass));
+  }
 }
 
-function createLiquidStream(
-  fromMouth: { x: number; y: number },
-  toMouth: { x: number; y: number },
-  colorId: number,
-): HTMLElement {
-  const stream = document.createElement('div');
-  stream.className = `lpour-stream-v2 lpour-stream-v2--flow ${gemClassesByIndex(colorId - 1, 'liquid')}`;
-  const dx = toMouth.x - fromMouth.x;
-  const dy = toMouth.y - fromMouth.y;
-  const len = Math.hypot(dx, dy);
-  const angle = Math.atan2(dy, dx) * (180 / Math.PI) - 90;
-  stream.style.left = `${fromMouth.x}px`;
-  stream.style.top = `${fromMouth.y}px`;
-  stream.style.setProperty('--lpour-len', `${Math.max(len, 28)}px`);
-  stream.style.setProperty('--lpour-angle', `${angle}deg`);
-  return stream;
+function rafPour(duration: number, onFrame: (t: number) => boolean): Promise<void> {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    const tick = (now: number): void => {
+      const raw = Math.min(1, (now - t0) / duration);
+      const done = onFrame(raw);
+      if (done || raw >= 1) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
 
-/** Continuous stream pour — drain source & fill destination per segment, no flying blocks. */
-async function animateWaterPour(
-  board: HTMLElement,
-  row: HTMLElement,
-  fromIdx: number,
-  toIdx: number,
-  colorId: number,
-  amount: number,
-  theme: PourTheme,
-  onSegment?: () => void,
-): Promise<void> {
+/** Canvas fluid pour — smooth height animation + curved stream. */
+async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
+  const {
+    board, row, fromIdx, toIdx, colorId, amount, onSegment,
+    fluidManager, tubes, fromCap = 4, toCap = 4, fromHidden = 0, toHidden = 0,
+  } = opts;
+  if (!fluidManager || !tubes || amount <= 0) return;
+
   const fromTube = row.children[fromIdx] as HTMLElement;
   const toTube = row.children[toIdx] as HTMLElement;
-  const fromStack = fromTube.querySelector(theme.stackSelector)!;
-  const toStack = toTube.querySelector(theme.stackSelector)!;
-  const sourceSegs = Array.from(fromStack.querySelectorAll(theme.pieceSelector)).slice(-amount);
-  if (!sourceSegs.length) return;
-
+  const fromData = tubes[fromIdx].slice();
+  const toData = tubes[toIdx].slice();
   const tilt = toIdx > fromIdx ? 'lpour-tilt-right' : toIdx < fromIdx ? 'lpour-tilt-left' : '';
-  const layer = document.createElement('div');
-  layer.className = 'lpour-layer';
-  board.appendChild(layer);
 
   fromTube.classList.add('lpour-tube-pour', tilt);
   await wait(TILT_MS);
-
-  const fromMouth = tubeMouth(board, fromTube);
-  const toMouth = tubeMouth(board, toTube);
-  const stream = createLiquidStream(fromMouth, toMouth, colorId);
-  layer.appendChild(stream);
-  requestAnimationFrame(() => stream.classList.add('lpour-stream-v2--on'));
   playPourSound('start');
 
-  const colorClass = gemClassesByIndex(colorId - 1, 'liquid');
+  const streamCanvas = ensureStreamCanvas(board);
+  const streamCtx = streamCanvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  let segmentsApplied = 0;
+  const pourMs = POUR_BASE_MS + amount * POUR_PER_UNIT_MS;
 
-  for (let i = 0; i < amount; i++) {
-    const srcSeg = sourceSegs[sourceSegs.length - 1 - i] as HTMLElement;
-    srcSeg.classList.add('ws-seg--draining');
+  await rafPour(pourMs, (raw) => {
+    const t = easeInOutCubic(raw);
+    const drained = amount * t;
 
-    const newSeg = document.createElement('div');
-    newSeg.className = `ws-seg ${colorClass} ws-seg--filling`;
-    newSeg.setAttribute('data-color', String(colorId));
-    toStack.appendChild(newSeg);
-
-    requestAnimationFrame(() => {
-      srcSeg.classList.add('ws-seg--drained');
-      newSeg.classList.add('ws-seg--filled');
+    fluidManager.render(fromIdx, fromData, {
+      capacity: fromCap,
+      hiddenBottom: fromHidden,
+      drainTop: drained,
+      drainColor: colorId,
+    });
+    fluidManager.render(toIdx, toData, {
+      capacity: toCap,
+      hiddenBottom: toHidden,
+      pourColor: colorId,
+      pourUnits: drained,
     });
 
-    await wait(LIQUID_SEG_MS);
+    const applied = Math.floor(drained + 0.0001);
+    while (segmentsApplied < applied) {
+      onSegment?.();
+      segmentsApplied++;
+    }
+
+    if (streamCtx) {
+      const boardRect = board.getBoundingClientRect();
+      streamCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      streamCtx.clearRect(0, 0, boardRect.width, boardRect.height);
+      const fromMouth = tubeMouthOnBoard(board, fromTube);
+      const toMouth = tubeMouthOnBoard(board, toTube);
+      drawLiquidStream(streamCtx, fromMouth, toMouth, colorId, 9, raw * pourMs * 0.004);
+    }
+
+    return raw >= 1;
+  });
+
+  while (segmentsApplied < amount) {
     onSegment?.();
-    srcSeg.remove();
-    newSeg.classList.remove('ws-seg--filling', 'ws-seg--filled');
+    segmentsApplied++;
   }
 
-  stream.classList.remove('lpour-stream-v2--on');
-  await wait(100);
-  stream.remove();
-  layer.remove();
+  clearStreamCanvas(board);
+  fluidManager.render(fromIdx, tubes[fromIdx], { capacity: fromCap, hiddenBottom: fromHidden });
+  fluidManager.render(toIdx, tubes[toIdx], { capacity: toCap, hiddenBottom: toHidden });
 
   fromTube.classList.remove('lpour-tube-pour', 'lpour-tilt-right', 'lpour-tilt-left');
   await wait(UNTILT_MS);
@@ -268,8 +284,8 @@ export async function animatePour(opts: PourAnimOptions): Promise<void> {
 
   if (theme.variant === 'sphere') {
     await animateBallPour(board, row, fromIdx, toIdx, colorId, amount, theme);
-  } else {
-    await animateWaterPour(board, row, fromIdx, toIdx, colorId, amount, theme, onSegment);
+  } else if (opts.fluidManager && opts.tubes) {
+    await animateWaterPour(opts);
   }
 }
 

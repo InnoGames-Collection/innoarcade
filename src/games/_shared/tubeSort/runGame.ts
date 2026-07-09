@@ -49,6 +49,7 @@ import {
   sessionSeed,
   type SessionMode,
 } from './meta';
+import { WaterBottleManager } from './waterFluid';
 import { renderModeMenu } from './modeMenu';
 import { t } from '../../../i18n';
 
@@ -323,6 +324,19 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
       const pieceClass = theme.gemVariant === 'liquid' ? 'ws-seg' : 'bs-ball';
       const mysteryClass = theme.gemVariant === 'liquid' ? 'ws-seg--mystery' : 'bs-ball--mystery';
       const emptyPieceClass = theme.gemVariant === 'liquid' ? 'ws-seg--empty' : '';
+      const fluidManager = isWater ? new WaterBottleManager() : null;
+
+      function renderFluids(): void {
+        if (!fluidManager) return;
+        fluidManager.renderAll(tubes, (idx) => ({
+          capacity: tubeCapacity(mods, idx),
+          hiddenBottom: tubeHiddenBottom(mods, idx),
+          selected: selected === idx,
+          highlightTop: selected === idx && tubes[idx].length > 0
+            ? (theme.pourStyle === 'single' ? 1 : topRunLength(tubes[idx]))
+            : undefined,
+        }));
+      }
 
       function buildPiece(colorId: number, layerIdx: number, tubeIdx: number, tube: number[]): HTMLElement {
         const hidden = tubeHiddenBottom(mods, tubeIdx);
@@ -342,6 +356,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
 
       function paint(): void {
         row.innerHTML = '';
+        if (fluidManager) fluidManager.clear();
         tubes.forEach((tube, idx) => {
           const cap = tubeCapacity(mods, idx);
           const tubeMod = mods.tubeMods[idx];
@@ -370,15 +385,20 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
             tubeEl.appendChild(el('span', { class: `${p}-lock`, text: '🔒', 'aria-hidden': 'true' }));
           }
 
-          const stack = el('div', { class: stackClass });
-          if (tube.length === 0 && theme.gemVariant === 'liquid') {
-            stack.appendChild(el('div', { class: `${pieceClass} ${emptyPieceClass}`, style: 'visibility:hidden' }));
+          if (fluidManager) {
+            fluidManager.setMeta(idx, cap, tubeHiddenBottom(mods, idx));
+            fluidManager.attach(idx, tubeEl);
           } else {
-            tube.forEach((colorId, layerIdx) => {
-              stack.appendChild(buildPiece(colorId, layerIdx, idx, tube));
-            });
+            const stack = el('div', { class: stackClass });
+            if (tube.length === 0 && theme.gemVariant === 'liquid') {
+              stack.appendChild(el('div', { class: `${pieceClass} ${emptyPieceClass}`, style: 'visibility:hidden' }));
+            } else {
+              tube.forEach((colorId, layerIdx) => {
+                stack.appendChild(buildPiece(colorId, layerIdx, idx, tube));
+              });
+            }
+            tubeEl.appendChild(stack);
           }
-          tubeEl.appendChild(stack);
 
           if (previewAmt > 0) {
             tubeEl.appendChild(el('span', { class: `${p}-pour-preview`, text: `+${previewAmt}` }));
@@ -386,7 +406,10 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
 
           row.appendChild(tubeEl);
         });
-        if (selected != null && tubes[selected].length > 0) {
+
+        if (fluidManager) {
+          requestAnimationFrame(() => renderFluids());
+        } else if (selected != null && tubes[selected].length > 0) {
           const held = theme.pourStyle === 'single' ? 1 : topRunLength(tubes[selected]);
           applyHeldPieces(row, selected, held, theme.pourTheme);
         }
@@ -487,7 +510,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
           pourSingleLayer(tubes[fromIdx], tubes[toIdx], fromIdx, toIdx, tubes, mods);
         };
 
-        if (theme.gemVariant === 'liquid') {
+        if (theme.gemVariant === 'liquid' && fluidManager) {
           await animatePour({
             board,
             row,
@@ -497,6 +520,12 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
             amount,
             theme: theme.pourTheme,
             onSegment: applySegment,
+            fluidManager,
+            tubes,
+            fromCap: tubeCapacity(mods, fromIdx),
+            toCap: tubeCapacity(mods, toIdx),
+            fromHidden: tubeHiddenBottom(mods, fromIdx),
+            toHidden: tubeHiddenBottom(mods, toIdx),
           });
         } else {
           await animatePour({
