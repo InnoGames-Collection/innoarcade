@@ -9,6 +9,7 @@ import {
   drawSplashParticles,
   easeInOutCubic,
   easeOutBack,
+  easeOutCubic,
   ensureStreamCanvas,
   SplashPool,
   tubeMouthOnBoard,
@@ -57,15 +58,16 @@ export interface PourAnimOptions {
   toHidden?: number;
 }
 
-const LIFT_MS = 220;
-const TILT_IN_MS = 280;
-const UNTILT_MS = 300;
-const RETURN_MS = 320;
-const LANDING_MS = 280;
-const TILT_ANGLE = 30;
-const LIFT_Y = -22;
-const POUR_BASE_MS = 360;
-const POUR_PER_UNIT_MS = 115;
+/** Phase durations (ms) — strict sequence: lift → travel → tilt → pour → untilt → return → lower */
+const VERT_LIFT_MS = 260;
+const TRAVEL_MS = 340;
+const TILT_IN_MS = 320;
+const TILT_OUT_MS = 320;
+const TRAVEL_BACK_MS = 340;
+const LOWER_MS = 300;
+const LANDING_MS = 220;
+const POUR_BASE_MS = 380;
+const POUR_PER_UNIT_MS = 120;
 const BALL_ARC_MS = 280;
 const BALL_GAP_MS = 95;
 
@@ -79,13 +81,17 @@ interface PourTransform {
 }
 
 interface PourTimeline {
-  liftEnd: number;
+  vertLiftEnd: number;
+  travelEnd: number;
   tiltInEnd: number;
   pourEnd: number;
   tiltOutEnd: number;
-  returnEnd: number;
+  travelBackEnd: number;
+  lowerEnd: number;
   total: number;
   shiftTarget: number;
+  liftY: number;
+  tiltAngle: number;
   pourMs: number;
 }
 
@@ -170,68 +176,86 @@ function setTubePourTransform(tube: HTMLElement, t: PourTransform, toRight: bool
   tube.style.setProperty('--pour-tilt', `${sign * t.tilt}deg`);
 }
 
-function computePourTimeline(amount: number, fromTube: HTMLElement, toTube: HTMLElement): PourTimeline {
+function computePourTimeline(
+  amount: number,
+  fromTube: HTMLElement,
+  toTube: HTMLElement,
+): PourTimeline {
   const fromR = fromTube.getBoundingClientRect();
   const toR = toTube.getBoundingClientRect();
-  const shiftTarget = (toR.left + toR.width / 2 - (fromR.left + fromR.width / 2)) * 0.58;
+  const shiftTarget = toR.left + toR.width / 2 - (fromR.left + fromR.width / 2);
+  const liftY = -(Math.max(fromR.height * 0.44, 40) + 10);
+  const dist = Math.abs(shiftTarget);
+  const tiltAngle = Math.min(58, Math.max(42, 46 + dist * 0.028));
   const pourMs = POUR_BASE_MS + amount * POUR_PER_UNIT_MS;
-  const liftEnd = LIFT_MS;
-  const tiltInEnd = liftEnd + TILT_IN_MS;
+
+  const vertLiftEnd = VERT_LIFT_MS;
+  const travelEnd = vertLiftEnd + TRAVEL_MS;
+  const tiltInEnd = travelEnd + TILT_IN_MS;
   const pourEnd = tiltInEnd + pourMs;
-  const tiltOutEnd = pourEnd + UNTILT_MS;
-  const returnEnd = tiltOutEnd + RETURN_MS;
+  const tiltOutEnd = pourEnd + TILT_OUT_MS;
+  const travelBackEnd = tiltOutEnd + TRAVEL_BACK_MS;
+  const lowerEnd = travelBackEnd + LOWER_MS;
+
   return {
-    liftEnd,
+    vertLiftEnd,
+    travelEnd,
     tiltInEnd,
     pourEnd,
     tiltOutEnd,
-    returnEnd,
-    total: returnEnd,
+    travelBackEnd,
+    lowerEnd,
+    total: lowerEnd,
     shiftTarget,
+    liftY,
+    tiltAngle,
     pourMs,
   };
 }
 
+/** Seven-phase motion: vertical lift → travel → tilt → hold → untilt → return → lower. */
 function samplePourTransform(elapsed: number, tl: PourTimeline): PourTransform {
-  if (elapsed < tl.liftEnd) {
-    const t = easeOutBack(elapsed / tl.liftEnd);
-    return { shiftX: tl.shiftTarget * t, liftY: LIFT_Y * t, tilt: 0 };
+  if (elapsed < tl.vertLiftEnd) {
+    const t = easeOutCubic(elapsed / tl.vertLiftEnd);
+    return { shiftX: 0, liftY: tl.liftY * t, tilt: 0 };
+  }
+  if (elapsed < tl.travelEnd) {
+    const t = easeInOutCubic((elapsed - tl.vertLiftEnd) / TRAVEL_MS);
+    return { shiftX: tl.shiftTarget * t, liftY: tl.liftY, tilt: 0 };
   }
   if (elapsed < tl.tiltInEnd) {
-    const t = easeInOutCubic((elapsed - tl.liftEnd) / TILT_IN_MS);
-    return { shiftX: tl.shiftTarget, liftY: LIFT_Y, tilt: TILT_ANGLE * t };
+    const t = easeInOutCubic((elapsed - tl.travelEnd) / TILT_IN_MS);
+    return { shiftX: tl.shiftTarget, liftY: tl.liftY, tilt: tl.tiltAngle * t };
   }
   if (elapsed < tl.pourEnd) {
-    return { shiftX: tl.shiftTarget, liftY: LIFT_Y, tilt: TILT_ANGLE };
+    return { shiftX: tl.shiftTarget, liftY: tl.liftY, tilt: tl.tiltAngle };
   }
   if (elapsed < tl.tiltOutEnd) {
-    const t = easeInOutCubic((elapsed - tl.pourEnd) / UNTILT_MS);
-    return { shiftX: tl.shiftTarget, liftY: LIFT_Y, tilt: TILT_ANGLE * (1 - t) };
+    const t = easeInOutCubic((elapsed - tl.pourEnd) / TILT_OUT_MS);
+    return { shiftX: tl.shiftTarget, liftY: tl.liftY, tilt: tl.tiltAngle * (1 - t) };
   }
-  const t = easeOutBack((elapsed - tl.tiltOutEnd) / RETURN_MS);
-  return {
-    shiftX: tl.shiftTarget * (1 - t),
-    liftY: LIFT_Y * (1 - t),
-    tilt: 0,
-  };
+  if (elapsed < tl.travelBackEnd) {
+    const t = easeInOutCubic((elapsed - tl.tiltOutEnd) / TRAVEL_BACK_MS);
+    return { shiftX: tl.shiftTarget * (1 - t), liftY: tl.liftY, tilt: 0 };
+  }
+  const t = easeOutBack(Math.min(1, (elapsed - tl.travelBackEnd) / LOWER_MS));
+  return { shiftX: 0, liftY: tl.liftY * (1 - t), tilt: 0 };
 }
 
 function samplePourDrain(elapsed: number, tl: PourTimeline, amount: number): number {
   if (elapsed < tl.tiltInEnd) return 0;
   if (elapsed >= tl.pourEnd) return amount;
   const pourRaw = (elapsed - tl.tiltInEnd) / tl.pourMs;
-  const streamStart = 0.05;
-  if (pourRaw < streamStart) return 0;
-  const flowT = (pourRaw - streamStart) / (1 - streamStart);
-  return amount * Math.min(1, flowT);
+  if (pourRaw < 0.03) return 0;
+  return amount * Math.min(1, (pourRaw - 0.03) / 0.97);
 }
 
 function sampleStreamAlpha(elapsed: number, tl: PourTimeline): number {
   if (elapsed < tl.tiltInEnd) return 0;
   if (elapsed >= tl.pourEnd) return 0;
   const pourRaw = (elapsed - tl.tiltInEnd) / tl.pourMs;
-  if (pourRaw < 0.03) return 0;
-  return Math.min(1, pourRaw / 0.1);
+  if (pourRaw < 0.02) return 0;
+  return Math.min(1, pourRaw / 0.08);
 }
 
 function resetTubePourStyles(tube: HTMLElement): void {
@@ -256,9 +280,11 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
   const fromData = tubes[fromIdx].slice();
   const toData = tubes[toIdx].slice();
   const toRight = toIdx > fromIdx;
-  const tl = computePourTimeline(amount, fromTube, toTube);
 
   fromTube.classList.remove('ws-tube--sel');
+  void fromTube.offsetWidth;
+  const tl = computePourTimeline(amount, fromTube, toTube);
+
   fromTube.classList.add('lpour-tube-pour');
   fromTube.classList.add(toRight ? 'lpour-tilt-right' : 'lpour-tilt-left');
 

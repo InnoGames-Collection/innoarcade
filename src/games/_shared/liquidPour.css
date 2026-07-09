@@ -13,23 +13,25 @@
   transition: opacity 0.12s ease;
 }
 
-/* Water — lift, shift, neck-pivot tilt (JS RAF timeline) */
+/* Water — seven-phase pour: lift → travel → neck tilt → pour → return (JS RAF) */
 .lpour-tube-pour {
-  --pour-neck-y: 11px;
+  --pour-neck-y: 10px;
   --pour-shift-x: 0px;
   --pour-lift-y: 0px;
   --pour-tilt: 0deg;
   transform-origin: 50% var(--pour-neck-y);
   transform: translate(var(--pour-shift-x), var(--pour-lift-y)) rotate(var(--pour-tilt));
   transition: none !important;
-  z-index: 12;
+  z-index: 20;
   will-change: transform;
-  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.18));
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.2));
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .lpour-tilt-right,
 .lpour-tilt-left {
-  transform-origin: 50% var(--pour-neck-y, 11px);
+  transform-origin: 50% var(--pour-neck-y, 10px);
 }
 
 .lpour-tube-landing {
