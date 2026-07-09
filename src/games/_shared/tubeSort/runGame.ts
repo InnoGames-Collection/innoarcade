@@ -8,11 +8,13 @@ import { showFirstRunHint } from '../firstRun';
 import { gemClassesByIndex, gemIdFromIndex } from '../premiumGems';
 import {
   animatePour,
+  animateScorePop,
+  animateUndoRipple,
   applyHeldPieces,
   playPourSound,
+  pulseTubeSelect,
   shakeTube,
   spawnTubeSparkles,
-  animateScorePop,
   spawnVictoryBurst,
   type PourTheme,
   LIQUID_POUR_THEME,
@@ -463,13 +465,19 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         if (undoStack.length > 40) undoStack.shift();
       }
 
-      function undo(): void {
+      async function undo(): Promise<void> {
         if (locked || !undoStack.length) return;
         tubes = undoStack.pop()!;
         moves = Math.max(0, moves - 1);
         selected = null;
         sound('click');
-        paint();
+        if (isWater && fluidManager) {
+          paint();
+          await animateUndoRipple(board, fluidManager, tubes.length);
+          renderFluids();
+        } else {
+          paint();
+        }
       }
 
       function checkTubeComplete(idx: number): void {
@@ -501,6 +509,10 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
           selected = idx;
           sound('click');
           paint();
+          if (isWater) {
+            const tubeEl = row.children[idx] as HTMLElement | undefined;
+            if (tubeEl) pulseTubeSelect(tubeEl, p);
+          }
           return;
         }
         if (selected === idx) {

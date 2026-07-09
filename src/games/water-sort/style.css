@@ -22,6 +22,7 @@
   gap: clamp(8px, 2.5vw, 14px);
   max-width: 440px;
   position: relative;
+  overflow: visible;
 }
 
 .ws-tube {
@@ -110,6 +111,18 @@
   z-index: 35;
 }
 
+.ws-pour-anchor {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+}
+
 .ws-liquid-stack--legacy {
   display: flex;
   flex-direction: column-reverse;
@@ -121,8 +134,18 @@
   z-index: 1;
 }
 
-.ws-tube:hover:not(.ws-tube--disabled) {
+.ws-tube:hover:not(.ws-tube--disabled):not(.lpour-tube-pour):not(.ws-tube--sel) {
   transform: translateY(-2px);
+}
+
+.ws-tube--tap {
+  animation: ws-tube-tap 0.28s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+@keyframes ws-tube-tap {
+  0% { transform: translateY(-2px) scale(1); }
+  40% { transform: translateY(-8px) scale(1.03); }
+  100% { transform: translateY(-6px) scale(1); }
 }
 
 .ws-tube--sel {
@@ -137,6 +160,7 @@
 .ws-tube--sel:not(.lpour-tube-pour) {
   transform: translateY(-6px);
   filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.2));
+  transition: transform 0.22s cubic-bezier(0.34, 1.35, 0.64, 1), box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .ws-tube--target {
@@ -306,6 +330,15 @@
   pointer-events: none;
 }
 
+.ws-board--undo-flash {
+  animation: ws-undo-flash 0.42s ease;
+}
+
+@keyframes ws-undo-flash {
+  0%, 100% { filter: none; }
+  40% { filter: brightness(1.06) saturate(1.05); }
+}
+
 .ws-pause-overlay {
   position: absolute;
   inset: 0;
@@ -446,9 +479,11 @@
 @media (prefers-reduced-motion: reduce) {
   .ws-tube--target { animation: none; }
   .ws-tube--shake,
-  .ws-tube--invalid { animation: none; }
+  .ws-tube--invalid,
+  .ws-tube--tap { animation: none; }
   .ws-tube::after { animation: none; }
-  .ws-score-pop { animation: none; }
+  .ws-score-pop,
+  .ws-board--undo-flash { animation: none; }
   .ws-seg--lifting,
   .ws-seg--landing { transform: none; animation: none; opacity: 1; }
 }

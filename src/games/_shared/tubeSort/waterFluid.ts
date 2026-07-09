@@ -16,6 +16,8 @@ export interface BottleDrawOpts {
   completed?: boolean;
   /** 0–1 ripple strength on the top meniscus */
   ripple?: number;
+  /** 0–1 wobble after pour / undo */
+  wobble?: number;
   /** Animation phase for bubbles / shine (radians) */
   animPhase?: number;
   /** Stable seed for bubble placement */
@@ -104,6 +106,20 @@ export function easeOutCubic(t: number): number {
 
 export function easeInOutQuad(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+}
+
+export function easeOutBack(t: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
+}
+
+export function easeInOutBack(t: number): number {
+  const c1 = 1.70158;
+  const c2 = c1 * 1.525;
+  return t < 0.5
+    ? ((2 * t) ** 2 * ((c2 + 1) * 2 * t - c2)) / 2
+    : ((2 * t - 2) ** 2 * ((c2 + 1) * (2 * t - 2) + c2) + 2) / 2;
 }
 
 function roundRectPath(
@@ -291,6 +307,7 @@ export function drawBottleFluid(
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  ctx.imageSmoothingEnabled = true;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
 
@@ -336,7 +353,12 @@ export function drawBottleFluid(
     bottomY = topY;
   }
 
-  if (opts.ripple && opts.ripple > 0) {
+  const wobble = opts.wobble ?? 0;
+  if (wobble > 0.01 && layers.length) {
+    const wobbleY = Math.sin(phase * 6) * wobble * 2.5;
+    topSurfaceY += wobbleY;
+    drawRipple(ctx, padX + innerW / 2, topSurfaceY, innerW, wobble * 0.6);
+  } else if (opts.ripple && opts.ripple > 0) {
     drawRipple(ctx, padX + innerW / 2, topSurfaceY, innerW, opts.ripple);
   }
 
@@ -439,7 +461,7 @@ export function drawLiquidStream(
   ctx.restore();
 }
 
-export function drawSplashParticles(ctx: CanvasRenderingContext2D, particles: SplashParticle[]): void {
+export function drawSplashParticles(ctx: CanvasRenderingContext2D, particles: readonly SplashParticle[]): void {
   for (const p of particles) {
     if (p.life <= 0) continue;
     const colors = liquidColors(p.colorId);
@@ -457,11 +479,61 @@ export function drawSplashParticles(ctx: CanvasRenderingContext2D, particles: Sp
   }
 }
 
+/** Reusable splash particle pool — avoids per-frame allocations. */
+export class SplashPool {
+  private pool: SplashParticle[] = [];
+  private active: SplashParticle[] = [];
+
+  spawn(x: number, y: number, colorId: number, count = 4): void {
+    for (let i = 0; i < count; i++) {
+      const p = this.pool.pop() ?? {
+        x: 0, y: 0, vx: 0, vy: 0, life: 1, colorId: 1, size: 2,
+      };
+      const angle = -Math.PI * 0.85 + Math.random() * Math.PI * 0.7;
+      const speed = 1.2 + Math.random() * 2.8;
+      p.x = x;
+      p.y = y;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed - 1.5;
+      p.life = 1;
+      p.colorId = colorId;
+      p.size = 2 + Math.random() * 2.5;
+      this.active.push(p);
+    }
+  }
+
+  tick(): void {
+    for (let i = this.active.length - 1; i >= 0; i--) {
+      const p = this.active[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.18;
+      p.life -= 0.045;
+      if (p.life <= 0) {
+        this.active.splice(i, 1);
+        if (this.pool.length < 48) this.pool.push(p);
+      }
+    }
+  }
+
+  get particles(): readonly SplashParticle[] {
+    return this.active;
+  }
+
+  clear(): void {
+    while (this.active.length) {
+      const p = this.active.pop()!;
+      if (this.pool.length < 48) this.pool.push(p);
+    }
+  }
+}
+
 export class WaterBottleManager {
   private canvases = new Map<number, HTMLCanvasElement>();
   private hiddenBottoms = new Map<number, number>();
   private capacities = new Map<number, number>();
   private rippleUntil = new Map<number, number>();
+  private wobbleUntil = new Map<number, number>();
   private animPhase = 0;
 
   setAnimPhase(phase: number): void {
@@ -483,6 +555,25 @@ export class WaterBottleManager {
     return left / 520;
   }
 
+  triggerWobble(idx: number, durationMs = 580): void {
+    this.wobbleUntil.set(idx, performance.now() + durationMs);
+  }
+
+  wobbleStrength(idx: number): number {
+    const until = this.wobbleUntil.get(idx);
+    if (!until) return 0;
+    const left = until - performance.now();
+    if (left <= 0) {
+      this.wobbleUntil.delete(idx);
+      return 0;
+    }
+    return left / 580;
+  }
+
+  triggerWobbleAll(count: number): void {
+    for (let i = 0; i < count; i++) this.triggerWobble(i, 420);
+  }
+
   attach(idx: number, tubeEl: HTMLElement): HTMLCanvasElement {
     let canvas = tubeEl.querySelector('.ws-fluid-canvas') as HTMLCanvasElement | null;
     if (!canvas) {
@@ -492,6 +583,12 @@ export class WaterBottleManager {
       tubeEl.insertBefore(canvas, tubeEl.firstChild);
     }
     this.canvases.set(idx, canvas);
+    if (!tubeEl.querySelector('.ws-pour-anchor')) {
+      const anchor = document.createElement('span');
+      anchor.className = 'ws-pour-anchor';
+      anchor.setAttribute('aria-hidden', 'true');
+      tubeEl.appendChild(anchor);
+    }
     return canvas;
   }
 
@@ -527,6 +624,7 @@ export class WaterBottleManager {
       highlightTop: opts?.highlightTop,
       completed: opts?.completed,
       ripple: opts?.ripple ?? this.rippleStrength(idx),
+      wobble: opts?.wobble ?? this.wobbleStrength(idx),
       animPhase: opts?.animPhase ?? this.animPhase,
       tubeSeed: opts?.tubeSeed ?? idx + 1,
     });
@@ -551,13 +649,18 @@ export class WaterBottleManager {
     this.hiddenBottoms.clear();
     this.capacities.clear();
     this.rippleUntil.clear();
+    this.wobbleUntil.clear();
   }
 }
 
 export function tubeMouthOnBoard(board: HTMLElement, tubeEl: HTMLElement): StreamPoint {
   const b = board.getBoundingClientRect();
-  const r = tubeEl.getBoundingClientRect();
-  return { x: r.left - b.left + r.width / 2, y: r.top - b.top + 10 };
+  const anchor = tubeEl.querySelector('.ws-pour-anchor') as HTMLElement | null;
+  const r = anchor ? anchor.getBoundingClientRect() : tubeEl.getBoundingClientRect();
+  return {
+    x: r.left - b.left + r.width / 2,
+    y: r.top - b.top + (anchor ? r.height * 0.5 : 10),
+  };
 }
 
 export function ensureStreamCanvas(board: HTMLElement): HTMLCanvasElement {

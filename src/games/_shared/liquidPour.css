@@ -13,20 +13,33 @@
   transition: opacity 0.12s ease;
 }
 
-/* Water — neck pivot tilt driven by --pour-tilt (JS RAF) */
+/* Water — lift, shift, neck-pivot tilt (JS RAF timeline) */
 .lpour-tube-pour {
-  --pour-neck-y: 12px;
+  --pour-neck-y: 11px;
+  --pour-shift-x: 0px;
+  --pour-lift-y: 0px;
+  --pour-tilt: 0deg;
   transform-origin: 50% var(--pour-neck-y);
-  transform: rotate(var(--pour-tilt, 0deg));
-  z-index: 8;
+  transform: translate(var(--pour-shift-x), var(--pour-lift-y)) rotate(var(--pour-tilt));
+  transition: none !important;
+  z-index: 12;
   will-change: transform;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.16));
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.18));
 }
 
 .lpour-tilt-right,
 .lpour-tilt-left {
-  transform-origin: 50% var(--pour-neck-y, 12px);
-  transform: rotate(var(--pour-tilt, 0deg));
+  transform-origin: 50% var(--pour-neck-y, 11px);
+}
+
+.lpour-tube-landing {
+  animation: lpour-land-bounce 0.28s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+@keyframes lpour-land-bounce {
+  0% { transform: translate(0, -4px) scale(1.01); }
+  55% { transform: translate(0, 2px) scale(0.99); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 
 /* Continuous liquid stream between bottle mouths */
@@ -187,7 +200,8 @@
   .lpour-stream-v2,
   .lpour-ball-fly,
   .lpour-victory-spark,
-  .lpour-confetti { transition: none; animation: none; }
+  .lpour-confetti,
+  .lpour-tube-landing { transition: none; animation: none; }
   .lpour-tube-pour { transform: none; }
   .ws-seg--draining,
   .ws-seg--filling { transition: none; transform: none; }

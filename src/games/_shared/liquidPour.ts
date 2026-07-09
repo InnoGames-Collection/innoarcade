@@ -8,10 +8,10 @@ import {
   drawLiquidStream,
   drawSplashParticles,
   easeInOutCubic,
-  easeOutCubic,
+  easeOutBack,
   ensureStreamCanvas,
+  SplashPool,
   tubeMouthOnBoard,
-  type SplashParticle,
   type WaterBottleManager,
 } from './tubeSort/waterFluid';
 
@@ -57,14 +57,37 @@ export interface PourAnimOptions {
   toHidden?: number;
 }
 
-const TILT_ANGLE = 22;
-const TILT_IN_MS = 300;
-const UNTILT_MS = 360;
-const POUR_BASE_MS = 400;
-const POUR_PER_UNIT_MS = 130;
-const POUR_START_TILT = 0.72;
+const LIFT_MS = 220;
+const TILT_IN_MS = 280;
+const UNTILT_MS = 300;
+const RETURN_MS = 320;
+const LANDING_MS = 280;
+const TILT_ANGLE = 30;
+const LIFT_Y = -22;
+const POUR_BASE_MS = 360;
+const POUR_PER_UNIT_MS = 115;
 const BALL_ARC_MS = 280;
 const BALL_GAP_MS = 95;
+
+/** Shared splash pool — reused across pours to avoid GC pressure. */
+const splashPool = new SplashPool();
+
+interface PourTransform {
+  shiftX: number;
+  liftY: number;
+  tilt: number;
+}
+
+interface PourTimeline {
+  liftEnd: number;
+  tiltInEnd: number;
+  pourEnd: number;
+  tiltOutEnd: number;
+  returnEnd: number;
+  total: number;
+  shiftTarget: number;
+  pourMs: number;
+}
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -126,12 +149,13 @@ export function applyHeldPieces(
   }
 }
 
-function rafPour(duration: number, onFrame: (t: number) => boolean): Promise<void> {
+function rafPour(duration: number, onFrame: (t: number, elapsed: number) => boolean): Promise<void> {
   return new Promise((resolve) => {
     const t0 = performance.now();
     const tick = (now: number): void => {
-      const raw = Math.min(1, (now - t0) / duration);
-      const done = onFrame(raw);
+      const elapsed = now - t0;
+      const raw = Math.min(1, elapsed / duration);
+      const done = onFrame(raw, elapsed);
       if (done || raw >= 1) resolve();
       else requestAnimationFrame(tick);
     };
@@ -139,42 +163,85 @@ function rafPour(duration: number, onFrame: (t: number) => boolean): Promise<voi
   });
 }
 
-function setTubeTilt(tube: HTMLElement, degrees: number, toRight: boolean): void {
+function setTubePourTransform(tube: HTMLElement, t: PourTransform, toRight: boolean): void {
   const sign = toRight ? 1 : -1;
-  tube.style.setProperty('--pour-tilt', `${sign * degrees}deg`);
+  tube.style.setProperty('--pour-shift-x', `${t.shiftX}px`);
+  tube.style.setProperty('--pour-lift-y', `${t.liftY}px`);
+  tube.style.setProperty('--pour-tilt', `${sign * t.tilt}deg`);
 }
 
-function spawnSplashAt(
-  particles: SplashParticle[],
-  x: number,
-  y: number,
-  colorId: number,
-): void {
-  for (let i = 0; i < 5; i++) {
-    const angle = -Math.PI * 0.85 + Math.random() * Math.PI * 0.7;
-    const speed = 1.2 + Math.random() * 2.8;
-    particles.push({
-      x,
-      y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1.5,
-      life: 1,
-      colorId,
-      size: 2 + Math.random() * 2.5,
-    });
+function computePourTimeline(amount: number, fromTube: HTMLElement, toTube: HTMLElement): PourTimeline {
+  const fromR = fromTube.getBoundingClientRect();
+  const toR = toTube.getBoundingClientRect();
+  const shiftTarget = (toR.left + toR.width / 2 - (fromR.left + fromR.width / 2)) * 0.58;
+  const pourMs = POUR_BASE_MS + amount * POUR_PER_UNIT_MS;
+  const liftEnd = LIFT_MS;
+  const tiltInEnd = liftEnd + TILT_IN_MS;
+  const pourEnd = tiltInEnd + pourMs;
+  const tiltOutEnd = pourEnd + UNTILT_MS;
+  const returnEnd = tiltOutEnd + RETURN_MS;
+  return {
+    liftEnd,
+    tiltInEnd,
+    pourEnd,
+    tiltOutEnd,
+    returnEnd,
+    total: returnEnd,
+    shiftTarget,
+    pourMs,
+  };
+}
+
+function samplePourTransform(elapsed: number, tl: PourTimeline): PourTransform {
+  if (elapsed < tl.liftEnd) {
+    const t = easeOutBack(elapsed / tl.liftEnd);
+    return { shiftX: tl.shiftTarget * t, liftY: LIFT_Y * t, tilt: 0 };
   }
-}
-
-function tickSplash(particles: SplashParticle[]): void {
-  for (const p of particles) {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.18;
-    p.life -= 0.045;
+  if (elapsed < tl.tiltInEnd) {
+    const t = easeInOutCubic((elapsed - tl.liftEnd) / TILT_IN_MS);
+    return { shiftX: tl.shiftTarget, liftY: LIFT_Y, tilt: TILT_ANGLE * t };
   }
+  if (elapsed < tl.pourEnd) {
+    return { shiftX: tl.shiftTarget, liftY: LIFT_Y, tilt: TILT_ANGLE };
+  }
+  if (elapsed < tl.tiltOutEnd) {
+    const t = easeInOutCubic((elapsed - tl.pourEnd) / UNTILT_MS);
+    return { shiftX: tl.shiftTarget, liftY: LIFT_Y, tilt: TILT_ANGLE * (1 - t) };
+  }
+  const t = easeOutBack((elapsed - tl.tiltOutEnd) / RETURN_MS);
+  return {
+    shiftX: tl.shiftTarget * (1 - t),
+    liftY: LIFT_Y * (1 - t),
+    tilt: 0,
+  };
 }
 
-/** Canvas fluid pour — neck pivot tilt, delayed stream, per-frame liquid levels. */
+function samplePourDrain(elapsed: number, tl: PourTimeline, amount: number): number {
+  if (elapsed < tl.tiltInEnd) return 0;
+  if (elapsed >= tl.pourEnd) return amount;
+  const pourRaw = (elapsed - tl.tiltInEnd) / tl.pourMs;
+  const streamStart = 0.05;
+  if (pourRaw < streamStart) return 0;
+  const flowT = (pourRaw - streamStart) / (1 - streamStart);
+  return amount * Math.min(1, flowT);
+}
+
+function sampleStreamAlpha(elapsed: number, tl: PourTimeline): number {
+  if (elapsed < tl.tiltInEnd) return 0;
+  if (elapsed >= tl.pourEnd) return 0;
+  const pourRaw = (elapsed - tl.tiltInEnd) / tl.pourMs;
+  if (pourRaw < 0.03) return 0;
+  return Math.min(1, pourRaw / 0.1);
+}
+
+function resetTubePourStyles(tube: HTMLElement): void {
+  tube.style.removeProperty('--pour-shift-x');
+  tube.style.removeProperty('--pour-lift-y');
+  tube.style.removeProperty('--pour-tilt');
+  tube.classList.remove('lpour-tube-pour', 'lpour-tilt-right', 'lpour-tilt-left');
+}
+
+/** Canvas fluid pour — lift, neck tilt, continuous stream, bounce return. */
 async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
   const {
     board, row, fromIdx, toIdx, colorId, amount, onSegment,
@@ -184,57 +251,47 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
 
   const fromTube = row.children[fromIdx] as HTMLElement;
   const toTube = row.children[toIdx] as HTMLElement;
+  if (!fromTube.isConnected || !toTube.isConnected) return;
+
   const fromData = tubes[fromIdx].slice();
   const toData = tubes[toIdx].slice();
   const toRight = toIdx > fromIdx;
-  const pourMs = POUR_BASE_MS + amount * POUR_PER_UNIT_MS;
-  const totalMs = TILT_IN_MS + pourMs + UNTILT_MS;
+  const tl = computePourTimeline(amount, fromTube, toTube);
 
+  fromTube.classList.remove('ws-tube--sel');
   fromTube.classList.add('lpour-tube-pour');
-  if (toRight) fromTube.classList.add('lpour-tilt-right');
-  else fromTube.classList.add('lpour-tilt-left');
+  fromTube.classList.add(toRight ? 'lpour-tilt-right' : 'lpour-tilt-left');
 
   const streamCanvas = ensureStreamCanvas(board);
   const streamCtx = streamCanvas.getContext('2d');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   let segmentsApplied = 0;
   let pourSoundPlayed = false;
-  const splashParticles: SplashParticle[] = [];
   let lastSplashAt = 0;
+  splashPool.clear();
 
-  await rafPour(totalMs, (raw) => {
-    const elapsed = raw * totalMs;
-    let drained = 0;
-    let streamAlpha = 0;
+  await rafPour(tl.total, (_raw, elapsed) => {
+    if (!fromTube.isConnected) return true;
 
-    if (elapsed < TILT_IN_MS) {
-      const t = easeOutCubic(elapsed / TILT_IN_MS);
-      setTubeTilt(fromTube, t * TILT_ANGLE, toRight);
-    } else if (elapsed < TILT_IN_MS + pourMs) {
-      setTubeTilt(fromTube, TILT_ANGLE, toRight);
-      const pourRaw = (elapsed - TILT_IN_MS) / pourMs;
-      const pourT = easeInOutCubic(pourRaw);
-      drained = amount * pourT;
-      streamAlpha = pourRaw >= POUR_START_TILT - 0.05 ? Math.min(1, (pourRaw - POUR_START_TILT + 0.05) / 0.2) : 0;
+    const transform = samplePourTransform(elapsed, tl);
+    setTubePourTransform(fromTube, transform, toRight);
 
-      if (streamAlpha > 0.5 && !pourSoundPlayed) {
-        playPourSound('start');
-        pourSoundPlayed = true;
-      }
+    const drained = samplePourDrain(elapsed, tl, amount);
+    const streamAlpha = sampleStreamAlpha(elapsed, tl);
 
-      const applied = Math.floor(drained + 0.0001);
-      while (segmentsApplied < applied) {
-        onSegment?.();
-        segmentsApplied++;
-        fluidManager.triggerRipple(toIdx);
-        const toMouth = tubeMouthOnBoard(board, toTube);
-        spawnSplashAt(splashParticles, toMouth.x, toMouth.y + 4, colorId);
-        lastSplashAt = elapsed;
-      }
-    } else {
-      const t = easeInOutCubic((elapsed - TILT_IN_MS - pourMs) / UNTILT_MS);
-      setTubeTilt(fromTube, TILT_ANGLE * (1 - t), toRight);
-      drained = amount;
+    if (streamAlpha > 0.45 && !pourSoundPlayed) {
+      playPourSound('start');
+      pourSoundPlayed = true;
+    }
+
+    const applied = Math.floor(drained + 0.0001);
+    while (segmentsApplied < applied) {
+      onSegment?.();
+      segmentsApplied++;
+      fluidManager.triggerRipple(toIdx);
+      const toMouth = tubeMouthOnBoard(board, toTube);
+      splashPool.spawn(toMouth.x, toMouth.y + 4, colorId);
+      lastSplashAt = elapsed;
     }
 
     fluidManager.render(fromIdx, fromData, {
@@ -242,6 +299,7 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
       hiddenBottom: fromHidden,
       drainTop: drained,
       drainColor: colorId,
+      wobble: fluidManager.wobbleStrength(fromIdx),
     });
     fluidManager.render(toIdx, toData, {
       capacity: toCap,
@@ -249,26 +307,29 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
       pourColor: colorId,
       pourUnits: drained,
       ripple: fluidManager.rippleStrength(toIdx),
+      wobble: fluidManager.wobbleStrength(toIdx),
     });
 
-    if (streamCtx && streamAlpha > 0) {
+    if (streamCtx) {
+      splashPool.tick();
       const boardRect = board.getBoundingClientRect();
+      streamCtx.imageSmoothingEnabled = true;
       streamCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       streamCtx.clearRect(0, 0, boardRect.width, boardRect.height);
-      const fromMouth = tubeMouthOnBoard(board, fromTube);
-      const toMouth = tubeMouthOnBoard(board, toTube);
-      drawLiquidStream(streamCtx, fromMouth, toMouth, colorId, 10, elapsed * 0.006, streamAlpha);
-      tickSplash(splashParticles);
-      drawSplashParticles(streamCtx, splashParticles);
-    } else if (streamCtx && splashParticles.length && elapsed - lastSplashAt < 400) {
-      const boardRect = board.getBoundingClientRect();
-      streamCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      streamCtx.clearRect(0, 0, boardRect.width, boardRect.height);
-      tickSplash(splashParticles);
-      drawSplashParticles(streamCtx, splashParticles);
+
+      if (streamAlpha > 0) {
+        const fromMouth = tubeMouthOnBoard(board, fromTube);
+        const toMouth = tubeMouthOnBoard(board, toTube);
+        drawLiquidStream(streamCtx, fromMouth, toMouth, colorId, 10, elapsed * 0.006, streamAlpha);
+      }
+      if (splashPool.particles.length) {
+        drawSplashParticles(streamCtx, splashPool.particles);
+      }
+    } else if (elapsed - lastSplashAt < 400) {
+      splashPool.tick();
     }
 
-    return raw >= 1;
+    return elapsed >= tl.total;
   });
 
   while (segmentsApplied < amount) {
@@ -277,9 +338,18 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
   }
 
   clearStreamCanvas(board);
-  fromTube.style.removeProperty('--pour-tilt');
-  fromTube.classList.remove('lpour-tube-pour', 'lpour-tilt-right', 'lpour-tilt-left');
+  splashPool.clear();
+
+  if (fromTube.isConnected) {
+    resetTubePourStyles(fromTube);
+    fromTube.classList.add('lpour-tube-landing');
+    await wait(LANDING_MS);
+    fromTube.classList.remove('lpour-tube-landing');
+  }
+
   fluidManager.triggerRipple(toIdx);
+  fluidManager.triggerWobble(fromIdx);
+  fluidManager.triggerWobble(toIdx);
   fluidManager.render(fromIdx, tubes[fromIdx], { capacity: fromCap, hiddenBottom: fromHidden });
   fluidManager.render(toIdx, tubes[toIdx], { capacity: toCap, hiddenBottom: toHidden });
   playPourSound('land');
@@ -365,6 +435,28 @@ export async function animatePour(opts: PourAnimOptions): Promise<void> {
   } else if (opts.fluidManager && opts.tubes) {
     await animateWaterPour(opts);
   }
+}
+
+/** Brief tap feedback when selecting a tube. */
+export function pulseTubeSelect(tubeEl: HTMLElement, prefix = 'ws'): void {
+  const cls = `${prefix}-tube--tap`;
+  tubeEl.classList.remove(cls);
+  void tubeEl.offsetWidth;
+  tubeEl.classList.add(cls);
+  window.setTimeout(() => tubeEl.classList.remove(cls), 320);
+}
+
+/** Undo ripple across all tubes. */
+export async function animateUndoRipple(
+  board: HTMLElement,
+  fluidManager: WaterBottleManager,
+  tubeCount: number,
+): Promise<void> {
+  if (prefersReducedMotion()) return;
+  board.classList.add('ws-board--undo-flash');
+  fluidManager.triggerWobbleAll(tubeCount);
+  await wait(420);
+  board.classList.remove('ws-board--undo-flash');
 }
 
 /** Gentle shake with red glow for invalid moves. */
