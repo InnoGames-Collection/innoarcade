@@ -9,8 +9,8 @@ export const RING_STROKE = 24;
 export const GAP_ARC = 1.15;
 export const PILLAR_W = 28;
 
-export const GRAVITY_BASE = 720;
-export const BOUNCE_VEL = -340;
+export const GRAVITY_BASE = 780;
+export const BOUNCE_VEL = -360;
 export const CAM_LERP = 6.5;
 export const CAM_OFFSET = 0.36;
 

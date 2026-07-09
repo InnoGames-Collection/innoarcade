@@ -86,16 +86,23 @@ let dragX: number | null = null;
 canvas.addEventListener('pointerdown', (e) => {
   if ((e.target as HTMLElement).closest('button')) return;
   dragX = e.clientX;
+  game.setDragging(true);
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', (e) => {
   if (dragX === null) return;
   const dx = e.clientX - dragX;
-  if (Math.abs(dx) > 0.5) game.onDrag(dx);
+  game.onDrag(dx);
   dragX = e.clientX;
 });
-canvas.addEventListener('pointerup', () => { dragX = null; });
-canvas.addEventListener('pointercancel', () => { dragX = null; });
+canvas.addEventListener('pointerup', () => {
+  dragX = null;
+  game.setDragging(false);
+});
+canvas.addEventListener('pointercancel', () => {
+  dragX = null;
+  game.setDragging(false);
+});
 
 const scoreEl = $('#scoreVal');
 let lastScore = 0;

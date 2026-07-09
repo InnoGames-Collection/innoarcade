@@ -14,6 +14,7 @@ export interface BallState {
   y: number;
   vy: number;
   squash: number;
+  squashVel: number;
   colorIndex: number;
 }
 

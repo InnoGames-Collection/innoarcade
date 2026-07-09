@@ -116,9 +116,11 @@ export function drawJuiceLayer(
   fever: boolean,
   camY: number,
   trail: { draw: (c: CanvasRenderingContext2D, col: string) => void },
+  shards: { draw: (c: CanvasRenderingContext2D) => void },
 ): void {
   const by = ball.y - camY;
   trail.draw(ctx, ballColor);
+  shards.draw(ctx);
   drawSquashBall(ctx, CX, by, 13, ball.squash, ballColor, fever);
   juice.drawParticles(ctx);
   juice.drawFlash(ctx, W, H);
