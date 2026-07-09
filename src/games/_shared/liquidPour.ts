@@ -38,7 +38,8 @@ export interface PourAnimOptions {
   theme?: PourTheme;
 }
 
-const LIQUID_POUR_MS = 520;
+const LIQUID_LAYER_MS = 200;
+const LIQUID_LAYER_GAP_MS = 40;
 const BALL_ARC_MS = 280;
 const BALL_GAP_MS = 95;
 
@@ -104,47 +105,33 @@ export function applyHeldPieces(
   pieces.slice(-amount).forEach((p) => p.classList.add(theme.heldClass));
 }
 
-async function animateWaterPour(
+async function animateWaterLayer(
   board: HTMLElement,
-  row: HTMLElement,
-  fromIdx: number,
-  toIdx: number,
+  fromTube: HTMLElement,
+  layer: HTMLElement,
   colorId: number,
-  amount: number,
-  theme: PourTheme,
+  fromMouth: { x: number; y: number },
+  toMouth: { x: number; y: number },
+  landY: number,
+  piece: HTMLElement,
+  tilt: string,
+  isFirst: boolean,
 ): Promise<void> {
-  const fromTube = row.children[fromIdx] as HTMLElement;
-  const toTube = row.children[toIdx] as HTMLElement;
-  const fromStack = fromTube.querySelector(theme.stackSelector)!;
-  const pieces = Array.from(fromStack.querySelectorAll(theme.pieceSelector)).slice(-amount);
-  if (!pieces.length) return;
+  const pieceR = relRect(piece, board);
+  const blobW = pieceR.width;
+  const blobH = pieceR.height;
 
-  const firstR = relRect(pieces[0] as HTMLElement, board);
-  const lastR = relRect(pieces[pieces.length - 1] as HTMLElement, board);
-  const blobH = lastR.top + lastR.height - firstR.top;
-  const blobW = Math.max(...pieces.map((p) => relRect(p as HTMLElement, board).width));
+  piece.classList.add('lpour-hide');
 
-  pieces.forEach((p) => p.classList.add('lpour-hide'));
-
-  const tilt = toIdx > fromIdx ? 'lpour-tilt-right' : toIdx < fromIdx ? 'lpour-tilt-left' : '';
-  fromTube.classList.add('lpour-tube-pour', tilt);
-
-  const fromMouth = tubeMouth(board, fromTube);
-  const toMouth = tubeMouth(board, toTube);
-  const toStack = toTube.querySelector(theme.stackSelector)!;
-  const destPieces = Array.from(toStack.querySelectorAll(theme.pieceSelector));
-  const landY = destPieces.length
-    ? relRect(destPieces[destPieces.length - 1] as HTMLElement, board).top - blobH - 2
-    : relRect(toStack as HTMLElement, board).top + relRect(toStack as HTMLElement, board).height - blobH - 4;
-
-  const layer = document.createElement('div');
-  layer.className = 'lpour-layer';
-  board.appendChild(layer);
+  if (isFirst) {
+    fromTube.classList.add('lpour-tube-pour', tilt);
+    playPourSound('start');
+  }
 
   const blob = document.createElement('div');
   blob.className = `lpour-blob ${gemClassesByIndex(colorId - 1, 'liquid')}`;
-  blob.style.left = `${firstR.left}px`;
-  blob.style.top = `${firstR.top}px`;
+  blob.style.left = `${pieceR.left}px`;
+  blob.style.top = `${pieceR.top}px`;
   blob.style.width = `${blobW}px`;
   blob.style.height = `${blobH}px`;
   layer.appendChild(blob);
@@ -161,7 +148,6 @@ async function animateWaterPour(
   stream.style.setProperty('--lpour-angle', `${angle}deg`);
   layer.appendChild(stream);
 
-  playPourSound('start');
   requestAnimationFrame(() => {
     blob.classList.add('lpour-blob--pour');
     blob.style.left = `${toMouth.x - blobW / 2}px`;
@@ -169,11 +155,65 @@ async function animateWaterPour(
     stream.classList.add('lpour-stream-v2--on');
   });
 
-  await wait(LIQUID_POUR_MS);
+  await wait(LIQUID_LAYER_MS);
+  blob.remove();
+  stream.remove();
+  piece.classList.remove('lpour-hide');
+}
+
+async function animateWaterPour(
+  board: HTMLElement,
+  row: HTMLElement,
+  fromIdx: number,
+  toIdx: number,
+  colorId: number,
+  amount: number,
+  theme: PourTheme,
+): Promise<void> {
+  const fromTube = row.children[fromIdx] as HTMLElement;
+  const toTube = row.children[toIdx] as HTMLElement;
+  const fromStack = fromTube.querySelector(theme.stackSelector)!;
+  const toStack = toTube.querySelector(theme.stackSelector)!;
+  const pieces = Array.from(fromStack.querySelectorAll(theme.pieceSelector)).slice(-amount);
+  if (!pieces.length) return;
+
+  const tilt = toIdx > fromIdx ? 'lpour-tilt-right' : toIdx < fromIdx ? 'lpour-tilt-left' : '';
+  const fromMouth = tubeMouth(board, fromTube);
+  const toMouth = tubeMouth(board, toTube);
+
+  const layer = document.createElement('div');
+  layer.className = 'lpour-layer';
+  board.appendChild(layer);
+
+  const toRect = relRect(toStack as HTMLElement, board);
+  const layerH = pieces.length
+    ? relRect(pieces[0] as HTMLElement, board).height
+    : 14;
+  const gap = 2;
+  const existing = toStack.querySelectorAll(theme.pieceSelector).length;
+  const baseLandY = toRect.top + toRect.height - layerH - 4;
+
+  for (let i = 0; i < amount; i++) {
+    const piece = pieces[pieces.length - 1 - i] as HTMLElement;
+    const landY = baseLandY - (existing + i) * (layerH + gap);
+    await animateWaterLayer(
+      board,
+      fromTube,
+      layer,
+      colorId,
+      fromMouth,
+      toMouth,
+      landY,
+      piece,
+      tilt,
+      i === 0,
+    );
+    if (i < amount - 1) await wait(LIQUID_LAYER_GAP_MS);
+  }
+
   playPourSound('land');
   layer.remove();
   fromTube.classList.remove('lpour-tube-pour', 'lpour-tilt-right', 'lpour-tilt-left');
-  pieces.forEach((p) => p.classList.remove('lpour-hide'));
 }
 
 async function animateBallPour(

@@ -1,7 +1,5 @@
 // In-shell close / back navigation for free games — one window back at a time.
 
-import { t } from '../i18n';
-
 export type FreeShellPhase = 'menu' | 'playing' | 'paused' | 'over';
 
 const HUB_URL = '../../';
@@ -89,6 +87,7 @@ export function wireFreeShellCloseButtons(
   });
 }
 
-export function confirmAbandonRun(message?: string): boolean {
-  return window.confirm(message ?? t('shell.abandonRun'));
+/** Abandon confirm disabled — leave game immediately without a dialog. */
+export function confirmAbandonRun(_message?: string): boolean {
+  return true;
 }

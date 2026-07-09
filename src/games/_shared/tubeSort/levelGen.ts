@@ -1,4 +1,4 @@
-/** Level generation — scramble-from-solved with modifiers and BFS solvability check. */
+/** Level generation — mixed-color starts with modifiers and BFS solvability check. */
 
 import { shuffled } from '../../_lq/rng';
 import {
@@ -11,6 +11,7 @@ import {
   pour,
   tubesKey,
   type LevelModifiers,
+  type PourStyle,
   type TubeModifier,
   type Tubes,
 } from './gameRules';
@@ -18,8 +19,10 @@ import {
 export const LEVEL_COUNT = 8;
 const NARROW_CAPACITY = 3;
 const MAX_SOLVE_STATES = 4_000;
+const MAX_SOLVE_STATES_SINGLE = 12_000;
 const SOLVE_TIME_MS = 45;
-const MAX_GEN_ATTEMPTS = 18;
+const SOLVE_TIME_MS_SINGLE = 180;
+const MAX_GEN_ATTEMPTS = 24;
 
 export type ModifierKind = 'hidden' | 'locked' | 'narrow' | 'singleBuffer';
 
@@ -30,16 +33,28 @@ export interface LevelSpec {
   modifiers: ModifierKind[];
 }
 
-/** Fixed modifier curve — one new twist from level 4 onward (industry-standard ramp). */
+/** Water sort — full top-run pours; shuffle ramps complexity. */
 export const LEVEL_SPECS: LevelSpec[] = [
-  { colors: 3, shuffle: 10, parMoves: 14, modifiers: [] },
-  { colors: 4, shuffle: 16, parMoves: 18, modifiers: [] },
-  { colors: 4, shuffle: 22, parMoves: 22, modifiers: [] },
-  { colors: 5, shuffle: 28, parMoves: 28, modifiers: ['hidden'] },
-  { colors: 5, shuffle: 34, parMoves: 32, modifiers: ['locked'] },
-  { colors: 6, shuffle: 40, parMoves: 36, modifiers: ['narrow'] },
-  { colors: 6, shuffle: 46, parMoves: 40, modifiers: ['singleBuffer'] },
-  { colors: 7, shuffle: 54, parMoves: 46, modifiers: ['hidden', 'locked'] },
+  { colors: 3, shuffle: 14, parMoves: 14, modifiers: [] },
+  { colors: 4, shuffle: 20, parMoves: 18, modifiers: [] },
+  { colors: 4, shuffle: 28, parMoves: 22, modifiers: [] },
+  { colors: 5, shuffle: 34, parMoves: 28, modifiers: ['hidden'] },
+  { colors: 5, shuffle: 40, parMoves: 32, modifiers: ['locked'] },
+  { colors: 6, shuffle: 48, parMoves: 36, modifiers: ['narrow'] },
+  { colors: 6, shuffle: 56, parMoves: 40, modifiers: ['singleBuffer'] },
+  { colors: 7, shuffle: 64, parMoves: 46, modifiers: ['hidden', 'locked'] },
+];
+
+/** Ball sort — one ball per move; higher par budgets. */
+export const BALL_LEVEL_SPECS: LevelSpec[] = [
+  { colors: 3, shuffle: 18, parMoves: 32, modifiers: [] },
+  { colors: 4, shuffle: 26, parMoves: 42, modifiers: [] },
+  { colors: 4, shuffle: 34, parMoves: 50, modifiers: [] },
+  { colors: 5, shuffle: 42, parMoves: 58, modifiers: ['hidden'] },
+  { colors: 5, shuffle: 50, parMoves: 66, modifiers: ['locked'] },
+  { colors: 6, shuffle: 58, parMoves: 74, modifiers: ['narrow'] },
+  { colors: 6, shuffle: 66, parMoves: 82, modifiers: ['singleBuffer'] },
+  { colors: 7, shuffle: 74, parMoves: 92, modifiers: ['hidden', 'locked'] },
 ];
 
 export interface GeneratedLevel {
@@ -61,8 +76,15 @@ function pourOneLayer(
   return true;
 }
 
-function ensurePlayable(tubes: Tubes, mods: LevelModifiers): void {
+function ensurePlayable(tubes: Tubes, mods: LevelModifiers, pourStyle: PourStyle): void {
   if (!isSolved(tubes, mods)) return;
+  for (let from = 0; from < tubes.length; from++) {
+    if (tubes[from].length === 0) continue;
+    for (let to = 0; to < tubes.length; to++) {
+      if (from === to) continue;
+      if (pour(tubes[from], tubes[to], from, to, tubes, mods, pourStyle) && !isSolved(tubes, mods)) return;
+    }
+  }
   for (let from = 0; from < tubes.length; from++) {
     if (tubes[from].length === 0) continue;
     for (let to = 0; to < tubes.length; to++) {
@@ -79,37 +101,84 @@ function solvedState(numColors: number, emptyTubes: number): Tubes {
   return tubes;
 }
 
+/** Randomly distribute color layers across tubes — guarantees mixed stacks. */
+function mixedState(numColors: number, emptyTubes: number, rnd: () => number): Tubes {
+  const segments: number[] = [];
+  for (let c = 1; c <= numColors; c++) {
+    for (let i = 0; i < DEFAULT_CAPACITY; i++) segments.push(c);
+  }
+  const needMixed = Math.min(2, Math.max(1, numColors - 1));
+  let tubes: Tubes = [];
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const shuffledSegs = shuffled(segments, rnd);
+    tubes = [];
+    for (let t = 0; t < numColors; t++) {
+      tubes.push(shuffledSegs.slice(t * DEFAULT_CAPACITY, (t + 1) * DEFAULT_CAPACITY));
+    }
+    if (countMixedTubes(tubes) >= needMixed) break;
+  }
+  for (let i = 0; i < emptyTubes; i++) tubes.push([]);
+  return tubes;
+}
+
+function tubeColorVariety(tube: number[]): number {
+  return new Set(tube).size;
+}
+
+function countMixedTubes(tubes: Tubes): number {
+  return tubes.filter((t) => t.length >= 2 && tubeColorVariety(t) >= 2).length;
+}
+
+function minMixedTubes(levelIdx: number, numColors: number): number {
+  return Math.min(2 + Math.floor(levelIdx / 2), Math.max(1, numColors - 1));
+}
+
 function scramble(
   numColors: number,
   shuffleMoves: number,
   mods: LevelModifiers,
   rnd: () => number,
+  pourStyle: PourStyle,
 ): Tubes {
-  const state = cloneTubes(solvedState(numColors, mods.emptyTubes));
-  let lastFrom = -1;
-  let lastTo = -1;
-  for (let m = 0; m < shuffleMoves; m++) {
-    const indices = shuffled(state.map((_, i) => i), rnd);
-    let poured = false;
-    for (const from of indices) {
-      if (state[from].length === 0) continue;
-      const targets = shuffled(indices.filter((i) => i !== from), rnd);
-      for (const to of targets) {
-        if (from === lastTo && to === lastFrom) continue;
-        if (!pour(state[from], state[to], from, to, state, mods)) continue;
-        lastFrom = from;
-        lastTo = to;
-        poured = true;
-        break;
+  const maxTries = pourStyle === 'single' ? 10 : 1;
+  for (let tryIdx = 0; tryIdx < maxTries; tryIdx++) {
+    const state = pourStyle === 'single'
+      ? cloneTubes(solvedState(numColors, mods.emptyTubes))
+      : cloneTubes(mixedState(numColors, mods.emptyTubes, rnd));
+    let lastFrom = -1;
+    let lastTo = -1;
+    const moves = shuffleMoves + tryIdx * 3;
+    for (let m = 0; m < moves; m++) {
+      const indices = shuffled(state.map((_, i) => i), rnd);
+      let poured = false;
+      for (const from of indices) {
+        if (state[from].length === 0) continue;
+        const targets = shuffled(indices.filter((i) => i !== from), rnd);
+        for (const to of targets) {
+          if (from === lastTo && to === lastFrom) continue;
+          // Single-layer scrambles preserve mixed stacks; gameplay uses pourStyle rules.
+          if (!pourOneLayer(state[from], state[to], from, to, state, mods)) continue;
+          lastFrom = from;
+          lastTo = to;
+          poured = true;
+          break;
+        }
+        if (poured) break;
       }
-      if (poured) break;
+      if (!poured) break;
     }
-    if (!poured) break;
+    if (isSolved(state, mods)) {
+      ensurePlayable(state, mods, pourStyle);
+    }
+    if (pourStyle === 'single') {
+      if (!isSolved(state, mods) && countMixedTubes(state) >= 1) return state;
+      continue;
+    }
+    return state;
   }
-  if (isSolved(state, mods)) {
-    ensurePlayable(state, mods);
-  }
-  return state;
+  const fallback = cloneTubes(mixedState(numColors, mods.emptyTubes, rnd));
+  ensurePlayable(fallback, mods, pourStyle);
+  return fallback;
 }
 
 function buildBaseModifiers(numColors: number, kinds: ModifierKind[]): LevelModifiers {
@@ -180,24 +249,26 @@ function needsSolvabilityCheck(kinds: ModifierKind[]): boolean {
   return kinds.includes('locked');
 }
 
-/** Bounded BFS — used only when locked tubes may block naive scramble guarantees. */
-export function isSolvable(tubes: Tubes, mods: LevelModifiers): boolean {
+/** Bounded BFS — used when locked tubes or single-ball rules need verification. */
+export function isSolvable(tubes: Tubes, mods: LevelModifiers, pourStyle: PourStyle = 'run'): boolean {
   if (isSolved(tubes, mods)) return false;
   if (!hasOpeningMove(tubes, mods)) return false;
-  const deadline = performance.now() + SOLVE_TIME_MS;
+  const maxStates = pourStyle === 'single' ? MAX_SOLVE_STATES_SINGLE : MAX_SOLVE_STATES;
+  const timeMs = pourStyle === 'single' ? SOLVE_TIME_MS_SINGLE : SOLVE_TIME_MS;
+  const deadline = performance.now() + timeMs;
   const start = tubesKey(tubes);
   const seen = new Set<string>([start]);
   const queue: Tubes[] = [cloneTubes(tubes)];
   let head = 0;
-  while (head < queue.length && seen.size < MAX_SOLVE_STATES) {
-    if (performance.now() > deadline) return false;
+  while (head < queue.length && seen.size < maxStates) {
+    if (performance.now() > deadline) return pourStyle !== 'single';
     const state = queue[head++];
     for (let from = 0; from < state.length; from++) {
       if (state[from].length === 0 || isPourSourceLocked(mods, from, state)) continue;
       for (let to = 0; to < state.length; to++) {
         if (from === to) continue;
         const next = cloneTubes(state);
-        const moved = pour(next[from], next[to], from, to, next, mods);
+        const moved = pour(next[from], next[to], from, to, next, mods, pourStyle);
         if (!moved) continue;
         if (isSolved(next, mods)) return true;
         const key = tubesKey(next);
@@ -210,17 +281,55 @@ export function isSolvable(tubes: Tubes, mods: LevelModifiers): boolean {
   return false;
 }
 
-function acceptLevel(tubes: Tubes, mods: LevelModifiers, kinds: ModifierKind[]): boolean {
+function acceptLevel(
+  tubes: Tubes,
+  mods: LevelModifiers,
+  kinds: ModifierKind[],
+  pourStyle: PourStyle,
+  levelIdx: number,
+  numColors: number,
+): boolean {
   if (isSolved(tubes, mods) || !hasOpeningMove(tubes, mods)) return false;
-  if (needsSolvabilityCheck(kinds)) return isSolvable(tubes, mods);
+  if (pourStyle === 'run' && countMixedTubes(tubes) < minMixedTubes(levelIdx, numColors)) return false;
+  if (pourStyle === 'single' && countMixedTubes(tubes) < 1) return false;
+  // Single-ball scrambles are valid pour sequences from solved — always solvable.
+  if (needsSolvabilityCheck(kinds)) return isSolvable(tubes, mods, pourStyle);
   return true;
 }
 
-export function levelSpec(levelIdx: number): LevelSpec {
-  return LEVEL_SPECS[Math.min(levelIdx, LEVEL_SPECS.length - 1)];
+function fallbackLevel(
+  spec: LevelSpec,
+  rnd: () => number,
+  pourStyle: PourStyle,
+  levelIdx: number,
+): GeneratedLevel {
+  const fallbackMods: LevelModifiers = {
+    emptyTubes: 2,
+    tubeMods: Array.from({ length: spec.colors + 2 }, () => defaultTubeModifier()),
+  };
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const tubes = pourStyle === 'single'
+      ? scramble(spec.colors, Math.max(10, spec.shuffle - 4) + attempt * 2, fallbackMods, rnd, pourStyle)
+      : mixedState(spec.colors, fallbackMods.emptyTubes, rnd);
+    ensurePlayable(tubes, fallbackMods, pourStyle);
+    const mixedOk = pourStyle === 'single'
+      ? countMixedTubes(tubes) >= 1
+      : countMixedTubes(tubes) >= minMixedTubes(levelIdx, spec.colors);
+    if (!isSolved(tubes, fallbackMods) && mixedOk && hasOpeningMove(tubes, fallbackMods)) {
+      return { tubes, mods: fallbackMods, spec: { ...spec, modifiers: [] } };
+    }
+  }
+  const tubes = mixedState(spec.colors, fallbackMods.emptyTubes, rnd);
+  ensurePlayable(tubes, fallbackMods, pourStyle);
+  return { tubes, mods: fallbackMods, spec: { ...spec, modifiers: [] } };
 }
 
-function generateFromSpec(spec: LevelSpec, rnd: () => number): GeneratedLevel {
+export function levelSpec(levelIdx: number, pourStyle: PourStyle = 'run'): LevelSpec {
+  const specs = pourStyle === 'single' ? BALL_LEVEL_SPECS : LEVEL_SPECS;
+  return specs[Math.min(levelIdx, specs.length - 1)];
+}
+
+function generateFromSpec(spec: LevelSpec, rnd: () => number, pourStyle: PourStyle, levelIdx: number): GeneratedLevel {
   const baseMods = buildBaseModifiers(spec.colors, spec.modifiers);
 
   for (let attempt = 0; attempt < MAX_GEN_ATTEMPTS; attempt++) {
@@ -228,37 +337,30 @@ function generateFromSpec(spec: LevelSpec, rnd: () => number): GeneratedLevel {
       emptyTubes: baseMods.emptyTubes,
       tubeMods: baseMods.tubeMods.map((m) => ({ ...m })),
     };
-    const shuffleMoves = spec.shuffle + (attempt > 0 ? attempt * 2 : 0);
-    const tubes = scramble(spec.colors, shuffleMoves, mods, rnd);
+    const shuffleMoves = spec.shuffle + (attempt > 0 ? attempt * 3 : 0);
+    const tubes = scramble(spec.colors, shuffleMoves, mods, rnd, pourStyle);
     while (mods.tubeMods.length < tubes.length) {
       mods.tubeMods.push(defaultTubeModifier());
     }
     applyModifiers(tubes, mods, spec.modifiers, rnd);
-    if (acceptLevel(tubes, mods, spec.modifiers)) {
-      ensurePlayable(tubes, mods);
+    if (acceptLevel(tubes, mods, spec.modifiers, pourStyle, levelIdx, spec.colors)) {
+      ensurePlayable(tubes, mods, pourStyle);
       return { tubes, mods, spec };
     }
   }
 
-  const fallbackMods: LevelModifiers = {
-    emptyTubes: 2,
-    tubeMods: Array.from({ length: spec.colors + 2 }, () => defaultTubeModifier()),
-  };
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const tubes = scramble(spec.colors, Math.max(8, spec.shuffle - 8) + attempt * 2, fallbackMods, rnd);
-    if (!isSolved(tubes, fallbackMods)) {
-      return { tubes, mods: fallbackMods, spec: { ...spec, modifiers: [] } };
-    }
-  }
-  const tubes = scramble(spec.colors, 12, fallbackMods, rnd);
-  ensurePlayable(tubes, fallbackMods);
-  return { tubes, mods: fallbackMods, spec: { ...spec, modifiers: [] } };
+  return fallbackLevel(spec, rnd, pourStyle, levelIdx);
 }
 
-export function generateLevel(levelIdx: number, rnd: () => number): GeneratedLevel {
-  return generateFromSpec(levelSpec(levelIdx), rnd);
+export function generateLevel(levelIdx: number, rnd: () => number, pourStyle: PourStyle = 'run'): GeneratedLevel {
+  return generateFromSpec(levelSpec(levelIdx, pourStyle), rnd, pourStyle, levelIdx);
 }
 
-export function generateLevelWithSpec(spec: LevelSpec, rnd: () => number): GeneratedLevel {
-  return generateFromSpec(spec, rnd);
+export function generateLevelWithSpec(
+  spec: LevelSpec,
+  rnd: () => number,
+  pourStyle: PourStyle = 'run',
+  levelIdx = 0,
+): GeneratedLevel {
+  return generateFromSpec(spec, rnd, pourStyle, levelIdx);
 }

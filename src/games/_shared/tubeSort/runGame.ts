@@ -29,6 +29,7 @@ import {
   tubeCapacity,
   tubeHiddenBottom,
   type LevelModifiers,
+  type PourStyle,
   type Tubes,
 } from './gameRules';
 import {
@@ -52,6 +53,7 @@ export interface TubeSortTheme {
   classPrefix: 'ws' | 'bs';
   gemVariant: 'liquid' | 'sphere';
   pourTheme: PourTheme;
+  pourStyle: PourStyle;
   firstRunKey: string;
   ariaLabel: string;
   hintText: string;
@@ -65,6 +67,7 @@ export const WATER_SORT_THEME: TubeSortTheme = {
   classPrefix: 'ws',
   gemVariant: 'liquid',
   pourTheme: LIQUID_POUR_THEME,
+  pourStyle: 'run',
   firstRunKey: 'water-sort',
   ariaLabel: 'Water tubes',
   hintText: 'Tap a tube, then tap another to pour.',
@@ -78,9 +81,10 @@ export const BALL_SORT_THEME: TubeSortTheme = {
   classPrefix: 'bs',
   gemVariant: 'sphere',
   pourTheme: SPHERE_POUR_THEME,
+  pourStyle: 'single',
   firstRunKey: 'ball-sort',
   ariaLabel: 'Ball tubes',
-  hintText: 'Move balls between tubes — same color only.',
+  hintText: 'Move one ball at a time onto matching color or empty tube.',
   emptyToast: 'Pick a tube with balls',
   invalidToast: 'Only onto matching color or empty tube',
   scoreBase: 85,
@@ -142,8 +146,8 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
       mount.innerHTML = '';
 
       const generated = mode === 'endless' && levelIdx >= LEVEL_COUNT
-        ? generateLevelWithSpec(endlessLevelSpec(levelIdx), rnd)
-        : generateLevel(levelIdx, rnd);
+        ? generateLevelWithSpec(endlessLevelSpec(levelIdx, theme.pourStyle), rnd, theme.pourStyle, levelIdx)
+        : generateLevel(levelIdx, rnd, theme.pourStyle);
       let tubes = cloneTubes(generated.tubes);
       const mods: LevelModifiers = generated.mods;
       const { parMoves } = generated.spec;
@@ -232,7 +236,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
           const previewAmt = selected != null && selected !== idx && canPour(
             tubes[selected], tube, selected, idx, tubes, mods,
           )
-            ? pourAmount(tubes[selected], tube, idx, mods)
+            ? pourAmount(tubes[selected], tube, idx, mods, theme.pourStyle)
             : 0;
 
           const tubeEl = el('div', {
@@ -269,7 +273,8 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
           row.appendChild(tubeEl);
         });
         if (selected != null && tubes[selected].length > 0) {
-          applyHeldPieces(row, selected, topRunLength(tubes[selected]), theme.pourTheme);
+          const held = theme.pourStyle === 'single' ? 1 : topRunLength(tubes[selected]);
+          applyHeldPieces(row, selected, held, theme.pourTheme);
         }
         setLQHeader({ moves: String(moves) });
         undoBtn.toggleAttribute('disabled', undoStack.length === 0);
@@ -278,7 +283,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
 
       function useHint(): void {
         if (locked || hintsLeft <= 0) return;
-        const move = findHintMove(tubes, mods);
+        const move = findHintMove(tubes, mods, theme.pourStyle);
         if (!move) {
           toast(t('ws.hint.none'));
           return;
@@ -354,7 +359,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         const fromIdx = selected;
         const toIdx = idx;
         const colorId = tubes[fromIdx][tubes[fromIdx].length - 1];
-        const amount = pourAmount(tubes[fromIdx], tubes[toIdx], toIdx, mods);
+        const amount = pourAmount(tubes[fromIdx], tubes[toIdx], toIdx, mods, theme.pourStyle);
 
         locked = true;
         pushUndo();
@@ -369,7 +374,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
           theme: theme.pourTheme,
         });
 
-        pour(tubes[fromIdx], tubes[toIdx], fromIdx, toIdx, tubes, mods);
+        pour(tubes[fromIdx], tubes[toIdx], fromIdx, toIdx, tubes, mods, theme.pourStyle);
         moves++;
         selected = null;
         paint();

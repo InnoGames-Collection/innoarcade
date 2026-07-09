@@ -28,8 +28,8 @@
   border-radius: 4px 4px 10px 10px;
   box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.15);
   transition:
-    left 0.52s cubic-bezier(0.45, 0.05, 0.2, 1),
-    top 0.52s cubic-bezier(0.45, 0.05, 0.2, 1);
+    left 0.2s cubic-bezier(0.45, 0.05, 0.2, 1),
+    top 0.2s cubic-bezier(0.45, 0.05, 0.2, 1);
   z-index: 22;
 }
 

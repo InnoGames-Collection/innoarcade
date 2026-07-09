@@ -2,7 +2,8 @@
 
 import { dayNumber } from '../../_lq/rng';
 import { GEM_IDS, gemIdFromIndex, type GemId } from '../premiumGems';
-import { LEVEL_COUNT, type LevelSpec, type ModifierKind } from './levelGen';
+import { BALL_LEVEL_SPECS, LEVEL_COUNT, LEVEL_SPECS, type LevelSpec, type ModifierKind } from './levelGen';
+import type { PourStyle } from './gameRules';
 
 export type SessionMode = 'classic' | 'daily' | 'endless';
 
@@ -21,19 +22,10 @@ export function sessionSeed(mode: SessionMode, gameId: string): number {
 }
 
 /** Endless ramps past level 8 — cycles modifiers, adds colors/shuffle. */
-export function endlessLevelSpec(levelIdx: number): LevelSpec {
+export function endlessLevelSpec(levelIdx: number, pourStyle: PourStyle = 'run'): LevelSpec {
   const cycle = levelIdx % LEVEL_COUNT;
   const tier = Math.floor(levelIdx / LEVEL_COUNT);
-  const base: LevelSpec[] = [
-    { colors: 3, shuffle: 10, parMoves: 14, modifiers: [] },
-    { colors: 4, shuffle: 16, parMoves: 18, modifiers: [] },
-    { colors: 4, shuffle: 22, parMoves: 22, modifiers: [] },
-    { colors: 5, shuffle: 28, parMoves: 28, modifiers: ['hidden'] },
-    { colors: 5, shuffle: 34, parMoves: 32, modifiers: ['locked'] },
-    { colors: 6, shuffle: 40, parMoves: 36, modifiers: ['narrow'] },
-    { colors: 6, shuffle: 46, parMoves: 40, modifiers: ['singleBuffer'] },
-    { colors: 7, shuffle: 54, parMoves: 46, modifiers: ['hidden', 'locked'] },
-  ];
+  const base = pourStyle === 'single' ? BALL_LEVEL_SPECS : LEVEL_SPECS;
   const src = base[cycle];
   const extraColors = Math.min(1, tier);
   const mods: ModifierKind[] = tier >= 2 && !src.modifiers.includes('locked')
