@@ -49,7 +49,7 @@ export class HelixJump {
 
   readonly world: HelixWorld;
 
-  private ball: BallState = { y: 0, vy: 0, squash: 1, squashVel: 0, colorIndex: 1 };
+  private ball: BallState = { y: 0, vy: 0, squash: 1, squashVel: 0, rollAngle: 0, stretch: 0, colorIndex: 1 };
   private rotation = new RotationController();
   private camera: CameraController;
   private rings: Ring[] = [];
@@ -109,6 +109,8 @@ export class HelixJump {
       vy: 0,
       squash: 1,
       squashVel: 0,
+      rollAngle: 0,
+      stretch: 0,
       colorIndex: Math.max(0, skinIdx % RING_COLORS.length),
     };
     this.rotation.reset();

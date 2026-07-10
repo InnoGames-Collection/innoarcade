@@ -32,8 +32,8 @@ export class CameraController {
   }
 
   follow(ballY: number, ballVy: number, combo: number, fever: boolean, dt: number): void {
-    const fallLead = ballVy > 1.5 ? Math.min(2.8, ballVy * 0.075) : 0;
-    const riseLag = ballVy < -2 ? Math.max(-1.0, ballVy * 0.03) : 0;
+    const fallLead = ballVy > 2 ? Math.min(2.2, ballVy * 0.055) : 0;
+    const riseLag = ballVy < -3 ? Math.max(-0.6, ballVy * 0.022) : 0;
     const targetLead = fallLead + riseLag;
     this.lookAhead += (targetLead - this.lookAhead) * Math.min(1, dt * 12);
 

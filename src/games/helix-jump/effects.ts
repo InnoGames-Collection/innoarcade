@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  BALL_CONTACT_R, RING_INNER, RING_R, THEME,
+  BALL_CONTACT_R, RING_HEIGHT, RING_INNER, RING_R, THEME,
 } from './constants';
 import { createWedgeGeometry } from './geometry';
 import { easeOutQuad } from './easing';
@@ -112,15 +112,15 @@ export class ParticleSystem {
   emitLanding(x: number, y: number, z: number, color: string, impact: number): void {
     const c = new THREE.Color(color);
     const dustC = new THREE.Color('#e8e0f0');
-    const n = 6 + Math.floor(impact / 3);
+    const n = 4 + Math.floor(impact / 5);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 1.2 + Math.random() * 2.5;
-      this.spawn(x, y, z, dustC, Math.cos(a) * sp, Math.random() * 1.2, Math.sin(a) * sp * 0.4, 0.05, 0.4);
+      const sp = 0.8 + Math.random() * 1.6;
+      this.spawn(x, y, z, dustC, Math.cos(a) * sp, Math.random() * 0.8, Math.sin(a) * sp * 0.35, 0.04, 0.32);
     }
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       const a = Math.random() * Math.PI * 2;
-      this.spawn(x, y, z, c, Math.cos(a) * 2, 2.5 + Math.random(), Math.sin(a) * 1.2, 0.08, 0.28);
+      this.spawn(x, y, z, c, Math.cos(a) * 1.2, 1.2 + Math.random() * 0.8, Math.sin(a) * 0.8, 0.06, 0.22);
     }
     this.syncBuffers();
   }
@@ -357,39 +357,46 @@ export class BallTrail {
     }
   }
 
-  push(speed: number, color: string, combo = 0, fever = false): void {
-    const streak = combo >= 2 || fever;
-    const minSpeed = fever ? 0.8 : streak ? 1.2 : 2.5;
-    if (speed < minSpeed) return;
+  push(vy: number, color: string, combo = 0, fever = false): void {
+    const speed = Math.abs(vy);
+    const falling = vy > 1.5;
+    const streak = combo >= 2 || fever || falling;
+    const minSpeed = fever ? 0.6 : streak ? 1.0 : 2.2;
+    if (!falling || speed < minSpeed) return;
 
     const m = this.points[this.head];
     this.head = (this.head + 1) % this.points.length;
 
-    const t = Math.min(1, speed / 16);
-    const slot = streak ? (this.head % 7) : 0;
-    m.position.set(0, slot * 0.22, 0.12);
+    const t = Math.min(1, speed / 18);
+    const slot = (this.head % 10);
+    m.position.set(
+      (Math.random() - 0.5) * 0.1,
+      0.12 + slot * 0.16,
+      0.08 + (Math.random() - 0.5) * 0.06,
+    );
     const mat = m.material as THREE.MeshBasicMaterial;
     mat.color.set(fever ? THEME.fever : color);
     mat.opacity = fever
-      ? 0.35 + t * 0.45
-      : streak ? 0.2 + t * 0.42 : 0.1 + t * 0.25;
-    m.scale.setScalar(fever ? 0.55 + t * 0.5 : streak ? 0.5 + t * 0.48 : 0.38 + t * 0.38);
+      ? 0.42 + t * 0.38
+      : streak ? 0.28 + t * 0.4 : 0.18 + t * 0.3;
+    const scale = fever ? 0.42 + t * 0.38 : 0.36 + t * 0.34;
+    m.scale.setScalar(scale);
     m.visible = true;
     m.userData.life = 1;
   }
 
   update(dt: number): void {
-    const feverFade = this.points.some((p) => p.visible && (p.material as THREE.MeshBasicMaterial).opacity > 0.35);
-    const fade = dt * (feverFade ? 2.8 : 4.2);
+    const fade = dt * 3.6;
     for (const m of this.points) {
       if (!m.visible) continue;
       m.userData.life -= fade;
+      m.position.y += dt * 0.35;
       if (m.userData.life <= 0) {
         m.visible = false;
         continue;
       }
-      (m.material as THREE.MeshBasicMaterial).opacity *= 0.96;
-      m.scale.multiplyScalar(0.985);
+      (m.material as THREE.MeshBasicMaterial).opacity *= 0.94;
+      m.scale.multiplyScalar(0.988);
     }
   }
 
@@ -423,19 +430,21 @@ export class SpeedLines {
     parent.add(this.group);
   }
 
-  setIntensity(combo: number, fever: boolean): void {
-    const target = fever ? 8 : combo >= 3 ? Math.min(6, combo - 1) : 0;
-    this.active = target;
+  setIntensity(combo: number, fever: boolean, vy = 0): void {
+    const fallBoost = vy > 6 ? Math.min(3, (vy - 6) * 0.25) : 0;
+    const target = fever ? 8 : combo >= 3 ? Math.min(6, combo - 1) + fallBoost : fallBoost > 0 ? Math.ceil(fallBoost) : 0;
+    this.active = Math.min(this.lines.length, Math.round(target));
     for (let i = 0; i < this.lines.length; i++) {
       const m = this.lines[i];
-      const on = i < target;
+      const on = i < this.active;
       m.visible = on;
       if (on) {
-        const ang = (i / target) * Math.PI * 2;
-        m.position.set(Math.cos(ang) * 0.55, (Math.random() - 0.5) * 0.4, Math.sin(ang) * 0.2 + 0.1);
+        const ang = (i / Math.max(1, this.active)) * Math.PI * 2;
+        m.position.set(Math.cos(ang) * 0.5, 0.15 + (i % 3) * 0.18, Math.sin(ang) * 0.15 + 0.08);
         m.rotation.z = ang;
-        (m.material as THREE.MeshBasicMaterial).opacity = fever ? 0.35 : 0.18;
+        (m.material as THREE.MeshBasicMaterial).opacity = fever ? 0.32 : 0.14 + Math.min(0.12, vy * 0.005);
         (m.material as THREE.MeshBasicMaterial).color.set(fever ? THEME.fever : '#ffffff');
+        m.scale.y = 0.35 + Math.min(0.55, vy * 0.02);
       }
     }
   }
@@ -463,14 +472,14 @@ interface Splat {
 
 export class LandingSplats {
   private readonly pool: Splat[] = [];
-  private readonly geo = new THREE.CircleGeometry(0.42, 20);
+  private readonly geo = new THREE.CircleGeometry(0.48, 24);
 
   constructor() {
     for (let i = 0; i < SPLAT_POOL; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.82,
         depthWrite: false,
         side: THREE.DoubleSide,
       });
@@ -487,20 +496,20 @@ export class LandingSplats {
       if (s.life > 0 && s.life < s.maxLife) continue;
       if (s.mesh.parent && s.mesh.parent !== parent) s.mesh.parent.remove(s.mesh);
       parent.add(s.mesh);
-      const jitter = (Math.random() - 0.5) * 0.14;
+      const jitter = (Math.random() - 0.5) * 0.1;
       s.mesh.position.set(
         Math.cos(contactAngle) * BALL_CONTACT_R + jitter,
-        0.04,
+        RING_HEIGHT * 0.48,
         Math.sin(contactAngle) * BALL_CONTACT_R + jitter * 0.6,
       );
       s.mesh.rotation.z = Math.random() * Math.PI * 2;
-      const scale = 0.55 + Math.random() * 0.35;
+      const scale = 0.72 + Math.random() * 0.28;
       s.mesh.scale.set(scale, scale, 1);
       (s.mesh.material as THREE.MeshBasicMaterial).color.set(color);
-      (s.mesh.material as THREE.MeshBasicMaterial).opacity = 0.5;
+      (s.mesh.material as THREE.MeshBasicMaterial).opacity = 0.82;
       s.mesh.visible = true;
       s.life = 0.001;
-      s.maxLife = 2.2 + Math.random() * 0.8;
+      s.maxLife = 999;
       return;
     }
   }
@@ -509,14 +518,7 @@ export class LandingSplats {
     for (const s of this.pool) {
       if (s.life <= 0) continue;
       s.life += dt;
-      if (s.life >= s.maxLife) {
-        s.mesh.visible = false;
-        s.mesh.removeFromParent();
-        s.life = 0;
-        continue;
-      }
-      const t = easeOutQuad(1 - s.life / s.maxLife);
-      (s.mesh.material as THREE.MeshBasicMaterial).opacity = 0.5 * t;
+      // Paint splats stay until platform recycles (cleared via clear()).
     }
   }
 

@@ -1,7 +1,8 @@
 import {
-  BALL_CONTACT_ANGLE, BALL_R, BOUNCE_RESTITUTION, BOUNCE_UP_MAX, BOUNCE_UP_VEL,
-  BOUNCE_VEL, DANGER_TOLERANCE, GAP_PASS_TOLERANCE, GRAVITY_BASE, RING_HEIGHT,
-  SOLID_EDGE_INSET,
+  BALL_CONTACT_ANGLE, BALL_R, BALL_ROLL_RATE, BALL_SQUASH_MAX, BALL_SQUASH_MIN,
+  BALL_STRETCH_MAX, BOUNCE_RESTITUTION, BOUNCE_UP_MAX, BOUNCE_UP_VEL,
+  BOUNCE_VEL, DANGER_TOLERANCE, FALL_STRETCH_SPEED, FALL_TERMINAL_VY,
+  GAP_PASS_TOLERANCE, GRAVITY_BASE, RING_HEIGHT, SOLID_EDGE_INSET,
 } from './constants';
 import { easeOutBack } from './easing';
 import { ringWorldY } from './towerGenerator';
@@ -43,18 +44,27 @@ export function gravityForDepth(passed: number, fallMul: number): number {
 
 export function integrateBall(ball: BallState, gravity: number, dt: number): void {
   ball.vy += gravity * dt;
+  if (ball.vy > FALL_TERMINAL_VY) ball.vy = FALL_TERMINAL_VY;
   ball.y += ball.vy * dt;
+  ball.rollAngle += ball.vy * dt * BALL_ROLL_RATE;
 
-  const spring = 42;
-  const damp = 18;
+  const spring = 52;
+  const damp = 24;
   ball.squashVel += (1 - ball.squash) * spring * dt;
   ball.squashVel -= ball.squashVel * damp * dt;
   ball.squash += ball.squashVel * dt;
-  if (ball.squash > 1.14) {
-    ball.squash = 1.14;
-    ball.squashVel *= -0.32;
+  if (ball.squash > BALL_SQUASH_MAX) {
+    ball.squash = BALL_SQUASH_MAX;
+    ball.squashVel *= -0.28;
   }
-  if (ball.squash < 0.55) ball.squash = 0.55;
+  if (ball.squash < BALL_SQUASH_MIN) ball.squash = BALL_SQUASH_MIN;
+
+  if (ball.squash > 0.94) {
+    const t = Math.min(1, Math.abs(ball.vy) / FALL_STRETCH_SPEED);
+    ball.stretch = t * BALL_STRETCH_MAX;
+  } else {
+    ball.stretch *= Math.exp(-dt * 18);
+  }
 }
 
 function evaluateRing(
@@ -144,6 +154,7 @@ export function findSweepCollision(
 
 export function applyBounce(ball: BallState, impactSpeed: number): number {
   const impact = Math.abs(impactSpeed);
+  // Reference Helix Jump: near-constant bounce height every hop.
   let upVel = BOUNCE_UP_VEL;
   if (impact > BOUNCE_VEL) {
     upVel = Math.min(
@@ -152,18 +163,19 @@ export function applyBounce(ball: BallState, impactSpeed: number): number {
     );
   }
   ball.vy = -upVel;
+  ball.stretch = 0;
   return impact;
 }
 
 export function landingFx(impactSpeed: number): LandingFx {
   const impact = Math.abs(impactSpeed);
-  const t = Math.min(1, impact / 18);
+  const t = Math.min(1, impact / 20);
   return {
-    shake: 0.06 + t * 0.14,
-    particleCount: 8 + Math.floor(t * 10),
-    spread: 2.8 + t * 3.2,
-    squash: 0.55 - t * 0.08,
-    squashVel: -3.2 - t * 1.6,
+    shake: 0.04 + t * 0.1,
+    particleCount: 6 + Math.floor(t * 8),
+    spread: 2.2 + t * 2.4,
+    squash: 0.78 - t * 0.06,
+    squashVel: -2.6 - t * 1.2,
   };
 }
 
@@ -181,8 +193,9 @@ export function clearYThroughRing(ringY: number): number {
 }
 
 export function applyFallBoost(ball: BallState, combo: number): void {
-  const boost = 1.2 + Math.min(combo, 8) * 0.55;
-  if (ball.vy > 0) ball.vy += boost;
+  if (ball.vy <= 0) return;
+  const boost = 0.85 + Math.min(combo, 8) * 0.38;
+  ball.vy = Math.min(FALL_TERMINAL_VY, ball.vy + boost);
 }
 
 export function breakAnimScale(t: number): number {

@@ -23,6 +23,10 @@ export interface BallState {
   vy: number;
   squash: number;
   squashVel: number;
+  /** Visual roll from vertical travel (rad). */
+  rollAngle: number;
+  /** Velocity stretch 0–1 for fall/rise smear. */
+  stretch: number;
   colorIndex: number;
 }
 

@@ -48,7 +48,7 @@ export class HelixWorld {
   private readonly tower = new THREE.Group();
   private readonly ballRig = new THREE.Group();
   private readonly ball: THREE.Mesh;
-  private readonly ballOutline: THREE.Mesh;
+  private readonly ballHalo: THREE.Mesh;
   private readonly ballMat: THREE.MeshStandardMaterial;
   private readonly ballGlow: THREE.PointLight;
   private readonly pillar: THREE.Mesh;
@@ -149,34 +149,36 @@ export class HelixWorld {
     );
     this.scene.add(this.ballRig);
 
-    const ballGeo = new THREE.SphereGeometry(BALL_R, 32, 32);
+    const ballGeo = new THREE.SphereGeometry(BALL_R, 36, 36);
     this.ballMat = new THREE.MeshStandardMaterial({
-      color: 0xff5c8a,
-      roughness: 0.16,
-      metalness: 0.18,
-      emissive: 0x441133,
-      emissiveIntensity: 0.35,
+      color: 0xb24bf3,
+      roughness: 0.1,
+      metalness: 0.06,
+      emissive: 0x3a1060,
+      emissiveIntensity: 0.18,
     });
     this.ball = new THREE.Mesh(ballGeo, this.ballMat);
     this.ball.castShadow = true;
+    this.ball.receiveShadow = false;
     this.ball.renderOrder = 20;
     this.ball.position.z = 0.14;
     this.ballRig.add(this.ball);
 
-    this.ballOutline = new THREE.Mesh(
-      new THREE.SphereGeometry(BALL_R * 1.12, 24, 24),
+    this.ballHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(BALL_R * 1.38, 20, 20),
       new THREE.MeshBasicMaterial({
-        color: 0x2a2a44,
-        side: THREE.BackSide,
+        color: 0xffffff,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.14,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
       }),
     );
-    this.ballOutline.renderOrder = 19;
-    this.ballOutline.position.z = 0.14;
-    this.ballRig.add(this.ballOutline);
+    this.ballHalo.renderOrder = 18;
+    this.ballHalo.position.z = 0.12;
+    this.ballRig.add(this.ballHalo);
 
-    this.ballGlow = new THREE.PointLight(0xffffff, 1.1, 8);
+    this.ballGlow = new THREE.PointLight(0xb24bf3, 0.85, 6);
     this.ballGlow.position.z = 0.2;
     this.ball.add(this.ballGlow);
 
@@ -325,34 +327,54 @@ export class HelixWorld {
   updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number, combo = 0): void {
     this.ballRig.position.y = 0;
     this.ball.position.set(0, 0, 0.14);
-    this.ballOutline.position.set(0, 0, 0.14);
-    const sy = ball.squash;
-    const stretch = 1 - sy;
-    const sx = 1 - stretch * 0.14;
-    const syScale = 1 + stretch * 0.22;
-    this.ball.scale.set(sx, syScale, sx);
-    this.ballOutline.scale.set(sx * 1.12, syScale * 1.12, sx * 1.12);
+    this.ballHalo.position.set(0, 0, 0.12);
 
-    this.ballMat.color.set(skin.color);
+    let sx = 1;
+    let sy = 1;
+    if (ball.squash < 0.94) {
+      const flat = ball.squash;
+      sx = 1 + (1 - flat) * 0.2;
+      sy = flat + (1 - flat) * 0.04;
+    } else if (ball.vy > 1.8) {
+      const st = ball.stretch;
+      sy = 1 + st;
+      sx = 1 - st * 0.38;
+    } else if (ball.vy < -1.8) {
+      const st = Math.min(0.1, Math.abs(ball.vy) / 32);
+      sy = 1 + st * 0.45;
+      sx = 1 - st * 0.22;
+    }
+    this.ball.scale.set(sx, sy, sx);
+    this.ballHalo.scale.set(sx * 1.05, sy * 1.05, sx * 1.05);
+    this.ball.rotation.x = ball.rollAngle * 0.35;
+    this.ball.rotation.z = ball.vy > 0 ? ball.rollAngle * 0.12 : -ball.rollAngle * 0.2;
+
+    const col = new THREE.Color(skin.color);
+    this.ballMat.color.copy(col);
     if (fever) {
       this.feverLight = Math.min(1, this.feverLight + dt * 3);
       this.ballMat.emissive.set(THEME.fever);
-      this.ballMat.emissiveIntensity = 0.7 + Math.sin(performance.now() * 0.014) * 0.18;
+      this.ballMat.emissiveIntensity = 0.55 + Math.sin(performance.now() * 0.014) * 0.15;
       this.ballGlow.color.set(THEME.fever);
-      this.ballGlow.intensity = 2.1;
-      if (this.bloomPass) this.bloomPass.strength = 0.42;
+      this.ballGlow.intensity = 1.8;
+      (this.ballHalo.material as THREE.MeshBasicMaterial).color.set(THEME.fever);
+      (this.ballHalo.material as THREE.MeshBasicMaterial).opacity = 0.22 + this.feverLight * 0.12;
+      if (this.bloomPass) this.bloomPass.strength = 0.48;
     } else {
       this.feverLight = Math.max(0, this.feverLight - dt * 4);
-      this.ballMat.emissive.set(0x442244);
-      this.ballMat.emissiveIntensity = 0.3;
-      this.ballGlow.color.set(skin.color);
-      this.ballGlow.intensity = 1;
-      if (this.bloomPass) this.bloomPass.strength = 0.28;
+      this.ballMat.emissive.copy(col).multiplyScalar(0.22);
+      this.ballMat.emissiveIntensity = 0.2 + Math.min(0.15, combo * 0.02);
+      this.ballGlow.color.copy(col);
+      this.ballGlow.intensity = 0.75 + Math.min(0.35, Math.abs(ball.vy) * 0.025);
+      (this.ballHalo.material as THREE.MeshBasicMaterial).color.copy(col);
+      const fallGlow = ball.vy > 3 ? Math.min(0.2, (ball.vy - 3) * 0.018) : 0;
+      (this.ballHalo.material as THREE.MeshBasicMaterial).opacity = 0.1 + fallGlow;
+      if (this.bloomPass) this.bloomPass.strength = 0.3 + Math.min(0.08, Math.abs(ball.vy) * 0.003);
     }
 
     this.pillar.position.y = 0;
-    this.trail.push(Math.abs(ball.vy), skin.color, combo, fever);
-    this.speedLines.setIntensity(combo, fever);
+    this.trail.push(ball.vy, skin.color, combo, fever);
+    this.speedLines.setIntensity(combo, fever, ball.vy);
   }
 
   addLandingSplat(ringId: number, color: string, towerAngle: number): void {

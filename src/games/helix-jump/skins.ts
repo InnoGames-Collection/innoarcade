@@ -8,7 +8,7 @@ export interface BallSkin {
 }
 
 export const BALL_SKINS: BallSkin[] = [
-  { id: 'classic', name: 'Classic', color: '#ffffff', cost: 0 },
+  { id: 'classic', name: 'Violet', color: '#b24bf3', cost: 0 },
   { id: 'bubblegum', name: 'Bubblegum', color: '#ff5c8a', cost: 0 },
   { id: 'ocean', name: 'Ocean', color: '#00d4ff', cost: 150 },
   { id: 'sunburst', name: 'Sunburst', color: '#ffd93d', cost: 200 },

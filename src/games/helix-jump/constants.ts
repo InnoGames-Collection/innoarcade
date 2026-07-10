@@ -26,14 +26,22 @@ export const DANGER_TOLERANCE = 0.035;
 export const GAP_PASS_TOLERANCE = 0.04;
 export const SOLID_EDGE_INSET = 0.07;
 
-export const GRAVITY_BASE = 24;
-/** Impact speed before high-drop extra pop kicks in. */
-export const BOUNCE_VEL = 14;
-/** Target upward speed after bounce — apex ≈ 1.7–2× ball diameter at GRAVITY_BASE. */
-export const BOUNCE_UP_VEL = 10.0;
-export const BOUNCE_UP_MAX = 11.5;
-/** Extra pop coefficient for impacts above BOUNCE_VEL. */
-export const BOUNCE_RESTITUTION = 0.22;
+export const GRAVITY_BASE = 26;
+/** Impact speed before high-drop extra pop kicks in (reference uses near-constant bounce). */
+export const BOUNCE_VEL = 16;
+/** Target upward speed after bounce — reference: uniform rhythmic hop. */
+export const BOUNCE_UP_VEL = 9.2;
+export const BOUNCE_UP_MAX = 9.6;
+/** Minimal extra pop — reference bounce height stays consistent. */
+export const BOUNCE_RESTITUTION = 0.08;
+/** Cap downward speed — reference falls fast but controlled. */
+export const FALL_TERMINAL_VY = 26;
+/** Velocity at which fall stretch peaks. */
+export const FALL_STRETCH_SPEED = 14;
+export const BALL_STRETCH_MAX = 0.22;
+export const BALL_ROLL_RATE = 5.2;
+export const BALL_SQUASH_MIN = 0.72;
+export const BALL_SQUASH_MAX = 1.06;
 export const CAM_FOV = 44;
 /** Screen framing — ball sits in upper-middle third (reference). */
 export const CAM_OFFSET = 0.44;
