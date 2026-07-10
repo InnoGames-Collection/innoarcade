@@ -1,10 +1,16 @@
 import * as THREE from 'three';
+import { CAM_OFFSET, H } from './constants';
 
-/** Fixed view — ball stays centered; only the tower scrolls. */
+const WORLD_PER_PX = 0.018;
+
+/**
+ * Ball-fixed camera: ball stays centered on screen.
+ * Vertical scroll is simulated by moving platforms; camera adds smooth follow feel.
+ */
 export class CameraController {
-  /** Gameplay depth tracker (matches ball.y). */
   y = 0;
   shake = 0;
+  private vel = 0;
   private shakeX = 0;
   private shakeY = 0;
 
@@ -24,11 +30,14 @@ export class CameraController {
     this.camera.updateProjectionMatrix();
   }
 
-  /** Track ball depth for recycle / death checks only. */
-  follow(ballY: number, _ballVy: number, dt: number): void {
-    const stiffness = 28;
-    const diff = ballY - this.y;
-    this.y += diff * Math.min(1, stiffness * dt);
+  follow(ballY: number, ballVy: number, dt: number): void {
+    const lookAhead = Math.max(-1.5, Math.min(1.2, ballVy * 0.04));
+    const target = ballY - H * CAM_OFFSET * WORLD_PER_PX + lookAhead;
+    const stiffness = 36;
+    const damping = 11;
+    const diff = target - this.y;
+    this.vel += (diff * stiffness - this.vel * damping) * dt;
+    this.y += this.vel * dt;
   }
 
   addShake(amount: number): void {
@@ -48,22 +57,25 @@ export class CameraController {
   }
 
   applyView(): void {
+    const scrollY = -this.y * 0.04;
     this.camera.position.set(
       this.shakeX,
-      CameraController.CAM_Y + this.shakeY,
+      CameraController.CAM_Y + this.shakeY + scrollY * 0.15,
       CameraController.CAM_Z,
     );
-    this.camera.lookAt(this.shakeX * 0.25, 0, 0);
+    this.camera.lookAt(this.shakeX * 0.25, scrollY * 0.1, 0);
   }
 
   reset(): void {
     this.y = 0;
+    this.vel = 0;
     this.shake = 0;
     this.shakeX = 0;
     this.shakeY = 0;
   }
 
   snapTo(ballY: number): void {
-    this.y = ballY;
+    this.y = ballY - H * CAM_OFFSET * WORLD_PER_PX;
+    this.vel = 0;
   }
 }

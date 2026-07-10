@@ -7,7 +7,7 @@ import type { Action } from '../../engine/input';
 import { mulberry32 } from '../_lq/lq';
 import { CameraController } from './camera';
 import {
-  COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD, RING_COLORS, THEME, BALL_R,
+  COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD, RING_COLORS, RING_HEIGHT, THEME, BALL_R,
 } from './constants';
 import {
   applyBounce,
@@ -15,6 +15,7 @@ import {
   findSweepCollision,
   gravityForDepth,
   integrateBall,
+  restYOnPlatform,
   substepCount,
 } from './physics';
 import { drawFlash, drawHud } from './renderer';
@@ -85,14 +86,14 @@ export class HelixJump {
     this.world.clear();
     this.cleared.clear();
     this.cfg = towerConfigForDepth(0);
-    const firstRingY = 5.5;
+    const firstRingY = this.cfg.spacing * 2.15;
     let prev: Ring | undefined;
     for (let i = 0; i < 24; i++) {
       const ring = createRing(firstRingY + i * this.cfg.spacing, this.rnd, this.cfg, prev);
       this.rings.push(ring);
       prev = ring;
     }
-    const spawnY = firstRingY - this.cfg.spacing * 0.42;
+    const spawnY = firstRingY - BALL_R - RING_HEIGHT * 1.2;
     this.ball = {
       y: spawnY,
       vy: 0,
@@ -156,21 +157,7 @@ export class HelixJump {
     if (this.state !== 'playing') return;
 
     const capped = Math.min(dt, 1 / 45);
-    this.camera.update(capped);
     this.rotation.update(capped);
-    this.world.updateEffects(capped);
-
-    if (this.flashAlpha > 0) {
-      this.flashAlpha = Math.max(0, this.flashAlpha - capped * 2.5);
-    }
-
-    if (this.feverLeft > 0) this.feverLeft -= capped;
-
-    for (const ring of this.rings) {
-      if (ring.breakAnim > 0 && ring.breakAnim < 1) {
-        ring.breakAnim = Math.min(1, ring.breakAnim + capped * 4);
-      }
-    }
 
     const gravity = gravityForDepth(this.depth, this.fallMul);
     const steps = substepCount(this.ball.vy, capped);
@@ -187,15 +174,26 @@ export class HelixJump {
     this.fallMul = Math.max(1, this.fallMul - capped * 0.1);
 
     this.camera.follow(this.ball.y, this.ball.vy, capped);
+    this.camera.update(capped);
     this.recycleRings();
 
     const fever = this.feverLeft > 0;
     this.world.setTowerAngle(this.rotation.angle);
     this.world.updateBall(this.ball, this.skin, fever, capped);
     this.world.syncRings(this.rings, this.cfg.gapArc, this.ball.y);
+    this.world.updateEffects(capped);
 
-    const lastRing = this.rings[this.rings.length - 1];
-    if (lastRing && this.ball.y > lastRing.y + 8) this.die();
+    if (this.flashAlpha > 0) {
+      this.flashAlpha = Math.max(0, this.flashAlpha - capped * 2.5);
+    }
+
+    if (this.feverLeft > 0) this.feverLeft -= capped;
+
+    for (const ring of this.rings) {
+      if (ring.breakAnim > 0 && ring.breakAnim < 1) {
+        ring.breakAnim = Math.min(1, ring.breakAnim + capped * 4);
+      }
+    }
   }
 
   render(): void {
@@ -215,7 +213,6 @@ export class HelixJump {
       prevY,
       this.rings,
       this.rotation.angle,
-      this.ball.y,
       this.cfg.gapArc,
       feverActive,
     );
@@ -280,7 +277,7 @@ export class HelixJump {
     if (hit.bounced) {
       const impact = this.ball.vy;
       applyBounce(this.ball, impact);
-      this.ball.y = hit.ring.y - BALL_R * 0.35;
+      this.ball.y = restYOnPlatform(hit.ring.y);
       const landShake = 0.08 + Math.min(0.12, Math.abs(impact) / 40);
       this.camera.addShake(landShake);
       this.world.particles.landing(0, ry, 0, this.skin.color);

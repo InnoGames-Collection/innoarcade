@@ -1,9 +1,9 @@
 import { BALL_R, BOUNCE_VEL, GRAVITY_BASE, RING_HEIGHT } from './constants';
 import type { BallState, CollisionHit, Ring } from './types';
 
-const MIN_GAP_ARC = 0.78;
-const BOUNCE_RESTITUTION = 0.58;
-const PERFECT_WINDOW = 0.08;
+const BOUNCE_RESTITUTION = 0.62;
+const GAP_TOLERANCE = 0.06;
+const PLATFORM_TOP = RING_HEIGHT * 0.5;
 
 function normalizeAngle(a: number): number {
   let r = a;
@@ -12,13 +12,15 @@ function normalizeAngle(a: number): number {
   return r;
 }
 
-function ballAngle(towerAngle: number): number {
-  return normalizeAngle(-Math.PI / 2 - towerAngle);
+/** Ball is fixed at the bottom of the screen (-Z). Tower rotates around Y. */
+export function ballAngle(towerAngle: number): number {
+  return normalizeAngle(towerAngle - Math.PI / 2);
 }
 
-function inGap(rel: number, gapArc: number): boolean {
-  const g = Math.max(MIN_GAP_ARC, gapArc);
-  return rel < g || rel > Math.PI * 2 - g * 0.28;
+/** Gap spans gapStart → gapStart + gapArc (matches platform geometry). */
+function inGap(ballAng: number, gapStart: number, gapArc: number): boolean {
+  const rel = normalizeAngle(ballAng - gapStart);
+  return rel < gapArc + GAP_TOLERANCE;
 }
 
 export function gravityForDepth(passed: number, fallMul: number): number {
@@ -47,57 +49,54 @@ function evaluateRing(
   towerAngle: number,
   gapArc: number,
   feverActive: boolean,
-  screenY: number,
 ): CollisionHit | null {
   const ang = ballAngle(towerAngle);
-  const rel = normalizeAngle(ang - ring.gapStart);
-  const passedGap = inGap(rel, gapArc);
-  const dist = Math.abs(ball.y - ring.y);
-  const perfect = dist < PERFECT_WINDOW && ball.vy > 4;
+  const passedGap = inGap(ang, ring.gapStart, gapArc);
+  const perfect = Math.abs(ball.y - ring.y) < 0.06 && ball.vy > 3;
 
   if (passedGap) {
-    return { ring, screenY, passedGap: true, bounced: false, smashed: false, died: false, perfect };
+    return { ring, screenY: ring.y - ball.y, passedGap: true, bounced: false, smashed: false, died: false, perfect };
   }
   if (ring.danger) {
-    return { ring, screenY, passedGap: false, bounced: false, smashed: false, died: true, perfect: false };
+    return { ring, screenY: ring.y - ball.y, passedGap: false, bounced: false, smashed: false, died: true, perfect: false };
   }
   if (feverActive) {
-    return { ring, screenY, passedGap: false, bounced: false, smashed: true, died: false, perfect };
+    return { ring, screenY: ring.y - ball.y, passedGap: false, bounced: false, smashed: true, died: false, perfect };
   }
-  return { ring, screenY, passedGap: false, bounced: true, smashed: false, died: false, perfect };
+  return { ring, screenY: ring.y - ball.y, passedGap: false, bounced: true, smashed: false, died: false, perfect };
 }
 
-/** Swept collision — finds the closest ring crossed between prevY and ball.y. */
+/** Swept collision — finds the topmost ring the ball crosses while falling. */
 export function findSweepCollision(
   ball: BallState,
   prevY: number,
   rings: Ring[],
   towerAngle: number,
-  _camY: number,
   gapArc: number,
   feverActive: boolean,
 ): CollisionHit | null {
   if (ball.vy <= 0) return null;
 
   let best: CollisionHit | null = null;
-  let bestRingY = Infinity;
-  const hitPad = BALL_R + RING_HEIGHT * 0.55;
+  let bestRingY = -Infinity;
+  const hitPad = BALL_R + PLATFORM_TOP;
 
   for (const ring of rings) {
     if (ring.broken) continue;
     const ringY = ring.y;
-    if (ringY > ball.y + hitPad) continue;
+
+    // Ring must be at or below previous position and reachable this step.
+    if (ringY > ball.y + hitPad * 0.5) continue;
     if (ringY < prevY - hitPad) continue;
 
-    const crossed = prevY <= ringY && ball.y >= ringY;
-    const touching = Math.abs(ball.y - ringY) <= hitPad;
-    if (!crossed && !touching) continue;
+    const crossed = prevY <= ringY + PLATFORM_TOP && ball.y >= ringY - PLATFORM_TOP;
+    if (!crossed) continue;
 
-    const screenY = ringY - ball.y;
-    const hit = evaluateRing(ball, ring, towerAngle, gapArc, feverActive, screenY);
+    const hit = evaluateRing(ball, ring, towerAngle, gapArc, feverActive);
     if (!hit) continue;
 
-    if (ringY < bestRingY) {
+    // Nearest ring below the ball (highest ringY still under the ball).
+    if (ringY > bestRingY) {
       bestRingY = ringY;
       best = hit;
     }
@@ -113,13 +112,18 @@ export function applyBounce(ball: BallState, impactSpeed: number): void {
   ball.squashVel = -3.2;
 }
 
+/** Resting Y on top of a platform (gameplay Y grows downward). */
+export function restYOnPlatform(ringY: number): number {
+  return ringY - BALL_R - PLATFORM_TOP;
+}
+
 export function applyFallBoost(ball: BallState, combo: number): void {
   const boost = 1.2 + Math.min(combo, 8) * 0.55;
   if (ball.vy > 0) ball.vy += boost;
 }
 
 export function substepCount(vy: number, dt: number): number {
-  return Math.max(1, Math.min(8, Math.ceil(Math.abs(vy) * dt / 0.35)));
+  return Math.max(1, Math.min(10, Math.ceil(Math.abs(vy) * dt / 0.25)));
 }
 
-export { ballAngle, normalizeAngle };
+export { normalizeAngle };

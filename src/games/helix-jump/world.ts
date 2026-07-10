@@ -28,6 +28,7 @@ export class HelixWorld {
   readonly shards: SmashShards;
   readonly trail: BallTrail;
 
+  private readonly helix = new THREE.Group();
   private readonly tower = new THREE.Group();
   private readonly ball: THREE.Mesh;
   private readonly ballOutline: THREE.Mesh;
@@ -111,9 +112,9 @@ export class HelixWorld {
     );
     this.pillar.castShadow = true;
     this.pillar.receiveShadow = true;
-    this.scene.add(this.pillar);
-
-    this.scene.add(this.tower);
+    this.helix.add(this.pillar);
+    this.helix.add(this.tower);
+    this.scene.add(this.helix);
 
     const ballGeo = new THREE.SphereGeometry(BALL_R, 32, 32);
     this.ballMat = new THREE.MeshStandardMaterial({
@@ -278,7 +279,7 @@ export class HelixWorld {
   }
 
   setTowerAngle(angle: number): void {
-    this.tower.rotation.y = -angle;
+    this.helix.rotation.y = -angle;
   }
 
   flash(color: string, amount: number): void {
