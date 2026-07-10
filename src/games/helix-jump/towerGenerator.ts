@@ -24,7 +24,7 @@ export function towerConfigForDepth(passed: number): TowerConfig {
 let nextRingId = 1;
 
 function gapIsFair(gapArc: number): boolean {
-  const solidArc = Math.PI * 2 - gapArc * 1.22;
+  const solidArc = Math.PI * 2 - gapArc;
   return solidArc >= MIN_SOLID && gapArc >= MIN_GAP;
 }
 

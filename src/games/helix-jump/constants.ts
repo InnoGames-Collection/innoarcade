@@ -7,21 +7,34 @@ export const CX = W / 2;
 /** World units — Y increases downward in gameplay space. */
 export const BALL_R = 0.55;
 export const RING_R = 4.05;
-/** Hollow shaft — smaller than the ball so the ball rests on platform inner rim. */
-export const RING_INNER = 0.30;
+/** Thick central pillar — reference ball ≈ ⅓ pillar width. */
+export const PILLAR_R = 0.82;
+/** Platform inner lip hugs the pillar; ball rests on this rim, not the shaft. */
+export const RING_INNER = PILLAR_R + 0.04;
 export const RING_THICKNESS = 0.62;
-export const RING_HEIGHT = 0.34;
-export const PILLAR_R = 0.20;
-/** Ball sits on platform ring, offset from thin pillar axis (reference Helix Jump). */
-export const BALL_CONTACT_R = RING_INNER + BALL_R * 0.38;
-export const GAP_ARC = 1.12;
+export const RING_HEIGHT = 0.38;
+/** Radial offset: ball center on platform top at inner rim (camera-facing side). */
+export const BALL_CONTACT_R = RING_INNER + BALL_R * 0.95;
+/** Camera-facing contact angle — ball fixed south of helix axis. */
+export const BALL_CONTACT_ANGLE = -Math.PI / 2;
+export const GAP_ARC = 1.08;
+/** Angular grace when gap-aligned — generous pass, tight solid edge. */
+export const GAP_PASS_TOLERANCE = 0.04;
+export const SOLID_EDGE_INSET = 0.07;
 
-export const GRAVITY_BASE = 26;
-export const BOUNCE_VEL = 11.5;
+export const GRAVITY_BASE = 24;
+/** Impact speed before high-drop extra pop kicks in. */
+export const BOUNCE_VEL = 14;
+/** Target upward speed after bounce — apex ≈ 1.7–2× ball diameter at GRAVITY_BASE. */
+export const BOUNCE_UP_VEL = 10.0;
+export const BOUNCE_UP_MAX = 11.5;
+/** Extra pop coefficient for impacts above BOUNCE_VEL. */
+export const BOUNCE_RESTITUTION = 0.22;
 export const CAM_LERP = 7.2;
 export const CAM_OFFSET = 0.38;
 
-export const RING_SPACING_BASE = 2.55;
+/** ~2.2× ball diameter — matches reference platform spacing. */
+export const RING_SPACING_BASE = 2.38;
 export const FEVER_THRESHOLD = 4;
 export const FEVER_DURATION = 2.8;
 export const COMBO_CAP = 8;

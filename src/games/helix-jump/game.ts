@@ -7,11 +7,13 @@ import type { Action } from '../../engine/input';
 import { mulberry32 } from '../_lq/lq';
 import { CameraController } from './camera';
 import {
-  BALL_CONTACT_R, COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD, RING_COLORS, RING_HEIGHT, THEME, BALL_R,
+  BALL_CONTACT_ANGLE, BALL_CONTACT_R, COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD,
+  RING_COLORS, RING_HEIGHT, THEME, BALL_R,
 } from './constants';
 import {
   applyBounce,
   applyFallBoost,
+  clearYThroughRing,
   findSweepCollision,
   gravityForDepth,
   integrateBall,
@@ -217,15 +219,19 @@ export class HelixJump {
       this.rotation.angle,
       this.cfg.gapArc,
       feverActive,
+      this.cleared,
     );
     if (!hit) return;
 
     const wy = hit.ring.y;
     const ry = this.world.ringOffset(this.ball.y, wy);
-    const px = 0;
-    const pz = -BALL_CONTACT_R;
+    const px = Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
+    const pz = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
 
     if (hit.passedGap) {
+      const throughY = clearYThroughRing(wy);
+      if (this.ball.y < throughY) this.ball.y = throughY;
+
       if (!this.cleared.has(hit.ring.id)) {
         this.cleared.add(hit.ring.id);
         this.combo++;
@@ -312,7 +318,14 @@ export class HelixJump {
     this.flashColor = 'rgba(229,57,53,0.45)';
     this.flashAlpha = 0.5;
     this.world.flash('#e53935', 0.45);
-    this.world.particles.burst(0, 0, -BALL_CONTACT_R, THEME.danger, 22, 7);
+    this.world.particles.burst(
+      Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
+      0,
+      Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
+      THEME.danger,
+      22,
+      7,
+    );
     vibrate(35);
 
     const result = recordPlay(this.score);

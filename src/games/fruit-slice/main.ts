@@ -27,6 +27,10 @@ let phase: Phase = 'menu';
 let rankedThisRun = false;
 let starting = false;
 let toastT = 0;
+let lastScore = 0;
+let lastCombo = 0;
+let menuBgCanvas: HTMLCanvasElement | null = null;
+let menuBgCtx: CanvasRenderingContext2D | null = null;
 
 const canvas = $('#game') as unknown as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
@@ -56,15 +60,34 @@ function canvasLayout(): { scale: number; offX: number; offY: number } {
 
 const game = new FruitSlice();
 
+function ensureMenuBg(): void {
+  if (menuBgCanvas) return;
+  const backdrop = document.getElementById('fsBackdrop');
+  if (!backdrop) return;
+  menuBgCanvas = document.createElement('canvas');
+  menuBgCanvas.className = 'fs-menu-bg-canvas';
+  menuBgCanvas.width = Math.round(W * dpr);
+  menuBgCanvas.height = Math.round(H * dpr);
+  backdrop.prepend(menuBgCanvas);
+  menuBgCtx = menuBgCanvas.getContext('2d');
+}
+
+function renderMenuBg(): void {
+  if (phase !== 'menu' || !menuBgCtx || !menuBgCanvas) return;
+  menuBgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  game.renderMenuBg(menuBgCtx);
+}
+
 function renderFrame(): void {
   const { scale, offX, offY } = canvasLayout();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#2d1b4e';
+  ctx.fillStyle = '#4db8ff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   const s = scale * dpr;
   ctx.setTransform(s, 0, 0, s, offX * dpr, offY * dpr);
   game.render(ctx);
   if (game.state === 'playing' || game.state === 'paused') updatePlayHud();
+  if (phase === 'menu') renderMenuBg();
 }
 
 resizeCanvas();
@@ -185,12 +208,47 @@ function fmtTime(s: number): string {
   return `${m}:${ss.toString().padStart(2, '0')}`;
 }
 
+function popStat(el: HTMLElement): void {
+  el.classList.remove('fs-stat-pop');
+  void el.offsetWidth;
+  el.classList.add('fs-stat-pop');
+}
+
+function sparkleStat(el: HTMLElement): void {
+  el.classList.remove('fs-stat-sparkle');
+  void el.offsetWidth;
+  el.classList.add('fs-stat-sparkle');
+}
+
 function updatePlayHud(): void {
   const elapsed = game.elapsedSeconds();
   $('#fsTime').textContent = fmtTime(elapsed);
-  $('#fsScore').textContent = String(game.score);
+
+  const scoreEl = $('#fsScore');
+  if (game.score !== lastScore) {
+    scoreEl.textContent = String(game.score);
+    popStat(scoreEl.closest('.fs-stat') as HTMLElement);
+    sparkleStat(scoreEl);
+    lastScore = game.score;
+  }
+
   $('#fsLives').textContent = String(game.lives);
-  $('#fsCombo').textContent = game.combo > 1 ? `${game.combo}×` : '—';
+
+  const comboEl = $('#fsCombo');
+  const comboStat = comboEl.closest('.fs-stat') as HTMLElement;
+  if (game.combo !== lastCombo) {
+    comboEl.textContent = game.combo > 1 ? `${game.combo}×` : '—';
+    if (game.combo > 1) {
+      popStat(comboStat);
+      comboStat.classList.toggle('fs-combo-hot', game.combo >= 3);
+      comboStat.classList.toggle('fs-combo-fire', game.combo >= 5);
+      comboStat.classList.toggle('fs-combo-gold', game.combo >= 10);
+      comboStat.classList.toggle('fs-combo-rainbow', game.combo >= 20);
+    } else {
+      comboStat.classList.remove('fs-combo-hot', 'fs-combo-fire', 'fs-combo-gold', 'fs-combo-rainbow');
+    }
+    lastCombo = game.combo;
+  }
 }
 
 async function refreshTournamentPanel(): Promise<void> {
@@ -326,6 +384,7 @@ const loop = new GameLoop(
 
 document.documentElement.lang = getLang();
 applyTranslations();
+ensureMenuBg();
 setPhase('menu');
 loop.start();
 

@@ -10,7 +10,7 @@ function geoKey(start: number, arc: number): string {
 }
 
 export function platformArc(gapArc: number): number {
-  return Math.PI * 2 - gapArc * 1.22;
+  return Math.PI * 2 - gapArc;
 }
 
 export function createPlatformGeometry(startAngle: number, arcLength: number): THREE.BufferGeometry {

@@ -1,9 +1,12 @@
-import { BALL_R, BOUNCE_VEL, GRAVITY_BASE, RING_HEIGHT } from './constants';
+import {
+  BALL_CONTACT_ANGLE, BALL_R, BOUNCE_RESTITUTION, BOUNCE_UP_MAX, BOUNCE_UP_VEL,
+  BOUNCE_VEL, GAP_PASS_TOLERANCE, GRAVITY_BASE, RING_HEIGHT, SOLID_EDGE_INSET,
+} from './constants';
 import type { BallState, CollisionHit, Ring } from './types';
 
-const BOUNCE_RESTITUTION = 0.62;
-const GAP_TOLERANCE = 0.06;
 const PLATFORM_TOP = RING_HEIGHT * 0.5;
+/** Substep distance — smaller = more accurate collision at high fall speed. */
+const SUBSTEP_DIST = 0.18;
 
 function normalizeAngle(a: number): number {
   let r = a;
@@ -12,19 +15,25 @@ function normalizeAngle(a: number): number {
   return r;
 }
 
-/** Ball is fixed south of helix axis (-Z). Tower rotates around axis origin. */
+/** Ball is fixed at BALL_CONTACT_ANGLE from helix axis. Tower rotates around axis origin. */
 export function ballAngle(towerAngle: number): number {
-  return normalizeAngle(towerAngle - Math.PI / 2);
+  return normalizeAngle(towerAngle + BALL_CONTACT_ANGLE);
 }
 
-/** Gap spans gapStart → gapStart + gapArc (matches platform geometry). */
-function inGap(ballAng: number, gapStart: number, gapArc: number): boolean {
+/** Gap spans gapStart → gapStart + gapArc (matches platform geometry exactly). */
+export function inGap(ballAng: number, gapStart: number, gapArc: number): boolean {
   const rel = normalizeAngle(ballAng - gapStart);
-  return rel < gapArc + GAP_TOLERANCE;
+  return rel < gapArc + GAP_PASS_TOLERANCE;
+}
+
+/** Solid segment — requires clear contact past gap edge to avoid false bounces. */
+export function onSolid(ballAng: number, gapStart: number, gapArc: number): boolean {
+  const rel = normalizeAngle(ballAng - gapStart);
+  return rel >= gapArc - SOLID_EDGE_INSET;
 }
 
 export function gravityForDepth(passed: number, fallMul: number): number {
-  return (GRAVITY_BASE + Math.min(14, passed * 0.12)) * fallMul;
+  return (GRAVITY_BASE + Math.min(12, passed * 0.1)) * fallMul;
 }
 
 export function integrateBall(ball: BallState, gravity: number, dt: number): void {
@@ -57,6 +66,11 @@ function evaluateRing(
   if (passedGap) {
     return { ring, screenY: ring.y - ball.y, passedGap: true, bounced: false, smashed: false, died: false, perfect };
   }
+
+  if (!onSolid(ang, ring.gapStart, gapArc)) {
+    return { ring, screenY: ring.y - ball.y, passedGap: true, bounced: false, smashed: false, died: false, perfect: false };
+  }
+
   if (ring.danger) {
     return { ring, screenY: ring.y - ball.y, passedGap: false, bounced: false, smashed: false, died: true, perfect: false };
   }
@@ -74,6 +88,7 @@ export function findSweepCollision(
   towerAngle: number,
   gapArc: number,
   feverActive: boolean,
+  clearedIds?: ReadonlySet<number>,
 ): CollisionHit | null {
   if (ball.vy <= 0) return null;
 
@@ -83,19 +98,21 @@ export function findSweepCollision(
 
   for (const ring of rings) {
     if (ring.broken) continue;
+    if (clearedIds?.has(ring.id)) continue;
+
     const ringY = ring.y;
 
-    // Ring must be at or below previous position and reachable this step.
     if (ringY > ball.y + hitPad * 0.5) continue;
     if (ringY < prevY - hitPad) continue;
 
+    const surfaceY = ringY - BALL_R - PLATFORM_TOP;
     const crossed = prevY <= ringY + PLATFORM_TOP && ball.y >= ringY - PLATFORM_TOP;
-    if (!crossed) continue;
+    const landing = ball.vy > 0.4 && ball.y >= surfaceY - 0.05 && prevY <= surfaceY + 0.12;
+    if (!crossed && !landing) continue;
 
     const hit = evaluateRing(ball, ring, towerAngle, gapArc, feverActive);
     if (!hit) continue;
 
-    // Nearest ring below the ball (highest ringY still under the ball).
     if (ringY > bestRingY) {
       bestRingY = ringY;
       best = hit;
@@ -106,15 +123,27 @@ export function findSweepCollision(
 }
 
 export function applyBounce(ball: BallState, impactSpeed: number): void {
-  const speed = Math.max(Math.abs(impactSpeed), BOUNCE_VEL);
-  ball.vy = -speed * BOUNCE_RESTITUTION;
-  ball.squash = 0.6;
-  ball.squashVel = -3.2;
+  const impact = Math.abs(impactSpeed);
+  let upVel = BOUNCE_UP_VEL;
+  if (impact > BOUNCE_VEL) {
+    upVel = Math.min(
+      BOUNCE_UP_MAX,
+      BOUNCE_UP_VEL + (impact - BOUNCE_VEL) * BOUNCE_RESTITUTION,
+    );
+  }
+  ball.vy = -upVel;
+  ball.squash = 0.58;
+  ball.squashVel = -3.8;
 }
 
 /** Resting Y on top of a platform (gameplay Y grows downward). */
 export function restYOnPlatform(ringY: number): number {
   return ringY - BALL_R - PLATFORM_TOP;
+}
+
+/** Push ball center past a ring after gap pass — prevents re-collision same frame. */
+export function clearYThroughRing(ringY: number): number {
+  return ringY + PLATFORM_TOP + BALL_R * 0.1;
 }
 
 export function applyFallBoost(ball: BallState, combo: number): void {
@@ -123,7 +152,7 @@ export function applyFallBoost(ball: BallState, combo: number): void {
 }
 
 export function substepCount(vy: number, dt: number): number {
-  return Math.max(1, Math.min(10, Math.ceil(Math.abs(vy) * dt / 0.25)));
+  return Math.max(1, Math.min(12, Math.ceil(Math.abs(vy) * dt / SUBSTEP_DIST)));
 }
 
 export { normalizeAngle };

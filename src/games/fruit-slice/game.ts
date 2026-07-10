@@ -3,6 +3,15 @@
 
 import { sfx } from '../../engine/audio';
 import type { Action } from '../../engine/input';
+import { OrchardBackground } from './renderer/background';
+import {
+  createJuiceBurst, createBombBurst, updateParticles, drawParticles,
+  drawSliceTrail, drawComboEffect, drawFruitGlow, type VfxParticle,
+} from './renderer/effects';
+import {
+  drawFruit, drawBomb, drawSlicedHalf,
+  getFruitColor,
+} from './renderer/fruits';
 
 export const W = 480;
 export const H = 720;
@@ -32,6 +41,11 @@ interface Fruit {
   type: typeof FRUIT_TYPES[number];
   sliced: boolean;
   sliceTime: number;
+  // Visual-only
+  rot: number;
+  rotSpeed: number;
+  spawnAge: number;
+  scale: number;
 }
 
 interface Bomb {
@@ -40,17 +54,6 @@ interface Bomb {
   vx: number;
   vy: number;
   hit: boolean;
-}
-
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  size: number;
-  color: string;
 }
 
 interface Slice {
@@ -71,16 +74,19 @@ export class FruitSlice {
 
   private time = 0;
   private timeScoreBank = 0;
-  // Difficulty ramp: spawn rate + object speed scale up with elapsed time, so the
-  // endless run eventually outpaces the player (no hard end — you fail by misses).
   private speedMul = 1;
   private fruits: Fruit[] = [];
   private bombs: Bomb[] = [];
-  private particles: Particle[] = [];
+  private particles: VfxParticle[] = [];
   private slices: Slice[] = [];
   private screenShake = 0;
   private spawnCursor = 0;
   private currentSlice: Array<{ x: number; y: number }> = [];
+  private bg = new OrchardBackground();
+  private comboFlash = 0;
+  private lastCombo = 0;
+  private zoomScale = 1;
+  private ambientTimer = 0;
 
   start(): void {
     this.score = 0;
@@ -96,6 +102,10 @@ export class FruitSlice {
     this.screenShake = 0;
     this.spawnCursor = 0;
     this.currentSlice = [];
+    this.comboFlash = 0;
+    this.lastCombo = 0;
+    this.zoomScale = 1;
+    this.ambientTimer = 0;
     this.setState('playing');
   }
 
@@ -154,7 +164,6 @@ export class FruitSlice {
     }
   }
 
-  /** Elapsed run time in whole seconds (timer counts up). */
   elapsedSeconds(): number {
     return Math.floor(this.time);
   }
@@ -184,51 +193,28 @@ export class FruitSlice {
     this.combo += 1;
     this.score += this.fruitPoints();
     sfx.click();
-    this.burstFruit(fruit.x, fruit.y, this.getFruitColor(fruit.type));
+    createJuiceBurst(this.particles, fruit.x, fruit.y, fruit.type);
     this.screenShake = 0.1;
+    if (this.combo > this.lastCombo) {
+      this.comboFlash = 0.5;
+      this.lastCombo = this.combo;
+    }
   }
 
-  // Bombs cost points and reset combo; the run ends only when lives reach 0.
   private hitBomb(bomb: Bomb): void {
     if (bomb.hit) return;
     bomb.hit = true;
     this.combo = 0;
+    this.lastCombo = 0;
     this.score = Math.max(0, this.score - BOMB_PENALTY);
     sfx.jump();
-    this.burstFruit(bomb.x, bomb.y, '#ff4444');
+    createBombBurst(this.particles, bomb.x, bomb.y);
     this.screenShake = 0.2;
   }
 
-  private burstFruit(x: number, y: number, color: string): void {
-    const count = 8;
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-      const speed = 120 + Math.random() * 80;
-      this.particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 0,
-        maxLife: 0.5,
-        size: 6 + Math.random() * 3,
-        color,
-      });
-    }
-  }
-
-  private getFruitColor(type: typeof FRUIT_TYPES[number]): string {
-    const colors: Record<typeof FRUIT_TYPES[number], string> = {
-      apple: '#e63946',
-      banana: '#ffd60a',
-      cherry: '#a4161a',
-      orange: '#ff8c42',
-      peach: '#fdbcb4',
-    };
-    return colors[type];
-  }
-
   update(dt: number): void {
+    this.bg.update(dt, this.time);
+
     if (this.state !== 'playing') return;
 
     this.time += dt;
@@ -241,9 +227,10 @@ export class FruitSlice {
     }
 
     this.screenShake = Math.max(0, this.screenShake - dt * 8);
+    this.comboFlash = Math.max(0, this.comboFlash - dt * 2);
+    const targetZoom = this.combo >= 10 ? 1.02 : 1;
+    this.zoomScale += (targetZoom - this.zoomScale) * Math.min(1, dt * 6);
 
-    // Ramp difficulty with time: spawn faster + everything moves faster, so it
-    // becomes progressively harder to keep up (≈2× speed at 45s, 3× at 90s).
     this.speedMul = 1 + this.time / 45;
     const grav = 380 * this.speedMul;
 
@@ -258,6 +245,10 @@ export class FruitSlice {
         fruit.x += fruit.vx * dt;
         fruit.y += fruit.vy * dt;
         fruit.vy += grav * dt;
+        fruit.rot += fruit.rotSpeed * dt;
+        fruit.spawnAge += dt;
+        const bounceT = Math.min(1, fruit.spawnAge / 0.25);
+        fruit.scale = 0.85 + 0.15 * (1 - Math.pow(1 - bounceT, 3));
         const bounced = this.bounceInBounds(fruit.x, fruit.vx);
         fruit.x = bounced.x;
         fruit.vx = bounced.vx;
@@ -277,21 +268,35 @@ export class FruitSlice {
       }
     }
 
-    for (const p of this.particles) {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += 500 * dt;
-      p.life += dt;
+    updateParticles(this.particles, dt);
+
+    this.ambientTimer -= dt;
+    if (this.ambientTimer <= 0 && this.particles.length < 100) {
+      this.ambientTimer = 0.4 + Math.random() * 0.6;
+      this.particles.push({
+        x: Math.random() * W,
+        y: H * 0.75 + Math.random() * (H * 0.2),
+        vx: (Math.random() - 0.5) * 20,
+        vy: -10 - Math.random() * 20,
+        life: 0,
+        maxLife: 2 + Math.random() * 2,
+        size: 2 + Math.random() * 3,
+        color: 'rgba(255, 240, 180, 0.4)',
+        kind: 'glow',
+        rotation: 0,
+        rotSpeed: 0,
+      });
     }
 
     this.fruits = this.fruits.filter((f) => f.y < H + 50 && f.sliceTime < 0.3);
     this.bombs = this.bombs.filter((b) => b.y < H + 50);
     this.particles = this.particles.filter((p) => p.life < p.maxLife);
-    this.slices = this.slices.filter((s) => this.time - s.createdAt < 0.15);
+    this.slices = this.slices.filter((s) => this.time - s.createdAt < 0.2);
 
     if (this.fruits.some((f) => !f.sliced && f.y > H)) {
       this.lives -= 1;
       this.combo = 0;
+      this.lastCombo = 0;
       if (this.lives <= 0) {
         this.endRun();
       }
@@ -310,7 +315,14 @@ export class FruitSlice {
       this.bombs.push({ x, y: -20, vx, vy, hit: false });
     } else {
       const type = FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
-      this.fruits.push({ x, y: -20, vx, vy, type, sliced: false, sliceTime: 0 });
+      this.fruits.push({
+        x, y: -20, vx, vy, type,
+        sliced: false, sliceTime: 0,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 4,
+        spawnAge: 0,
+        scale: 0.85,
+      });
     }
   }
 
@@ -322,131 +334,82 @@ export class FruitSlice {
 
   render(ctx: CanvasRenderingContext2D): void {
     const shake = this.screenShake * 4;
+    const cx = W / 2;
+    const cy = H / 2;
+
     ctx.save();
     ctx.translate(
       shake * (Math.random() - 0.5),
       shake * (Math.random() - 0.5),
     );
 
-    // Sunset orchard backdrop
-    const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, '#2d1b4e');
-    sky.addColorStop(0.45, '#7b2d5e');
-    sky.addColorStop(0.75, '#d4593a');
-    sky.addColorStop(1, '#f2a541');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H);
+    if (this.zoomScale !== 1) {
+      ctx.translate(cx, cy);
+      ctx.scale(this.zoomScale, this.zoomScale);
+      ctx.translate(-cx, -cy);
+    }
 
-    // Sun glow low on the horizon
-    const sun = ctx.createRadialGradient(W / 2, H - 60, 20, W / 2, H - 60, 260);
-    sun.addColorStop(0, 'rgba(255, 230, 150, 0.55)');
-    sun.addColorStop(1, 'rgba(255, 230, 150, 0)');
-    ctx.fillStyle = sun;
-    ctx.fillRect(0, 0, W, H);
+    this.bg.render(ctx, this.time, 1.2);
 
-    // Rolling hill silhouettes
-    ctx.fillStyle = 'rgba(40, 20, 50, 0.45)';
-    ctx.beginPath();
-    ctx.moveTo(0, H);
-    ctx.quadraticCurveTo(W * 0.25, H - 90, W * 0.55, H - 40);
-    ctx.quadraticCurveTo(W * 0.8, H - 5, W, H - 50);
-    ctx.lineTo(W, H);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(30, 15, 40, 0.35)';
-    ctx.beginPath();
-    ctx.moveTo(0, H);
-    ctx.quadraticCurveTo(W * 0.35, H - 50, W * 0.7, H - 80);
-    ctx.quadraticCurveTo(W * 0.9, H - 95, W, H - 70);
-    ctx.lineTo(W, H);
-    ctx.closePath();
-    ctx.fill();
+    ctx.save();
+    ctx.filter = 'blur(0.8px)';
+    ctx.globalAlpha = 0.15;
+    this.bg.render(ctx, this.time, 0);
+    ctx.restore();
 
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
     ctx.clip();
 
+    const warmLight = ctx.createRadialGradient(W * 0.7, 80, 20, W * 0.5, H * 0.4, 400);
+    warmLight.addColorStop(0, 'rgba(255, 240, 180, 0.12)');
+    warmLight.addColorStop(1, 'rgba(255, 240, 180, 0)');
+    ctx.fillStyle = warmLight;
+    ctx.fillRect(0, 0, W, H);
+
     for (const bomb of this.bombs) {
-      ctx.fillStyle = '#333';
-      ctx.beginPath();
-      ctx.arc(bomb.x, bomb.y, BOMB_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = '20px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('💣', bomb.x, bomb.y);
+      if (!bomb.hit) drawBomb(ctx, bomb.x, bomb.y, BOMB_RADIUS, this.time);
     }
 
     for (const fruit of this.fruits) {
-      if (fruit.sliced) continue;
-      ctx.save();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = this.getFruitColor(fruit.type);
-      ctx.beginPath();
-      ctx.arc(fruit.x, fruit.y, FRUIT_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = '24px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const emoji = this.getFruitEmoji(fruit.type);
-      ctx.fillText(emoji, fruit.x, fruit.y);
-      ctx.restore();
+      if (fruit.sliced) {
+        const alpha = Math.max(0, 1 - fruit.sliceTime / 0.3);
+        const offset = fruit.sliceTime * 60;
+        drawSlicedHalf(ctx, fruit.x - offset, fruit.y + offset * 0.3, FRUIT_RADIUS, fruit.type, -1, alpha);
+        drawSlicedHalf(ctx, fruit.x + offset, fruit.y + offset * 0.3, FRUIT_RADIUS, fruit.type, 1, alpha);
+        continue;
+      }
+      drawFruitGlow(ctx, fruit.x, fruit.y, FRUIT_RADIUS, getFruitColor(fruit.type));
+      drawFruit(ctx, fruit.x, fruit.y, FRUIT_RADIUS, fruit.type, fruit.rot, fruit.scale);
     }
 
     for (const s of this.slices) {
       const age = this.time - s.createdAt;
-      const alpha = Math.max(0, 1 - age / 0.15);
-      ctx.strokeStyle = `rgba(255, 200, 0, ${alpha * 0.8})`;
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      for (let i = 0; i < s.points.length; i++) {
-        const p = s.points[i];
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      }
-      ctx.stroke();
+      drawSliceTrail(ctx, s.points, age, 0.2);
     }
 
     if (this.currentSlice.length > 1) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(this.currentSlice[0].x, this.currentSlice[0].y);
-      for (let i = 1; i < this.currentSlice.length; i++) {
-        ctx.lineTo(this.currentSlice[i].x, this.currentSlice[i].y);
-      }
-      ctx.stroke();
+      drawSliceTrail(ctx, this.currentSlice, 0, 0.25);
     }
 
-    for (const p of this.particles) {
-      const alpha = 1 - p.life / p.maxLife;
-      ctx.fillStyle = p.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * Math.max(0, 1 - p.life / p.maxLife), 0, Math.PI * 2);
-      ctx.fill();
-    }
+    drawParticles(ctx, this.particles);
+
+    drawComboEffect(ctx, this.combo, this.comboFlash, W / 2, H * 0.35);
 
     ctx.restore();
-
     ctx.restore();
   }
 
-  private getFruitEmoji(type: typeof FRUIT_TYPES[number]): string {
-    const emojis: Record<typeof FRUIT_TYPES[number], string> = {
-      apple: '🍎',
-      banana: '🍌',
-      cherry: '🍒',
-      orange: '🍊',
-      peach: '🍑',
-    };
-    return emojis[type];
+  /** Render background only — used for menu backdrop. */
+  renderMenuBg(ctx: CanvasRenderingContext2D): void {
+    this.bg.update(0.016, this.time);
+    this.time += 0.016;
+    this.bg.render(ctx, this.time, 2.5);
+    const overlay = ctx.createLinearGradient(0, 0, 0, H);
+    overlay.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+    overlay.addColorStop(1, 'rgba(255, 255, 255, 0.35)');
+    ctx.fillStyle = overlay;
+    ctx.fillRect(0, 0, W, H);
   }
 }

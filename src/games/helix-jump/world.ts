@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  BALL_CONTACT_R, BALL_R, H, PILLAR_R, THEME, W,
+  BALL_CONTACT_ANGLE, BALL_CONTACT_R, BALL_R, H, PILLAR_R, THEME, W,
 } from './constants';
 import {
   BallTrail, ParticleSystem, SmashShards,
@@ -105,7 +105,7 @@ export class HelixWorld {
     this.scene.add(ground);
 
     this.pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(PILLAR_R, PILLAR_R * 1.05, 200, 20),
+      new THREE.CylinderGeometry(PILLAR_R * 1.04, PILLAR_R, 200, 28),
       new THREE.MeshStandardMaterial({
         color: THEME.pillar,
         roughness: 0.28,
@@ -114,17 +114,16 @@ export class HelixWorld {
     );
     this.pillar.castShadow = true;
     this.pillar.receiveShadow = true;
-    // Helix pivot: thin central column + platforms rotate together.
+    // Helix pivot: thick central pillar + platforms rotate together.
     this.helix.add(this.pillar);
     this.helix.add(this.tower);
     this.scene.add(this.helix);
 
-    // Ball on platform contact ring (south / camera side), not on pillar axis.
-    const contactAngle = -Math.PI / 2;
+    // Ball on platform inner rim (camera side) — separate pivot from helix rotation.
     this.ballRig.position.set(
-      Math.cos(contactAngle) * BALL_CONTACT_R,
+      Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
       0,
-      Math.sin(contactAngle) * BALL_CONTACT_R,
+      Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
     );
     this.scene.add(this.ballRig);
 
