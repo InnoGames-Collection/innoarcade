@@ -190,7 +190,7 @@ export class HelixWorld {
     return { ringId: -1, geoKey: '', group, mesh, mat };
   }
 
-  syncRings(rings: Ring[], gapArc: number): void {
+  syncRings(rings: Ring[], gapArc: number, ballY: number): void {
     const activeIds = new Set(rings.filter((r) => !r.broken || r.breakAnim < 1).map((r) => r.id));
 
     for (let i = this.ringPool.length - 1; i >= 0; i--) {
@@ -230,7 +230,7 @@ export class HelixWorld {
         rv.mat.emissiveIntensity = 0.25;
       }
 
-      rv.group.position.y = -ring.y;
+      rv.group.position.y = ballY - ring.y;
       if (ring.broken) {
         const t = ring.breakAnim;
         rv.group.scale.setScalar(1 - t * 0.85);
@@ -245,9 +245,8 @@ export class HelixWorld {
   }
 
   updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number): void {
-    const wy = ball.y;
-    this.ball.position.set(0, -wy, 0.12);
-    this.ballOutline.position.set(0, -wy, 0.12);
+    this.ball.position.set(0, 0, 0.12);
+    this.ballOutline.position.set(0, 0, 0.12);
     const sy = ball.squash;
     const stretch = 1 - sy;
     const sx = 1 - stretch * 0.14;
@@ -270,8 +269,12 @@ export class HelixWorld {
       this.ballGlow.intensity = 1;
     }
 
-    this.pillar.position.y = -wy;
-    this.trail.push(wy, Math.abs(ball.vy), skin.color);
+    this.pillar.position.y = 0;
+    this.trail.push(0, Math.abs(ball.vy), skin.color);
+  }
+
+  ringOffset(ballY: number, ringY: number): number {
+    return ballY - ringY;
   }
 
   setTowerAngle(angle: number): void {
@@ -295,8 +298,8 @@ export class HelixWorld {
     }
   }
 
-  render(ballY: number): void {
-    this.cameraCtrl.applyToBall(ballY);
+  render(): void {
+    this.cameraCtrl.applyView();
     this.renderer.render(this.scene, this.cameraCtrl.camera);
   }
 

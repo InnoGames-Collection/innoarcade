@@ -197,7 +197,7 @@ export class SmashShards {
     }
   }
 
-  burst(worldY: number, color: string, towerAngle: number, count = 14): void {
+  burst(relY: number, color: string, towerAngle: number, count = 14): void {
     const c = new THREE.Color(color);
     let spawned = 0;
     for (const s of this.pool) {
@@ -206,7 +206,7 @@ export class SmashShards {
       const dist = RING_R + (Math.random() - 0.5) * 0.4;
       s.mesh.position.set(
         Math.cos(angle) * dist,
-        -worldY + (Math.random() - 0.5) * 0.15,
+        relY + (Math.random() - 0.5) * 0.15,
         Math.sin(angle) * dist,
       );
       s.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -279,11 +279,11 @@ export class BallTrail {
     }
   }
 
-  push(worldY: number, speed: number, color: string): void {
+  push(_worldY: number, speed: number, color: string): void {
     if (speed < 3) return;
     const m = this.points[this.head];
     this.head = (this.head + 1) % this.points.length;
-    m.position.set(0, -worldY, 0);
+    m.position.set(0, 0, 0);
     const t = Math.min(1, speed / 18);
     (m.material as THREE.MeshBasicMaterial).color.set(color);
     (m.material as THREE.MeshBasicMaterial).opacity = 0.15 + t * 0.35;

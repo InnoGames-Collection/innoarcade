@@ -73,7 +73,7 @@ export function findSweepCollision(
   prevY: number,
   rings: Ring[],
   towerAngle: number,
-  camY: number,
+  _camY: number,
   gapArc: number,
   feverActive: boolean,
 ): CollisionHit | null {
@@ -81,17 +81,19 @@ export function findSweepCollision(
 
   let best: CollisionHit | null = null;
   let bestRingY = Infinity;
+  const hitPad = BALL_R + RING_HEIGHT * 0.55;
 
   for (const ring of rings) {
     if (ring.broken) continue;
     const ringY = ring.y;
-    if (ringY < prevY - BALL_R || ringY > ball.y + BALL_R) continue;
+    if (ringY > ball.y + hitPad) continue;
+    if (ringY < prevY - hitPad) continue;
 
-    const screenY = ringY - camY;
-    const hitPad = BALL_R + RING_HEIGHT * 0.65;
-    if (ringY < prevY - hitPad || ringY > ball.y + hitPad) continue;
-    if (Math.abs(ringY - ball.y) > hitPad && !(prevY <= ringY && ball.y >= ringY)) continue;
+    const crossed = prevY <= ringY && ball.y >= ringY;
+    const touching = Math.abs(ball.y - ringY) <= hitPad;
+    if (!crossed && !touching) continue;
 
+    const screenY = ringY - ball.y;
     const hit = evaluateRing(ball, ring, towerAngle, gapArc, feverActive, screenY);
     if (!hit) continue;
 

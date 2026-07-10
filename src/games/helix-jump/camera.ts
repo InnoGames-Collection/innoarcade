@@ -1,20 +1,22 @@
 import * as THREE from 'three';
-import { CAM_OFFSET, H } from './constants';
 
-const WORLD_PER_PX = 0.018;
-
+/** Fixed view — ball stays centered; only the tower scrolls. */
 export class CameraController {
+  /** Gameplay depth tracker (matches ball.y). */
   y = 0;
   shake = 0;
-  private vel = 0;
   private shakeX = 0;
   private shakeY = 0;
 
   readonly camera: THREE.PerspectiveCamera;
 
+  private static readonly CAM_Y = 5.8;
+  private static readonly CAM_Z = 8.5;
+
   constructor(aspect: number) {
     this.camera = new THREE.PerspectiveCamera(48, aspect, 0.1, 120);
-    this.camera.position.set(0, 7.5, 8.5);
+    this.camera.position.set(0, CameraController.CAM_Y, CameraController.CAM_Z);
+    this.camera.lookAt(0, 0, 0);
   }
 
   resize(aspect: number): void {
@@ -22,14 +24,11 @@ export class CameraController {
     this.camera.updateProjectionMatrix();
   }
 
-  follow(ballY: number, ballVy: number, dt: number): void {
-    const lookAhead = Math.max(-2.5, Math.min(1.8, ballVy * 0.05));
-    const target = ballY - H * CAM_OFFSET * WORLD_PER_PX + lookAhead;
-    const stiffness = 42;
-    const damping = 12;
-    const diff = target - this.y;
-    this.vel += (diff * stiffness - this.vel * damping) * dt;
-    this.y += this.vel * dt;
+  /** Track ball depth for recycle / death checks only. */
+  follow(ballY: number, _ballVy: number, dt: number): void {
+    const stiffness = 28;
+    const diff = ballY - this.y;
+    this.y += diff * Math.min(1, stiffness * dt);
   }
 
   addShake(amount: number): void {
@@ -48,28 +47,23 @@ export class CameraController {
     }
   }
 
-  applyToBall(ballWorldY: number): void {
-    const camY = -this.y + 5.8;
-    const targetY = -ballWorldY + 0.4;
-    const zoom = 8.5 - Math.min(0.8, Math.abs(this.vel) * 0.05);
+  applyView(): void {
     this.camera.position.set(
       this.shakeX,
-      camY + this.shakeY,
-      zoom,
+      CameraController.CAM_Y + this.shakeY,
+      CameraController.CAM_Z,
     );
-    this.camera.lookAt(this.shakeX * 0.25, targetY, 0);
+    this.camera.lookAt(this.shakeX * 0.25, 0, 0);
   }
 
   reset(): void {
     this.y = 0;
-    this.vel = 0;
     this.shake = 0;
     this.shakeX = 0;
     this.shakeY = 0;
   }
 
   snapTo(ballY: number): void {
-    this.y = ballY - H * CAM_OFFSET * WORLD_PER_PX;
-    this.vel = 0;
+    this.y = ballY;
   }
 }

@@ -7,7 +7,7 @@ import type { Action } from '../../engine/input';
 import { mulberry32 } from '../_lq/lq';
 import { CameraController } from './camera';
 import {
-  COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD, H, RING_COLORS, THEME,
+  COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD, RING_COLORS, THEME, BALL_R,
 } from './constants';
 import {
   applyBounce,
@@ -42,7 +42,7 @@ export class HelixJump {
 
   readonly world: HelixWorld;
 
-  private ball: BallState = { y: 3.2, vy: 0, squash: 1, squashVel: 0, colorIndex: 1 };
+  private ball: BallState = { y: 0, vy: 0, squash: 1, squashVel: 0, colorIndex: 1 };
   private rotation = new RotationController();
   private camera: CameraController;
   private rings: Ring[] = [];
@@ -79,8 +79,22 @@ export class HelixJump {
     this.feverLeft = 0;
     this.fallMul = 1;
     this.flashAlpha = 0;
+    this.rnd = mulberry32((Math.random() * 1e9) | 0);
+    resetRingIds();
+    this.rings = [];
+    this.world.clear();
+    this.cleared.clear();
+    this.cfg = towerConfigForDepth(0);
+    const firstRingY = 5.5;
+    let prev: Ring | undefined;
+    for (let i = 0; i < 24; i++) {
+      const ring = createRing(firstRingY + i * this.cfg.spacing, this.rnd, this.cfg, prev);
+      this.rings.push(ring);
+      prev = ring;
+    }
+    const spawnY = firstRingY - this.cfg.spacing * 0.42;
     this.ball = {
-      y: 3.2,
+      y: spawnY,
       vy: 0,
       squash: 1,
       squashVel: 0,
@@ -89,19 +103,7 @@ export class HelixJump {
     this.rotation.reset();
     this.camera.reset();
     this.camera.snapTo(this.ball.y);
-    this.rnd = mulberry32((Math.random() * 1e9) | 0);
-    resetRingIds();
-    this.rings = [];
-    this.world.clear();
-    this.cleared.clear();
-    this.cfg = towerConfigForDepth(0);
-    let prev: Ring | undefined;
-    for (let i = 0; i < 24; i++) {
-      const ring = createRing(5.5 + i * this.cfg.spacing, this.rnd, this.cfg, prev);
-      this.rings.push(ring);
-      prev = ring;
-    }
-    this.world.syncRings(this.rings, this.cfg.gapArc);
+    this.world.syncRings(this.rings, this.cfg.gapArc, this.ball.y);
     this.world.updateBall(this.ball, this.skin, false, 0);
     this.setState('playing');
     vibrate(8);
@@ -190,13 +192,14 @@ export class HelixJump {
     const fever = this.feverLeft > 0;
     this.world.setTowerAngle(this.rotation.angle);
     this.world.updateBall(this.ball, this.skin, fever, capped);
-    this.world.syncRings(this.rings, this.cfg.gapArc);
+    this.world.syncRings(this.rings, this.cfg.gapArc, this.ball.y);
 
-    if (this.ball.y > this.camera.y + H * 0.018 + 8) this.die();
+    const lastRing = this.rings[this.rings.length - 1];
+    if (lastRing && this.ball.y > lastRing.y + 8) this.die();
   }
 
   render(): void {
-    this.world.render(this.ball.y);
+    this.world.render();
 
     if (this.hudCtx) {
       const mult = Math.min(COMBO_CAP, this.combo);
@@ -212,13 +215,14 @@ export class HelixJump {
       prevY,
       this.rings,
       this.rotation.angle,
-      this.camera.y,
+      this.ball.y,
       this.cfg.gapArc,
       feverActive,
     );
     if (!hit) return;
 
     const wy = hit.ring.y;
+    const ry = this.world.ringOffset(this.ball.y, wy);
 
     if (hit.passedGap) {
       if (!this.cleared.has(hit.ring.id)) {
@@ -231,9 +235,9 @@ export class HelixJump {
         this.fallMul = Math.min(1.4, this.fallMul + 0.05 + mult * 0.01);
         const shake = 0.05 + mult * 0.015;
         this.camera.addShake(shake);
-        this.world.particles.comboBurst(0, -wy, 0, mult);
+        this.world.particles.comboBurst(0, ry, 0, mult);
         if (hit.perfect) {
-          this.world.particles.burst(0, -wy, 0, THEME.fever, 8, 4);
+          this.world.particles.burst(0, ry, 0, THEME.fever, 8, 4);
           this.bonusScore += 1;
         }
         sfx.coin();
@@ -243,7 +247,7 @@ export class HelixJump {
           this.flashColor = 'rgba(255,217,61,0.35)';
           this.flashAlpha = 0.4;
           this.world.flash('#ffd93d', 0.35);
-          this.world.particles.feverRing(0, -wy, 0);
+          this.world.particles.feverRing(0, ry, 0);
           this.camera.addShake(0.18);
         }
       }
@@ -265,8 +269,8 @@ export class HelixJump {
       this.score = this.depth + this.bonusScore;
       applyFallBoost(this.ball, 2);
       const color = hit.ring.danger ? THEME.danger : RING_COLORS[hit.ring.colorIndex] ?? this.skin.color;
-      this.world.shards.burst(wy, color, this.rotation.angle, 14);
-      this.world.particles.burst(0, -wy, 0, color, 18, 5.5);
+      this.world.shards.burst(ry, color, this.rotation.angle, 14);
+      this.world.particles.burst(0, ry, 0, color, 18, 5.5);
       this.camera.addShake(0.14);
       sfx.coin();
       vibrate(10);
@@ -276,17 +280,17 @@ export class HelixJump {
     if (hit.bounced) {
       const impact = this.ball.vy;
       applyBounce(this.ball, impact);
-      this.ball.y = hit.ring.y - 0.02;
+      this.ball.y = hit.ring.y - BALL_R * 0.35;
       const landShake = 0.08 + Math.min(0.12, Math.abs(impact) / 40);
       this.camera.addShake(landShake);
-      this.world.particles.landing(0, -wy, 0, this.skin.color);
+      this.world.particles.landing(0, ry, 0, this.skin.color);
       sfx.coin();
       vibrate(12);
     }
   }
 
   private recycleRings(): void {
-    while (this.rings.length && this.rings[0].y < this.camera.y - 3) {
+    while (this.rings.length && this.rings[0].y < this.ball.y - 4) {
       this.rings.shift();
       this.depth++;
       this.score = this.depth + this.bonusScore;
@@ -307,7 +311,7 @@ export class HelixJump {
     this.flashColor = 'rgba(229,57,53,0.45)';
     this.flashAlpha = 0.5;
     this.world.flash('#e53935', 0.45);
-    this.world.particles.burst(0, -this.ball.y, 0, THEME.danger, 22, 7);
+    this.world.particles.burst(0, 0, 0, THEME.danger, 22, 7);
     vibrate(35);
 
     const result = recordPlay(this.score);
