@@ -3,12 +3,12 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import {
-  BALL_CONTACT_ANGLE, BALL_CONTACT_R, BALL_R, H, PILLAR_R, THEME, W,
+  BALL_CONTACT_ANGLE, BALL_CONTACT_R, BALL_R, BALL_SCREEN_Y, H, PILLAR_R, THEME, W,
 } from './constants';
 import {
   BallTrail, BokehField, LandingSplats, ParticleSystem, SmashShards, SpeedLines,
 } from './effects';
-import { breakAnimScale } from './physics';
+import { approachZone, breakAnimScale } from './physics';
 import {
   createPlatformGeometry, makeGradientBackground, makePlatformMaterial,
   platformArc, ringColor,
@@ -51,6 +51,7 @@ export class HelixWorld {
   private readonly ballHalo: THREE.Mesh;
   private readonly ballMat: THREE.MeshStandardMaterial;
   private readonly ballGlow: THREE.PointLight;
+  private readonly ballShadow: THREE.Mesh;
   private readonly pillar: THREE.Mesh;
   private readonly ringPool: RingVisual[] = [];
   private readonly freeRings: RingVisual[] = [];
@@ -78,7 +79,7 @@ export class HelixWorld {
 
     this.scene = new THREE.Scene();
     this.scene.background = makeGradientBackground();
-    this.scene.fog = new THREE.Fog(0xe8d4ff, 32, 82);
+    this.scene.fog = new THREE.Fog(0x6b4a7a, 28, 72);
 
     this.cameraCtrl = new CameraController(W / H);
 
@@ -127,13 +128,13 @@ export class HelixWorld {
     this.scene.add(ground);
 
     this.pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(PILLAR_R * 1.04, PILLAR_R, 200, 28),
+      new THREE.CylinderGeometry(PILLAR_R * 1.02, PILLAR_R * 1.06, 240, 32),
       new THREE.MeshStandardMaterial({
         color: THEME.pillar,
-        roughness: 0.24,
-        metalness: 0.14,
-        emissive: 0x8888aa,
-        emissiveIntensity: 0.06,
+        roughness: 0.32,
+        metalness: 0.12,
+        emissive: THEME.pillarGlow,
+        emissiveIntensity: 0.12,
       }),
     );
     this.pillar.castShadow = true;
@@ -144,10 +145,28 @@ export class HelixWorld {
 
     this.ballRig.position.set(
       Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
-      0,
+      BALL_SCREEN_Y,
       Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
     );
     this.scene.add(this.ballRig);
+
+    this.ballShadow = new THREE.Mesh(
+      new THREE.CircleGeometry(BALL_R * 1.1, 24),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+      }),
+    );
+    this.ballShadow.rotation.x = -Math.PI / 2;
+    this.ballShadow.position.set(
+      Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
+      BALL_SCREEN_Y - BALL_R - 0.08,
+      Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
+    );
+    this.ballShadow.renderOrder = 5;
+    this.scene.add(this.ballShadow);
 
     const ballGeo = new THREE.SphereGeometry(BALL_R, 36, 36);
     this.ballMat = new THREE.MeshStandardMaterial({
@@ -254,7 +273,16 @@ export class HelixWorld {
     };
   }
 
-  syncRings(rings: Ring[], _gapArc: number, ballY: number, time: number): void {
+  syncRings(
+    rings: Ring[],
+    _gapArc: number,
+    ballY: number,
+    time: number,
+    towerAngle: number,
+    approachId = -1,
+  ): void {
+    this.helix.position.y = ballY;
+
     const activeIds = new Set(rings.filter((r) => !r.broken || r.breakAnim < 1).map((r) => r.id));
 
     for (let i = this.ringPool.length - 1; i >= 0; i--) {
@@ -286,8 +314,8 @@ export class HelixWorld {
 
       const safeCol = ringColor(ring.colorIndex, false);
       rv.safeMat.color.copy(safeCol);
-      rv.safeMat.emissive.copy(safeCol).multiplyScalar(0.12);
-      rv.safeMat.emissiveIntensity = 0.25;
+      rv.safeMat.emissive.copy(safeCol).multiplyScalar(0.06);
+      rv.safeMat.emissiveIntensity = 0.12;
 
       if (ring.dangerArc > 0) {
         const dKey = `${ring.dangerStart.toFixed(3)}_${ring.dangerArc.toFixed(3)}`;
@@ -298,14 +326,26 @@ export class HelixWorld {
         const dangerCol = ringColor(-1, true);
         rv.dangerMat.color.copy(dangerCol);
         rv.dangerMat.emissive.set(THEME.dangerDark);
-        rv.dangerMat.emissiveIntensity = 0.4;
+        rv.dangerMat.emissiveIntensity = 0.35;
         rv.dangerMesh.visible = true;
       } else {
         rv.dangerKey = '';
         rv.dangerMesh.visible = false;
       }
 
-      rv.group.position.y = ballY - ringWorldY(ring, time);
+      const isApproach = ring.id === approachId;
+      const zone = isApproach ? approachZone(ring, towerAngle) : 'none';
+      if (isApproach && zone === 'gap') {
+        rv.safeMat.emissive.set(THEME.accent);
+        rv.safeMat.emissiveIntensity = 0.35 + Math.sin(performance.now() * 0.012) * 0.12;
+      } else if (isApproach && zone === 'danger') {
+        rv.dangerMat.emissive.set(THEME.danger);
+        rv.dangerMat.emissiveIntensity = 0.55 + Math.sin(performance.now() * 0.015) * 0.15;
+      } else if (isApproach && zone === 'safe') {
+        rv.safeMat.emissiveIntensity = 0.28;
+      }
+
+      rv.group.position.y = -ringWorldY(ring, time);
       if (ring.broken) {
         const scale = breakAnimScale(ring.breakAnim);
         rv.group.scale.setScalar(scale);
@@ -325,7 +365,12 @@ export class HelixWorld {
   }
 
   updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number, combo = 0): void {
-    this.ballRig.position.y = 0;
+    this.ballRig.position.y = BALL_SCREEN_Y;
+    this.ballShadow.position.y = BALL_SCREEN_Y - BALL_R - 0.08 + (ball.squash < 0.9 ? (1 - ball.squash) * 0.06 : 0);
+    const shadowScale = 1 + Math.min(0.2, Math.abs(ball.vy) * 0.008);
+    this.ballShadow.scale.set(shadowScale, shadowScale, 1);
+    (this.ballShadow.material as THREE.MeshBasicMaterial).opacity =
+      0.18 + Math.min(0.1, Math.abs(ball.vy) * 0.004);
     this.ball.position.set(0, 0, 0.14);
     this.ballHalo.position.set(0, 0, 0.12);
 
@@ -387,6 +432,11 @@ export class HelixWorld {
     return ballY - ringY;
   }
 
+  /** Scene Y of a gameplay ring relative to the fixed ball. */
+  ringScreenY(ballY: number, ringY: number): number {
+    return ballY - ringY;
+  }
+
   setTowerAngle(angle: number): void {
     this.helix.rotation.y = -angle;
   }
@@ -413,7 +463,7 @@ export class HelixWorld {
   }
 
   render(): void {
-    this.cameraCtrl.applyView(this.ballRig.position);
+    this.cameraCtrl.applyView();
     if (this.composer) this.composer.render();
     else this.renderer.render(this.scene, this.cameraCtrl.camera);
   }

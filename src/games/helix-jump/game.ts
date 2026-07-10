@@ -15,6 +15,7 @@ import {
   applyFallBoost,
   applyLandingFx,
   clearYThroughRing,
+  findApproachRing,
   findSweepCollision,
   gravityForDepth,
   integrateBall,
@@ -115,8 +116,8 @@ export class HelixJump {
     };
     this.rotation.reset();
     this.camera.reset();
-    this.camera.snapTo(this.ball.y);
-    this.world.syncRings(this.rings, this.cfg.gapArc, this.ball.y, this.time);
+    this.camera.snapTo();
+    this.world.syncRings(this.rings, this.cfg.gapArc, this.ball.y, this.time, this.rotation.angle);
     this.world.updateBall(this.ball, this.skin, false, 0);
     helixAudio.startSession();
     this.setState('playing');
@@ -189,13 +190,22 @@ export class HelixJump {
     this.fallMul = Math.max(1, this.fallMul - capped * 0.1);
 
     const fever = this.feverLeft > 0;
-    this.camera.follow(this.ball.y, this.ball.vy, this.combo, fever, capped);
+    this.camera.follow(this.ball.vy, this.combo, fever, capped);
     this.camera.update(capped);
     this.recycleRings();
 
+    const approach = findApproachRing(this.ball, this.rings, this.time, this.cleared);
+
     this.world.setTowerAngle(this.rotation.angle);
     this.world.updateBall(this.ball, this.skin, fever, capped, this.combo);
-    this.world.syncRings(this.rings, this.cfg.gapArc, this.ball.y, this.time);
+    this.world.syncRings(
+      this.rings,
+      this.cfg.gapArc,
+      this.ball.y,
+      this.time,
+      this.rotation.angle,
+      approach?.id ?? -1,
+    );
     this.world.updateEffects(capped);
 
     this.displayScore = tickDisplayScore(this.displayScore, this.score, capped);
@@ -362,10 +372,11 @@ export class HelixJump {
     const shardCount = feverHit ? 16 : 10 + mult * 2;
     const particleCount = feverHit ? 20 : 10 + mult * 2;
     const spread = feverHit ? 5.5 : 4 + mult * 0.35;
+    const sy = this.world.ringScreenY(this.ball.y, wy);
 
-    this.world.shards.burst(wy, color, this.rotation.angle, shardCount, contactAngle);
-    this.world.particles.burst(px, wy, pz, color, particleCount, spread);
-    this.world.particles.emitBreakDust(px, wy, pz, color, 8 + mult);
+    this.world.shards.burst(sy, color, this.rotation.angle, shardCount, contactAngle);
+    this.world.particles.burst(px, sy, pz, color, particleCount, spread);
+    this.world.particles.emitBreakDust(px, sy, pz, color, 8 + mult);
     this.camera.addShake(feverHit ? 0.14 : 0.07 + mult * 0.01);
   }
 

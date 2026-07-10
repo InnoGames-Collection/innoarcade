@@ -10,9 +10,9 @@
 
 .arcade-shell[data-game='helix-jump'] .fc-backdrop {
   background:
-    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(184, 228, 255, 0.55) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 50% at 80% 100%, rgba(255, 214, 236, 0.45) 0%, transparent 50%),
-    linear-gradient(165deg, #b8e4ff 0%, #e8d4ff 45%, #ffd6ec 100%);
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(107, 69, 168, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(240, 184, 138, 0.4) 0%, transparent 50%),
+    linear-gradient(165deg, #2d1b4e 0%, #6b4a7a 42%, #f0b88a 100%);
 }
 
 .arcade-shell[data-game='helix-jump'] .game-panel {

@@ -1,15 +1,11 @@
 import * as THREE from 'three';
 import {
-  CAM_FOV, CAM_LOOK_BELOW, CAM_OFFSET, CAM_Y, CAM_Z, COMBO_CAP, H,
+  BALL_CONTACT_ANGLE, BALL_CONTACT_R, CAM_FOV, CAM_LOOK_BELOW, CAM_Y, CAM_Z, COMBO_CAP,
 } from './constants';
 import { spring } from './easing';
 
-const WORLD_PER_PX = 0.018;
-
 export class CameraController {
-  y = 0;
   shake = 0;
-  private vel = 0;
   private shakeX = 0;
   private shakeY = 0;
   private lookAhead = 0;
@@ -31,16 +27,12 @@ export class CameraController {
     this.camera.updateProjectionMatrix();
   }
 
-  follow(ballY: number, ballVy: number, combo: number, fever: boolean, dt: number): void {
-    const fallLead = ballVy > 2 ? Math.min(2.2, ballVy * 0.055) : 0;
-    const riseLag = ballVy < -3 ? Math.max(-0.6, ballVy * 0.022) : 0;
+  /** Ball is screen-fixed — camera only reacts to velocity, combo, fever. */
+  follow(ballVy: number, combo: number, fever: boolean, dt: number): void {
+    const fallLead = ballVy > 2 ? Math.min(0.35, ballVy * 0.012) : 0;
+    const riseLag = ballVy < -3 ? Math.max(-0.2, ballVy * 0.006) : 0;
     const targetLead = fallLead + riseLag;
-    this.lookAhead += (targetLead - this.lookAhead) * Math.min(1, dt * 12);
-
-    const target = ballY - H * CAM_OFFSET * WORLD_PER_PX + this.lookAhead;
-    const scroll = spring(this.y, target, this.vel, 32, 10, dt);
-    this.y = scroll.value;
-    this.vel = scroll.velocity;
+    this.lookAhead += (targetLead - this.lookAhead) * Math.min(1, dt * 10);
 
     const comboT = Math.min(COMBO_CAP, combo);
     const targetZoom = fever ? 5.5 : comboT > 1 ? comboT * 0.55 : 0;
@@ -77,24 +69,24 @@ export class CameraController {
     }
   }
 
-  applyView(ballOffset = new THREE.Vector3()): void {
-    const scrollY = -this.y * 0.035;
+  applyView(): void {
+    const bx = Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
+    const bz = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
     const punch = this.impactPunch * 0.35;
+
     this.camera.position.set(
-      ballOffset.x + this.shakeX,
-      CAM_Y + this.shakeY + scrollY * 0.12 + punch,
+      bx + this.shakeX,
+      CAM_Y + this.shakeY + punch,
       CAM_Z - this.zoomCombo * 0.04,
     );
     this.camera.lookAt(
-      ballOffset.x + this.shakeX * 0.2,
-      ballOffset.y - CAM_LOOK_BELOW - punch * 0.5 + scrollY * 0.08,
-      ballOffset.z,
+      bx + this.shakeX * 0.15,
+      -CAM_LOOK_BELOW + this.lookAhead - punch * 0.4,
+      bz,
     );
   }
 
   reset(): void {
-    this.y = 0;
-    this.vel = 0;
     this.lookAhead = 0;
     this.shake = 0;
     this.shakeX = 0;
@@ -107,9 +99,7 @@ export class CameraController {
     this.camera.updateProjectionMatrix();
   }
 
-  snapTo(ballY: number): void {
-    this.y = ballY - H * CAM_OFFSET * WORLD_PER_PX;
-    this.vel = 0;
+  snapTo(): void {
     this.lookAhead = 0;
   }
 }

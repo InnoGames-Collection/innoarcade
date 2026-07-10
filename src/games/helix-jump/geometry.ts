@@ -69,15 +69,15 @@ export function createWedgeGeometry(arcLength: number, startAngle = 0): THREE.Bu
 export function makePlatformMaterial(color: THREE.Color, danger = false): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     color,
-    roughness: danger ? 0.32 : 0.22,
-    metalness: danger ? 0.1 : 0.16,
-    emissive: color.clone().multiplyScalar(danger ? 0.08 : 0.1),
-    emissiveIntensity: danger ? 0.35 : 0.22,
+    roughness: danger ? 0.28 : 0.38,
+    metalness: danger ? 0.06 : 0.04,
+    emissive: color.clone().multiplyScalar(danger ? 0.06 : 0.04),
+    emissiveIntensity: danger ? 0.25 : 0.12,
   });
 }
 export function ringColor(index: number, danger: boolean): THREE.Color {
   if (danger) return new THREE.Color(THEME.danger);
-  const cols = ['#ff5c8a', '#00d4ff', '#ffd93d', '#7cff6b', '#ff8c42', '#c77dff', '#ff6bcb', '#4dffb8'];
+  const cols = ['#f5efe6', '#f0e8dc', '#ebe4d4', '#f8f4ee'];
   return new THREE.Color(cols[Math.max(0, index) % cols.length]);
 }
 
@@ -87,9 +87,9 @@ export function makeGradientBackground(): THREE.Texture {
   canvas.height = 512;
   const ctx = canvas.getContext('2d')!;
   const g = ctx.createLinearGradient(0, 0, 0, 512);
-  g.addColorStop(0, '#b8e4ff');
-  g.addColorStop(0.45, '#e8d4ff');
-  g.addColorStop(1, '#ffd6ec');
+  g.addColorStop(0, THEME.bgTop);
+  g.addColorStop(0.42, THEME.bgMid);
+  g.addColorStop(1, THEME.bgBot);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 4, 512);
   const tex = new THREE.CanvasTexture(canvas);
