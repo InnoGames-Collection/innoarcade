@@ -42,7 +42,7 @@ const CARD_ICONS: CardIcon[] = [
   { id: 'jebena', src: jebenaIcon, alt: 'Jebena' },
   { id: 'teleconnect', src: teleconnectIcon, alt: 'Teleconnect' },
   { id: 'ethio-telecom', src: ethioTelecomIcon, alt: 'Ethio Telecom' },
-  { id: 'nexsus', src: nexsusIcon, alt: 'Nexsus' },
+  { id: 'nexsus', src: nexsusIcon, alt: 'znexus telecloud' },
 ];
 
 const ICON_BY_ID = new Map(CARD_ICONS.map((icon) => [icon.id, icon]));

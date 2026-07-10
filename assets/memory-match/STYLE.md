@@ -113,9 +113,10 @@ Keep existing colors exactly. Do not remap to the palette above.
 ### 5. Nexsus (`nexsus.png`) — replaces WiFi
 
 - **Replaces:** `phone.png` (generic WiFi symbol).
-- **Inspired by:** znexus telecloud logo — the **cloud outline** shape and green/blue brand split.
-- **Motifs:** Thick glossy blue cloud border; lime-green upper glow and blue lower glow inside (where the wordmark sits in the official logo).
-- **Must not include:** Text, letters, WiFi arcs, network hub nodes, or decorations outside the cloud.
+- **Source:** Official **znexus telecloud** logo — keep the full wordmark.
+- **Must include:** Blue cloud outline, **"znexus"** in lime green (top), **"telecloud"** in blue (bottom), exact spelling and layout.
+- **Enhance:** Premium glossy 3D collectible pass; remove white background only.
+- **Do not:** Remove text, misspell, or replace with abstract network symbols.
 
 ### 6. Teleconnect (`teleconnect.png`) — replaces Birr
 
