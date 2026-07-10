@@ -17,7 +17,8 @@
     "covers:generate": "node scripts/generate-covers.mjs",
     "covers:import": "node scripts/import-cover.mjs",
     "covers:import-all": "node scripts/import-all-covers.mjs",
-    "lint:games": "node scripts/lint-game-shell.mjs"
+    "lint:games": "node scripts/lint-game-shell.mjs",
+    "icons:validate": "node scripts/validate-memory-match-icons.mjs"
   },
   "devDependencies": {
     "sharp": "^0.34.5",
