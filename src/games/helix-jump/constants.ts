@@ -20,6 +20,7 @@ export const BALL_CONTACT_R = RING_INNER + BALL_R * 0.88;
 export const BALL_CONTACT_ANGLE = -Math.PI / 2;
 /** Fixed screen Y for the ball rig (world scrolls past it). */
 export const BALL_SCREEN_Y = 0;
+export const BALL_RENDER_Z = 0.3;
 export const GAP_ARC = 1.05;
 /** Orange hazard wedge on solid platforms (reference: partial segment, not full ring). */
 export const DANGER_ARC_MIN = 0.42;
@@ -32,29 +33,22 @@ export const SOLID_EDGE_INSET = 0.05;
 /** Landing assist — snap to safe zone when grazing gap edge. */
 export const LANDING_ASSIST_ANGLE = 0.09;
 
-export const GRAVITY_BASE = 26;
-/** Impact speed before high-drop extra pop kicks in (reference uses near-constant bounce). */
-export const BOUNCE_VEL = 16;
-/** Target upward speed after bounce — reference: uniform rhythmic hop. */
-export const BOUNCE_UP_VEL = 9.2;
-export const BOUNCE_UP_MAX = 9.6;
-/** Minimal extra pop — reference bounce height stays consistent. */
-export const BOUNCE_RESTITUTION = 0.08;
-/** Cap downward speed — reference falls fast but controlled. */
-export const FALL_TERMINAL_VY = 26;
-/** Velocity at which fall stretch peaks. */
-export const FALL_STRETCH_SPEED = 14;
-export const BALL_STRETCH_MAX = 0.22;
-export const BALL_ROLL_RATE = 5.2;
+export const GRAVITY_BASE = 20;
+export const BOUNCE_VEL = 14;
+export const BOUNCE_UP_VEL = 8.0;
+export const BOUNCE_UP_MAX = 8.6;
+export const BOUNCE_RESTITUTION = 0.06;
+export const FALL_TERMINAL_VY = 16;
+export const FALL_STRETCH_SPEED = 12;
+export const BALL_STRETCH_MAX = 0.12;
+export const BALL_ROLL_RATE = 2.4;
 export const BALL_SQUASH_MIN = 0.72;
 export const BALL_SQUASH_MAX = 1.06;
-export const CAM_FOV = 44;
-/** Screen framing — ball sits in upper-middle third (reference). */
+export const CAM_FOV = 42;
 export const CAM_OFFSET = 0.44;
-/** Camera rig height / distance — ~40° downward tilt. */
-export const CAM_Y = 7.0;
-export const CAM_Z = 7.5;
-export const CAM_LOOK_BELOW = 0.45;
+export const CAM_Y = 6.2;
+export const CAM_Z = 9.0;
+export const CAM_LOOK_Y = 0;
 
 /** ~2.2× ball diameter between platforms. */
 export const RING_SPACING_BASE = 2.22;

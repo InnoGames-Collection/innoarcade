@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import {
-  BALL_CONTACT_ANGLE, BALL_CONTACT_R, BALL_R, BALL_SCREEN_Y, H, PILLAR_R, THEME, W,
+  BALL_CONTACT_ANGLE, BALL_R, BALL_RENDER_Z, BALL_SCREEN_Y, H, PILLAR_R, THEME, W,
 } from './constants';
 import {
   BallTrail, BokehField, LandingSplats, ParticleSystem, SmashShards, SpeedLines,
@@ -29,9 +29,7 @@ interface RingVisual {
   dangerMat: THREE.MeshStandardMaterial;
 }
 
-const USE_BLOOM = typeof window !== 'undefined'
-  && window.devicePixelRatio <= 2
-  && !(/Android.*Chrome\/[.0-9]* Mobile/i.test(navigator.userAgent) === false);
+const USE_BLOOM = false;
 
 export class HelixWorld {
   readonly renderer: THREE.WebGLRenderer;
@@ -128,7 +126,7 @@ export class HelixWorld {
     this.scene.add(ground);
 
     this.pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(PILLAR_R * 1.02, PILLAR_R * 1.06, 240, 32),
+      new THREE.CylinderGeometry(PILLAR_R, PILLAR_R * 1.03, 160, 28),
       new THREE.MeshStandardMaterial({
         color: THEME.pillar,
         roughness: 0.32,
@@ -143,28 +141,20 @@ export class HelixWorld {
     this.helix.add(this.tower);
     this.scene.add(this.helix);
 
-    this.ballRig.position.set(
-      Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
-      BALL_SCREEN_Y,
-      Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
-    );
+    this.ballRig.position.set(0, BALL_SCREEN_Y, BALL_RENDER_Z);
     this.scene.add(this.ballRig);
 
     this.ballShadow = new THREE.Mesh(
-      new THREE.CircleGeometry(BALL_R * 1.1, 24),
+      new THREE.CircleGeometry(BALL_R * 0.9, 20),
       new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.16,
         depthWrite: false,
       }),
     );
     this.ballShadow.rotation.x = -Math.PI / 2;
-    this.ballShadow.position.set(
-      Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
-      BALL_SCREEN_Y - BALL_R - 0.08,
-      Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
-    );
+    this.ballShadow.position.set(0, BALL_SCREEN_Y - BALL_R - 0.06, BALL_RENDER_Z);
     this.ballShadow.renderOrder = 5;
     this.scene.add(this.ballShadow);
 
@@ -281,7 +271,8 @@ export class HelixWorld {
     towerAngle: number,
     approachId = -1,
   ): void {
-    this.helix.position.y = ballY;
+    this.helix.position.set(0, 0, 0);
+    this.pillar.position.y = ballY;
 
     const activeIds = new Set(rings.filter((r) => !r.broken || r.breakAnim < 1).map((r) => r.id));
 
@@ -337,15 +328,15 @@ export class HelixWorld {
       const zone = isApproach ? approachZone(ring, towerAngle) : 'none';
       if (isApproach && zone === 'gap') {
         rv.safeMat.emissive.set(THEME.accent);
-        rv.safeMat.emissiveIntensity = 0.35 + Math.sin(performance.now() * 0.012) * 0.12;
+        rv.safeMat.emissiveIntensity = 0.16;
       } else if (isApproach && zone === 'danger') {
         rv.dangerMat.emissive.set(THEME.danger);
-        rv.dangerMat.emissiveIntensity = 0.55 + Math.sin(performance.now() * 0.015) * 0.15;
+        rv.dangerMat.emissiveIntensity = 0.28;
       } else if (isApproach && zone === 'safe') {
-        rv.safeMat.emissiveIntensity = 0.28;
+        rv.safeMat.emissiveIntensity = 0.14;
       }
 
-      rv.group.position.y = -ringWorldY(ring, time);
+      rv.group.position.y = ballY - ringWorldY(ring, time);
       if (ring.broken) {
         const scale = breakAnimScale(ring.breakAnim);
         rv.group.scale.setScalar(scale);
@@ -366,7 +357,7 @@ export class HelixWorld {
 
   updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number, combo = 0): void {
     this.ballRig.position.y = BALL_SCREEN_Y;
-    this.ballShadow.position.y = BALL_SCREEN_Y - BALL_R - 0.08 + (ball.squash < 0.9 ? (1 - ball.squash) * 0.06 : 0);
+    this.ballShadow.position.set(0, BALL_SCREEN_Y - BALL_R - 0.06, BALL_RENDER_Z);
     const shadowScale = 1 + Math.min(0.2, Math.abs(ball.vy) * 0.008);
     this.ballShadow.scale.set(shadowScale, shadowScale, 1);
     (this.ballShadow.material as THREE.MeshBasicMaterial).opacity =

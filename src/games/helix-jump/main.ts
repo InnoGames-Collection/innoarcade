@@ -127,6 +127,7 @@ bindPointer(canvas);
 
 const scoreEl = $('#scoreVal');
 const scorePill = document.querySelector('.hx-score-pill');
+const hudEl = $('#hud');
 let lastScore = 0;
 const loop = new GameLoop(
   (dt) => game.update(dt),
@@ -141,6 +142,7 @@ const loop = new GameLoop(
       scoreEl.classList.add('hx-score-pop');
     }
     scorePill?.classList.toggle('hx-fever', game.feverLeft > 0);
+    hudEl?.classList.toggle('hx-fever', game.feverLeft > 0);
   },
 );
 

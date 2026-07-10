@@ -55,78 +55,91 @@
 
 .arcade-shell[data-game='helix-jump'] .hx-hud-bar {
   position: absolute;
-  top: max(10px, env(safe-area-inset-top));
-  right: 10px;
-  left: auto;
+  top: max(8px, env(safe-area-inset-top));
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
   z-index: 8;
   margin: 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  padding: 4px 5px 4px 8px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(40, 30, 60, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   width: auto;
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
 }
 
 .arcade-shell[data-game='helix-jump'] .hx-hud-bar .arc-hud-actions {
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 16px;
-  padding: 4px;
-  box-shadow: 0 4px 14px rgba(40, 30, 60, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  border: none;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .arcade-shell[data-game='helix-jump'] .hx-score-pill {
-  position: absolute;
-  top: max(10px, env(safe-area-inset-top));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 7;
+  position: static;
+  transform: none;
+  z-index: auto;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 96px;
-  padding: 9px 22px;
-  border-radius: 18px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 240, 255, 0.88) 100%);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  border: 1.5px solid rgba(255, 92, 138, 0.28);
-  box-shadow:
-    0 8px 24px rgba(40, 30, 60, 0.18),
-    0 0 0 1px rgba(255, 255, 255, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
   pointer-events: none;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .arcade-shell[data-game='helix-jump'] .hx-score-pill.hx-fever {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.arcade-shell[data-game='helix-jump'] .hx-score-pill.hx-fever .hx-score-value {
+  color: #e6a800;
+}
+
+.arcade-shell[data-game='helix-jump'] .hx-hud-bar.hx-fever {
   border-color: rgba(255, 217, 61, 0.55);
   box-shadow:
-    0 8px 28px rgba(255, 180, 40, 0.28),
-    0 0 0 1px rgba(255, 255, 255, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    0 4px 18px rgba(255, 180, 40, 0.22),
+    0 0 0 1px rgba(255, 217, 61, 0.35);
 }
 
 .arcade-shell[data-game='helix-jump'] .hx-score-label {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: #5a5a72;
+  white-space: nowrap;
 }
 
 .arcade-shell[data-game='helix-jump'] .hx-score-value {
-  font-size: 1.55rem;
+  font-size: 1.25rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--hx-pink);
   line-height: 1;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
 }
 
 .arcade-shell[data-game='helix-jump'] .arc-hud {
@@ -150,10 +163,18 @@
 }
 
 .arcade-shell[data-game='helix-jump'] .arc-hud-actions button {
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.65);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(200, 180, 220, 0.4);
   transition: background 0.15s ease;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .arcade-shell[data-game='helix-jump'] .arc-hud-actions button:active {
@@ -188,7 +209,30 @@
 }
 
 .arcade-shell[data-game='helix-jump'] .arc-play-wrapper {
-  padding-top: max(3rem, calc(10px + 2.1rem + 10px + env(safe-area-inset-top, 0px)));
+  padding-top: max(2.75rem, calc(8px + 44px + 8px + env(safe-area-inset-top, 0px)));
+}
+
+@media (max-width: 380px) {
+  .arcade-shell[data-game='helix-jump'] .hx-hud-bar {
+    padding: 3px 4px 3px 6px;
+    gap: 4px;
+  }
+
+  .arcade-shell[data-game='helix-jump'] .hx-score-value {
+    font-size: 1.1rem;
+  }
+
+  .arcade-shell[data-game='helix-jump'] .arc-hud-actions button {
+    width: 1.85rem;
+    height: 1.85rem;
+    min-width: 1.85rem;
+    min-height: 1.85rem;
+    font-size: 0.82rem;
+  }
+
+  .arcade-shell[data-game='helix-jump'] .hx-hud-bar .arc-hud-actions {
+    gap: 3px;
+  }
 }
 
 .arcade-shell[data-game='helix-jump'] #scoreVal.hx-score-pop {

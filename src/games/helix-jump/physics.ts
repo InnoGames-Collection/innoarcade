@@ -250,11 +250,11 @@ export function landingFx(impactSpeed: number): LandingFx {
   const impact = Math.abs(impactSpeed);
   const t = Math.min(1, impact / 20);
   return {
-    shake: 0.04 + t * 0.1,
-    particleCount: 6 + Math.floor(t * 8),
-    spread: 2.2 + t * 2.4,
-    squash: 0.78 - t * 0.06,
-    squashVel: -2.6 - t * 1.2,
+    shake: 0.01 + t * 0.02,
+    particleCount: 4 + Math.floor(t * 5),
+    spread: 1.6 + t * 1.4,
+    squash: 0.82 - t * 0.04,
+    squashVel: -2.0 - t * 0.8,
   };
 }
 
@@ -273,7 +273,7 @@ export function clearYThroughRing(ringY: number): number {
 
 export function applyFallBoost(ball: BallState, combo: number): void {
   if (ball.vy <= 0) return;
-  const boost = 0.85 + Math.min(combo, 8) * 0.38;
+  const boost = 0.45 + Math.min(combo, 8) * 0.2;
   ball.vy = Math.min(FALL_TERMINAL_VY, ball.vy + boost);
 }
 

@@ -1,24 +1,21 @@
 /**
- * Tower rotation — 1:1 finger tracking, inertia on release, optional auto-spin from rings.
+ * Tower rotation — calm 1:1 drag with gentle coast on release.
  */
 
-import { expDecay } from './easing';
-
-const DRAG_SENS = 0.013;
-const MOMENTUM_BLEND = 0.48;
-const VELOCITY_SMOOTH = 16;
-const TAP_IMPULSE = Math.PI / 4;
-const SWIPE_IMPULSE = Math.PI / 5.5;
-const FRICTION = 6.2;
-const MAX_VELOCITY = 8.5;
-const STOP_THRESHOLD = 0.018;
+const DRAG_SENS = 0.0085;
+const MOMENTUM_BLEND = 0.32;
+const VELOCITY_SMOOTH = 12;
+const TAP_IMPULSE = Math.PI / 12;
+const SWIPE_IMPULSE = Math.PI / 14;
+const FRICTION = 10;
+const MAX_VELOCITY = 2.6;
+const STOP_THRESHOLD = 0.01;
 
 export class RotationController {
   angle = 0;
   private velocity = 0;
   private dragging = false;
   private lastDragVel = 0;
-  private autoSpin = 0;
   private pendingDx = 0;
 
   setDragging(active: boolean): void {
@@ -37,7 +34,6 @@ export class RotationController {
     this.pendingDx += dx;
   }
 
-  /** Flush accumulated pointer delta with game-loop dt for frame-rate independence. */
   tickDrag(dt: number): void {
     if (!this.dragging || this.pendingDx === 0) return;
 
@@ -48,10 +44,6 @@ export class RotationController {
     const instantVel = dt > 0.0001 ? delta / dt : 0;
     const blend = Math.min(1, VELOCITY_SMOOTH * dt);
     this.lastDragVel += (instantVel - this.lastDragVel) * blend;
-  }
-
-  addAutoSpin(radPerSec: number): void {
-    this.autoSpin = radPerSec;
   }
 
   tap(): void {
@@ -72,20 +64,16 @@ export class RotationController {
   update(dt: number): void {
     this.tickDrag(dt);
     if (!this.dragging) {
-      this.angle += (this.velocity + this.autoSpin) * dt;
+      this.angle += this.velocity * dt;
       this.velocity *= Math.exp(-FRICTION * dt);
       if (Math.abs(this.velocity) < STOP_THRESHOLD) this.velocity = 0;
-    } else if (this.autoSpin !== 0) {
-      this.angle += this.autoSpin * dt;
     }
-    this.autoSpin = expDecay(this.autoSpin, dt, 4.5);
   }
 
   reset(): void {
     this.angle = 0;
     this.velocity = 0;
     this.lastDragVel = 0;
-    this.autoSpin = 0;
     this.pendingDx = 0;
     this.dragging = false;
   }

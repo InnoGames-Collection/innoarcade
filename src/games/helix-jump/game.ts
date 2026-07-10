@@ -121,7 +121,6 @@ export class HelixJump {
     this.world.updateBall(this.ball, this.skin, false, 0);
     helixAudio.startSession();
     this.setState('playing');
-    vibrate(8);
   }
 
   pause(): void {
@@ -142,7 +141,6 @@ export class HelixJump {
     if (a === 'tap') {
       this.rotation.tap();
       helixAudio.click();
-      vibrate(6);
     }
     if (a === 'left') {
       this.rotation.swipeLeft();
@@ -173,7 +171,6 @@ export class HelixJump {
     const capped = Math.min(dt, 1 / 45);
     this.time += capped;
     this.rotation.update(capped);
-    this.applyNearbySpin();
 
     const gravity = gravityForDepth(this.depth, this.fallMul);
     const steps = substepCount(this.ball.vy, capped);
@@ -242,16 +239,6 @@ export class HelixJump {
     }
   }
 
-  private applyNearbySpin(): void {
-    let spin = 0;
-    for (const ring of this.rings) {
-      if (ring.broken || ring.spinVel === 0) continue;
-      const dy = Math.abs(ringWorldY(ring, this.time) - this.ball.y);
-      if (dy < this.cfg.spacing * 2.2) spin += ring.spinVel;
-    }
-    if (spin !== 0) this.rotation.addAutoSpin(spin);
-  }
-
   private resolveCollisions(prevY: number): void {
     const feverActive = this.feverLeft > 0;
     const hit = findSweepCollision(
@@ -283,21 +270,20 @@ export class HelixJump {
         this.score = this.depth + this.bonusScore;
         applyFallBoost(this.ball, this.combo);
         this.fallMul = Math.min(1.45, this.fallMul + 0.05 + mult * 0.01);
-        this.camera.addShake(0.05 + mult * 0.015);
+        this.camera.addShake(0.015 + mult * 0.004);
         this.world.particles.comboBurst(px, ry, pz, mult);
         helixAudio.gapPass(this.combo);
         if (hit.perfect) {
           this.world.particles.burst(px, ry, pz, THEME.fever, 8, 4);
           this.bonusScore += 1;
         }
-        vibrate(3 + mult);
         if (this.combo >= FEVER_THRESHOLD && this.feverLeft <= 0) {
           this.feverLeft = FEVER_DURATION;
           this.flashColor = 'rgba(255,217,61,0.35)';
           this.flashAlpha = 0.4;
           this.world.flash('#ffd93d', 0.35);
           this.world.particles.feverRing(px, ry, pz);
-          this.camera.addShake(0.18);
+          this.camera.addShake(0.04);
           helixAudio.feverStart();
         }
 
@@ -320,7 +306,6 @@ export class HelixJump {
       this.breakRing(hit.ring, wy, px, pz, 2, true, contactAngle);
       applyFallBoost(this.ball, 2);
       helixAudio.breakPlatform();
-      vibrate(10);
       return;
     }
 
@@ -330,12 +315,10 @@ export class HelixJump {
       this.ball.y = restYOnPlatform(wy);
       const fx = landingFx(impactSpeed);
       applyLandingFx(this.ball, fx);
-      this.camera.addShake(fx.shake);
-      this.camera.addImpactPunch(fx.shake * 0.6);
+      this.camera.addShake(fx.shake * 0.5);
       this.world.particles.landing(px, ry, pz, this.skin.color, impactSpeed);
       this.world.addLandingSplat(hit.ring.id, this.skin.color, this.rotation.angle);
       helixAudio.land(impactSpeed);
-      vibrate(8 + Math.floor(impactSpeed / 4));
     }
   }
 
@@ -350,7 +333,6 @@ export class HelixJump {
     if (ring.broken) return;
     this.breakRing(ring, wy, px, pz, mult, false, contactAngle);
     helixAudio.breakPlatform();
-    vibrate(4 + mult);
   }
 
   private breakRing(
@@ -377,7 +359,7 @@ export class HelixJump {
     this.world.shards.burst(sy, color, this.rotation.angle, shardCount, contactAngle);
     this.world.particles.burst(px, sy, pz, color, particleCount, spread);
     this.world.particles.emitBreakDust(px, sy, pz, color, 8 + mult);
-    this.camera.addShake(feverHit ? 0.14 : 0.07 + mult * 0.01);
+    this.camera.addShake(feverHit ? 0.03 : 0.02);
   }
 
   private recycleRings(): void {
@@ -398,7 +380,7 @@ export class HelixJump {
 
   private die(hitRing: Ring | undefined, contactAngle: number): void {
     helixAudio.gameOver();
-    this.camera.addShake(0.4);
+    this.camera.addShake(0.08);
     this.flashColor = 'rgba(229,57,53,0.45)';
     this.flashAlpha = 0.5;
     this.world.flash('#e53935', 0.45);
@@ -416,7 +398,7 @@ export class HelixJump {
       this.breakRing(ring, wy, px, pz, 5, false, contactAngle);
     }
 
-    vibrate(35);
+    vibrate(18);
 
     const result = recordPlay(this.score);
     this.best = loadSave().best;
