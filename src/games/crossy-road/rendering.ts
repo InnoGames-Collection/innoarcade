@@ -64,27 +64,34 @@ export function drawCoin(
   drawVoxelCoin(ctx, cx, cy, spin, animT, col, size);
 }
 
-export function hopSquash(hopProgress: number): { sx: number; sy: number; lift: number } {
+export function hopEase(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+/** Parabolic hop height — peaks at mid-air via sin(π·t). */
+export function hopArcHeight(hopProgress: number, peak: number): number {
+  if (hopProgress <= 0 || hopProgress >= 1) return 0;
+  return Math.sin(hopProgress * Math.PI) * peak;
+}
+
+export function hopSquash(hopProgress: number): { sx: number; sy: number } {
   const p = hopProgress;
   let sx = 1;
   let sy = 1;
-  let lift = 0;
-  if (p < 0.18) {
-    const t = p / 0.18;
-    sx = 1.18 - t * 0.18;
-    sy = 0.82 + t * 0.18;
-  } else if (p < 0.72) {
-    const t = (p - 0.18) / 0.54;
-    sx = 1 - 0.1 * Math.sin(t * Math.PI);
-    sy = 1 + 0.22 * Math.sin(t * Math.PI);
-    lift = Math.sin(t * Math.PI) * 12;
+  if (p < 0.12) {
+    const t = p / 0.12;
+    sx = 1.16 - t * 0.16;
+    sy = 0.84 + t * 0.16;
+  } else if (p < 0.88) {
+    const t = (p - 0.12) / 0.76;
+    sx = 1 - 0.08 * Math.sin(t * Math.PI);
+    sy = 1 + 0.14 * Math.sin(t * Math.PI);
   } else {
-    const t = (p - 0.72) / 0.28;
-    sx = 0.92 + t * 0.08;
-    sy = 1.22 - t * 0.22;
-    lift = (1 - t) * 4;
+    const t = (p - 0.88) / 0.12;
+    sx = 0.94 + t * 0.06;
+    sy = 1.14 - t * 0.14;
   }
-  return { sx, sy, lift };
+  return { sx, sy };
 }
 
 export function drawChicken(
@@ -95,10 +102,20 @@ export function drawChicken(
   hopProgress: number,
   isHopping: boolean,
 ): void {
-  const { sx, sy, lift } = isHopping ? hopSquash(hopProgress) : { sx: 1, sy: 1, lift: 0 };
+  const squash = isHopping ? hopSquash(hopProgress) : { sx: 1, sy: 1 };
+  const peak = cell * 0.5;
+  const arcZ = isHopping ? hopArcHeight(hopProgress, peak) : 0;
   const unit = cell * 0.22;
-  drawDropShadow(ctx, cx, cy + unit * 0.9 + lift * 0.2, unit * 1.1, unit * 0.35, 0.24);
-  drawVoxelChicken(ctx, cx, cy, unit, lift, { sx, sy });
+  const shadowT = 1 - (arcZ / peak) * 0.4;
+  drawDropShadow(
+    ctx,
+    cx,
+    cy + unit * 0.9,
+    unit * 1.1 * shadowT,
+    unit * 0.35 * shadowT,
+    0.24 * shadowT,
+  );
+  drawVoxelChicken(ctx, cx, cy, unit, arcZ, squash);
 }
 
 export function drawEagle(

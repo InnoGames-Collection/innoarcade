@@ -11,6 +11,7 @@ import {
   drawIsoTerrainSlabTop,
   drawLog,
   drawVehicle,
+  hopEase,
   type VehicleKind,
 } from './rendering';
 import {
@@ -28,10 +29,13 @@ export const W = 480;
 export const H = 720;
 export const COLS = 8;
 export const CELL = W / COLS;
-const HOP_DUR = 0.16;
+const HOP_DUR = 0.22;
 const CAMP_LIMIT = 5;
 const CAM_LERP = 4.2;
 const SCREEN_ANCHOR_Y = 0.55;
+/** Player hit radius in grid cells — aligned to voxel footprint base. */
+const PLAYER_HIT_RADIUS = 0.34;
+const CAR_HIT_PAD = 0.1;
 
 type RowKind = 'grass' | 'road' | 'river';
 
@@ -248,14 +252,29 @@ export class CrossyRoad {
   }
 
   private playerGridPos(): { gx: number; gz: number } {
-    const hopProgress = this.hopT > 0 ? 1 - this.hopT / HOP_DUR : 1;
+    const p = this.hopProgress();
+    const t = hopEase(p);
     const gx = this.hopT > 0
-      ? this.fromPx + (this.px - this.fromPx) * hopProgress + 0.5
+      ? this.fromPx + (this.px - this.fromPx) * t + 0.5
       : this.px + 0.5;
     const gz = this.hopT > 0
-      ? this.fromPz + (this.pz - this.fromPz) * hopProgress + 0.5
+      ? this.fromPz + (this.pz - this.fromPz) * t + 0.5
       : this.pz + 0.5;
     return { gx, gz };
+  }
+
+  private hopProgress(): number {
+    return this.hopT > 0 ? 1 - this.hopT / HOP_DUR : 1;
+  }
+
+  /** Player center along the row axis in world pixels (matches grid column base). */
+  private playerCenterPx(): number {
+    return (this.px + 0.5) * CELL;
+  }
+
+  private overlapsSpan(centerPx: number, spanStart: number, spanEnd: number, padCells = 0): boolean {
+    const half = CELL * (PLAYER_HIT_RADIUS - padCells);
+    return centerPx + half > spanStart && centerPx - half < spanEnd;
   }
 
   private atScreen(gridX: number, gridY: number): { x: number; y: number } {
@@ -324,25 +343,26 @@ export class CrossyRoad {
 
     for (const c of this.cars) {
       c.x += c.speed * dt;
-      if (c.x < -160) c.x = W + 80;
-      if (c.x > W + 80) c.x = -160;
+      const margin = CELL * 2.5;
+      if (c.speed > 0 && c.x > W + margin) c.x = -c.w - margin;
+      else if (c.speed < 0 && c.x < -c.w - margin) c.x = W + margin;
     }
     for (const l of this.logs) {
       l.x += l.speed * dt;
-      if (l.x < -160) l.x = W + 90;
-      if (l.x > W + 90) l.x = -160;
+      const margin = CELL * 2.5;
+      if (l.speed > 0 && l.x > W + margin) l.x = -l.w - margin;
+      else if (l.speed < 0 && l.x < -l.w - margin) l.x = W + margin;
     }
-    for (const c of this.coinItems) c.spin += dt * 5;
+    for (const c of this.coinItems) c.spin += dt * 4.5;
 
     const row = this.rowAt(this.pz);
     const wasRiver = this.onRiver;
     this.onRiver = row.kind === 'river' && this.hopT === 0;
 
     if (this.onRiver) {
+      const cx = this.playerCenterPx();
       const log = this.logs.find(
-        (l) => l.row === this.pz
-          && this.px * CELL + CELL / 2 >= l.x
-          && this.px * CELL + CELL / 2 <= l.x + l.w,
+        (l) => l.row === this.pz && this.overlapsSpan(cx, l.x, l.x + l.w),
       );
       if (log) {
         const shift = log.speed * dt / CELL;
@@ -376,8 +396,10 @@ export class CrossyRoad {
     this.checkCarHit();
     const row = this.rowAt(this.pz);
     if (row.kind === 'river') {
-      const cx = this.px * CELL + CELL / 2;
-      const onLog = this.logs.some((l) => l.row === this.pz && cx >= l.x && cx <= l.x + l.w);
+      const cx = this.playerCenterPx();
+      const onLog = this.logs.some(
+        (l) => l.row === this.pz && this.overlapsSpan(cx, l.x, l.x + l.w),
+      );
       if (!onLog) this.die('water');
     }
   }
@@ -385,11 +407,11 @@ export class CrossyRoad {
   private checkCarHit(): void {
     const row = this.rowAt(this.pz);
     if (row.kind !== 'road') return;
-    const cx = this.px * CELL + CELL / 2;
-    const pad = CELL * 0.12;
+    const cx = this.playerCenterPx();
+    const padPx = CELL * CAR_HIT_PAD;
     for (const c of this.cars) {
       if (c.row !== this.pz) continue;
-      if (cx >= c.x + pad && cx <= c.x + c.w - pad) this.die('car');
+      if (this.overlapsSpan(cx, c.x + padPx, c.x + c.w - padPx)) this.die('car');
     }
   }
 
@@ -409,7 +431,7 @@ export class CrossyRoad {
     const origin = this.screenOrigin();
     const cam = this.camIso;
     const { gx: playerGx, gz: playerGz } = this.playerGridPos();
-    const hopProgress = this.hopT > 0 ? 1 - this.hopT / HOP_DUR : 1;
+    const hopProgress = this.hopProgress();
 
     type DrawItem = { depth: number; draw: () => void };
     const queue: DrawItem[] = [];
@@ -452,7 +474,7 @@ export class CrossyRoad {
     const unit = CELL * 0.22;
 
     for (const c of this.cars) {
-      const gridCx = (c.x + c.w / 2) / CELL;
+      const gridCx = (c.x + c.w * 0.5) / CELL;
       const center = gridToScreen(gridCx, c.row + 0.5, CELL, cam, origin);
       const depth = paintDepth(c.row, gridCx) + 0.2;
       const facingRight = c.speed > 0;
@@ -464,7 +486,7 @@ export class CrossyRoad {
     }
 
     for (const l of this.logs) {
-      const gridCx = (l.x + l.w / 2) / CELL;
+      const gridCx = (l.x + l.w * 0.5) / CELL;
       const center = gridToScreen(gridCx, l.row + 0.5, CELL, cam, origin);
       const depth = paintDepth(l.row, gridCx) + 0.2;
       const gridSpan = l.w / CELL;

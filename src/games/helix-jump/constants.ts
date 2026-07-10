@@ -25,27 +25,25 @@ export const BALL_WORLD_X = Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
 export const BALL_WORLD_Z = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
 /** Visible pillar segment height around the play axis. */
 export const PILLAR_HEIGHT = 16;
-export const GAP_ARC = 1.05;
-/** Orange hazard wedge on solid platforms (reference: partial segment, not full ring). */
-export const DANGER_ARC_MIN = 0.42;
-export const DANGER_ARC_MAX = 0.62;
-export const DANGER_TOLERANCE = 0.035;
-/** Angular grace when gap-aligned — widens with fall speed in physics. */
-export const GAP_PASS_TOLERANCE = 0.03;
-export const GAP_PASS_VEL_BONUS = 0;
-export const SOLID_EDGE_INSET = 0.04;
-/** Landing assist — only when nearly centered in the gap at speed. */
-export const LANDING_ASSIST_ANGLE = 0.04;
+export const GAP_ARC = 1.0;
+/** Must be this far inside the gap opening to drop through (reference: aim the gap). */
+export const GAP_EDGE_INSET = 0.07;
+export const DANGER_ARC_MIN = 0.45;
+export const DANGER_ARC_MAX = 0.68;
+export const DANGER_TOLERANCE = 0.03;
+export const GAP_PASS_TOLERANCE = 0.02;
+export const GAP_PASS_VEL_BONUS = 0.0015;
+export const SOLID_EDGE_INSET = 0.05;
 
-export const GRAVITY_BASE = 7;
-export const BOUNCE_VEL = 7;
-export const BOUNCE_UP_VEL = 3.8;
-export const BOUNCE_UP_MAX = 4.4;
-export const BOUNCE_RESTITUTION = 0.03;
-export const FALL_TERMINAL_VY = 6;
-export const FALL_STRETCH_SPEED = 14;
-export const BALL_STRETCH_MAX = 0.08;
-export const BALL_ROLL_RATE = 1.2;
+export const GRAVITY_BASE = 15;
+export const BOUNCE_VEL = 10;
+export const BOUNCE_UP_VEL = 6.0;
+export const BOUNCE_UP_MAX = 6.8;
+export const BOUNCE_RESTITUTION = 0.05;
+export const FALL_TERMINAL_VY = 12;
+export const FALL_STRETCH_SPEED = 16;
+export const BALL_STRETCH_MAX = 0.1;
+export const BALL_ROLL_RATE = 1.8;
 export const BALL_SQUASH_MIN = 0.72;
 export const BALL_SQUASH_MAX = 1.06;
 export const CAM_FOV = 44;
@@ -54,15 +52,14 @@ export const CAM_Z = 8.2;
 export const CAM_LOOK_Y = -0.15;
 export const CAM_LOOK_Z = 0.9;
 
-/** ~2.5× ball diameter between platforms — more air time for control. */
-export const RING_SPACING_BASE = 2.5;
-/** Global sim scale — keeps motion readable on mobile without changing feel ratios. */
-export const SIM_SPEED = 0.55;
+/** ~2.1× ball diameter — reference pacing between decisions. */
+export const RING_SPACING_BASE = 2.1;
+export const SIM_SPEED = 0.82;
 export const FEVER_THRESHOLD = 4;
 export const FEVER_DURATION = 2.8;
 export const COMBO_CAP = 8;
-/** Consecutive gap passes before platforms shatter on streak (reference Helix Jump). */
-export const STREAK_SHATTER_THRESHOLD = 2;
+/** Three clean gap passes → smash / fireball through next platform (reference). */
+export const STREAK_SHATTER_THRESHOLD = 3;
 
 /** Bright premium arcade palette — high contrast, clean backgrounds. */
 export const THEME = {

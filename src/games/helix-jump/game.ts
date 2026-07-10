@@ -7,12 +7,14 @@ import { mulberry32 } from '../_lq/lq';
 import { CameraController } from './camera';
 import {
   BALL_CONTACT_ANGLE, BALL_CONTACT_R, COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD,
-  RING_COLORS, RING_HEIGHT, SIM_SPEED, STREAK_SHATTER_THRESHOLD, THEME, BALL_R,
+  RING_COLORS, SIM_SPEED, STREAK_SHATTER_THRESHOLD, THEME,
 } from './constants';
 import { helixAudio } from './helixAudio';
 import {
   applyBounce,
+  applyFallBoost,
   applyLandingFx,
+  ballAngle,
   clearYThroughRing,
   findApproachRing,
   findSweepCollision,
@@ -96,16 +98,17 @@ export class HelixJump {
     clearGeometryCache();
     this.cleared.clear();
     this.cfg = towerConfigForDepth(0);
-    const firstRingY = this.cfg.spacing * 2.0;
+    const firstRingY = this.cfg.spacing * 1.5;
+    const startBallAng = ballAngle(0);
     let prev: Ring | undefined;
     for (let i = 0; i < 24; i++) {
-      const ring = createRing(firstRingY + i * this.cfg.spacing, this.rnd, this.cfg, prev);
+      const solidUnder = i < 5 ? startBallAng : undefined;
+      const ring = createRing(firstRingY + i * this.cfg.spacing, this.rnd, this.cfg, prev, solidUnder);
       this.rings.push(ring);
       prev = ring;
     }
-    const spawnY = firstRingY - BALL_R - RING_HEIGHT * 1.2;
     this.ball = {
-      y: spawnY,
+      y: restYOnPlatform(firstRingY),
       vy: 0,
       squash: 1,
       squashVel: 0,
@@ -267,7 +270,8 @@ export class HelixJump {
         const mult = Math.min(COMBO_CAP, this.combo);
         this.bonusScore += mult;
         this.score = this.depth + this.bonusScore;
-        this.fallMul = Math.min(1.04, this.fallMul + 0.008);
+        applyFallBoost(this.ball, this.combo);
+        this.fallMul = Math.min(1.35, this.fallMul + 0.022 + mult * 0.01);
         this.camera.addShake(0.015 + mult * 0.004);
         this.world.particles.comboBurst(px, ry, pz, mult);
         helixAudio.gapPass(this.combo);
@@ -302,6 +306,7 @@ export class HelixJump {
 
     if (hit.smashed) {
       this.breakRing(hit.ring, wy, px, pz, 2, true, contactAngle);
+      applyFallBoost(this.ball, 1);
       helixAudio.breakPlatform();
       return;
     }

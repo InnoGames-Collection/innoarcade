@@ -213,14 +213,14 @@ export function drawVoxelCoin(
   cx: number,
   cy: number,
   spin: number,
-  animT: number,
+  _animT: number,
   col: number,
   unit: number,
 ): void {
-  const bob = Math.sin(animT * 3.2 + col * 1.7) * 5;
+  const bob = Math.sin(Date.now() * 0.005 + col * 0.9) * 5;
   const z = 8 + bob;
   const footY = cy + unit * 0.1;
-  const spinW = 0.26 + Math.abs(Math.cos(spin)) * 0.1;
+  const spinW = 0.26 + Math.abs(Math.cos(spin)) * 0.12;
 
   draw3DBox(ctx, cx, footY, z, spinW, spinW * 0.85, unit * 0.26, '#f2b21a', unit);
   draw3DBox(ctx, cx, footY, z + unit * 0.24, spinW * 0.55, spinW * 0.45, unit * 0.06, '#fff4a8', unit);

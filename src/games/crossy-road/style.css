@@ -121,5 +121,8 @@ body[data-game="crossy-road"] #overOverlay .new-best {
 }
 
 .arc-canvas-wrap canvas {
+  display: block;
   touch-action: manipulation;
+  image-rendering: auto;
+  -webkit-tap-highlight-color: transparent;
 }

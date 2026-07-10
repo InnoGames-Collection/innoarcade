@@ -19,12 +19,50 @@ const host = new GameHost(GAME_ID);
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
 const playWrapper = $('#arc-play-wrapper');
+const canvasWrap = $('.arc-canvas-wrap');
 const canvas = $('#game') as unknown as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
-const dpr = Math.min(window.devicePixelRatio || 1, 2);
-canvas.width = W * dpr;
-canvas.height = H * dpr;
-ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+function currentDpr(): number {
+  return Math.min(window.devicePixelRatio || 1, 2);
+}
+
+function applyCanvasBackingStore(): void {
+  const dpr = currentDpr();
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function fitCanvas(): void {
+  const w = canvasWrap.clientWidth;
+  const h = canvasWrap.clientHeight;
+  if (w <= 0 || h <= 0) return;
+  const aspect = W / H;
+  let cw = w;
+  let ch = w / aspect;
+  if (ch > h) {
+    ch = h;
+    cw = h * aspect;
+  }
+  canvas.style.width = `${Math.floor(cw)}px`;
+  canvas.style.height = `${Math.floor(ch)}px`;
+}
+
+function onViewportChange(): void {
+  applyCanvasBackingStore();
+  fitCanvas();
+}
+
+applyCanvasBackingStore();
+fitCanvas();
+window.addEventListener('resize', onViewportChange);
+window.addEventListener('orientationchange', onViewportChange);
+if (typeof ResizeObserver !== 'undefined') {
+  const ro = new ResizeObserver(() => fitCanvas());
+  ro.observe(canvasWrap);
+  ro.observe(playWrapper);
+}
 
 const game = new CrossyRoad();
 const run = trackArcadeRunStart(GAME_ID);
@@ -57,6 +95,7 @@ game.onStateChange = (state) => {
   run.onStateChange(state);
   syncChrome(state);
   if (state === 'over') finalCoins.textContent = String(game.coins);
+  if (state === 'playing') requestAnimationFrame(fitCanvas);
 };
 game.onGameOver = (score) => { submitArcadeScore(score, run.getRunStart(), shell, { budgetSec: 90, gameId: GAME_ID, winScore: host.winScore }); };
 

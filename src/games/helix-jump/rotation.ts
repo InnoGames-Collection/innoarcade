@@ -5,9 +5,9 @@
 const DRAG_SENS = 0.011;
 const MOMENTUM_BLEND = 0.35;
 const VELOCITY_SMOOTH = 14;
-/** ~38° per tap — must be obvious on mobile. */
-const TAP_STEP = Math.PI / 4.8;
-const SWIPE_STEP = Math.PI / 5.5;
+/** ~26° per tap — fine enough to line up gaps (reference drag/tap). */
+const TAP_STEP = Math.PI / 7;
+const SWIPE_STEP = Math.PI / 8;
 const FRICTION = 11;
 const MAX_VELOCITY = 2.4;
 const STOP_THRESHOLD = 0.01;
