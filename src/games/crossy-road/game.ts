@@ -14,7 +14,6 @@ import {
   HOP_DUR,
   IDLE_LIMIT,
   CAMP_LIMIT,
-  PREMIUM_RENDER,
   W,
   type Car,
   type Coin,
@@ -273,27 +272,12 @@ export class CrossyRoad {
   }
 
   private spawnLandingParticles(kind: Row['kind']): void {
-    let sx: number;
-    let sy: number;
-    if (PREMIUM_RENDER) {
-      const p = gridToScreen(
-        this.px + 0.5,
-        this.pz + 0.5,
-        { x: this.camIsoX, y: this.camIsoY },
-        { x: W / 2, y: H * SCREEN_ANCHOR_Y },
-        this.camBob,
-      );
-      sx = p.x;
-      sy = p.y;
-    } else {
-      sx = this.px * CELL + CELL / 2;
-      sy = H - (this.pz * CELL - this.camZ) - CELL / 2;
-    }
+    const p = this.screenAtGrid(this.px + 0.5, this.pz + 0.5);
     if (kind === 'river') {
-      this.juice.burst(sx, sy, '#5ecae8', 10, 120, 3);
+      this.juice.burst(p.x, p.y, '#5ecae8', 10, 120, 3);
       crossyRoadAudio.splash();
     } else if (kind === 'grass') {
-      this.juice.burst(sx, sy, '#8ed85c', 8, 100, 3);
+      this.juice.burst(p.x, p.y, '#8ed85c', 8, 100, 3);
       crossyRoadAudio.dust();
     }
   }
@@ -328,8 +312,8 @@ export class CrossyRoad {
       idleT: this.idleT,
       tutorialT: this.tutorialT,
       camZ: this.camZ,
-      camIsoX: this.camIsoX,
-      camIsoY: this.camIsoY,
+      camIsoX: 0,
+      camIsoY: 0,
       camBob: this.camBob,
       animT: this.animT,
       campT: this.campT,
