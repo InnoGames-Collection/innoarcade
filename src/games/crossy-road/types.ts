@@ -16,11 +16,21 @@ export const PREMIUM_RENDER = true;
 export type RowKind = 'grass' | 'road' | 'river';
 export type GameState = 'menu' | 'playing' | 'paused' | 'over';
 
+export type VehicleKind =
+  | 'sedan'
+  | 'suv'
+  | 'taxi'
+  | 'bus'
+  | 'police'
+  | 'van'
+  | 'minibus';
+
 export interface Car {
   row: number;
   x: number;
   w: number;
   speed: number;
+  kind: VehicleKind;
 }
 
 export interface Log {
@@ -65,8 +75,12 @@ export function hopProgress(hopT: number): number {
   return hopT > 0 ? 1 - hopT / HOP_DUR : 1;
 }
 
+export function hopEase(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
 export function playerGridPos(s: WorldSnapshot): { gx: number; gz: number } {
-  const p = hopProgress(s.hopT);
+  const p = hopEase(hopProgress(s.hopT));
   const gx = s.hopT > 0
     ? s.fromPx + (s.px - s.fromPx) * p + 0.5
     : s.px + 0.5;

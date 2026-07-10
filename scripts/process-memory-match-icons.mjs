@@ -86,36 +86,19 @@ async function removeBackground(inputPath, bgOpts) {
 }
 
 async function fitToCanvas(input) {
-  const trimmedBuf = await sharp(input).trim().toBuffer();
-  const meta = await sharp(trimmedBuf).metadata();
-  const width = meta.width ?? 1;
-  const height = meta.height ?? 1;
-  const fill = (width * height) / (CANVAS * CANVAS);
-  const scale = fill > 0 ? Math.sqrt(TARGET_FILL / fill) : 1;
-  let targetW = Math.max(1, Math.round(width * scale));
-  let targetH = Math.max(1, Math.round(height * scale));
+  const maxDim = Math.round(CANVAS * Math.sqrt(TARGET_FILL));
 
-  if (targetW > CANVAS || targetH > CANVAS) {
-    const ratio = Math.min(CANVAS / targetW, CANVAS / targetH);
-    targetW = Math.max(1, Math.round(targetW * ratio));
-    targetH = Math.max(1, Math.round(targetH * ratio));
-  }
-
-  const padTop = Math.max(0, Math.floor((CANVAS - targetH) / 2));
-  const padLeft = Math.max(0, Math.floor((CANVAS - targetW) / 2));
-
-  return sharp(trimmedBuf)
-    .resize(targetW, targetH, { fit: 'inside', kernel: sharp.kernel.lanczos3 })
-    .sharpen({ sigma: 0.6, m1: 0.5, m2: 0.25 })
-    .extend({
-      top: padTop,
-      bottom: CANVAS - targetH - padTop,
-      left: padLeft,
-      right: CANVAS - targetW - padLeft,
+  return sharp(input)
+    .trim()
+    .resize(maxDim, maxDim, {
+      fit: 'inside',
+      kernel: sharp.kernel.lanczos3,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     })
+    .sharpen({ sigma: 0.6, m1: 0.5, m2: 0.25 })
     .resize(CANVAS, CANVAS, {
       fit: 'contain',
+      position: 'centre',
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     })
     .png({ compressionLevel: 9, adaptiveFiltering: true });
@@ -135,10 +118,22 @@ async function processLogo(name, inputPath, bgOpts) {
 }
 
 /** Re-encode without pixel or style changes (Mesob / Jebena). */
-async function copyPreserve(name, inputPath) {
+async function copyPreserve(name, inputPaths) {
+  const candidates = Array.isArray(inputPaths) ? inputPaths : [inputPaths];
+  const inputPath = candidates.find((p) => fs.existsSync(p));
+  const outPath = path.join(assetsDir, `${name}.png`);
+
+  if (!inputPath) {
+    if (fs.existsSync(outPath)) {
+      console.log(`Skipping ${name} — source missing, keeping existing asset`);
+      return;
+    }
+    throw new Error(`No source found for ${name}`);
+  }
+
   console.log(`Copying ${name} (preserve pixels)…`);
   const buf = await sharp(inputPath).ensureAlpha().png().toBuffer();
-  await exportIcon(await fitToCanvas(buf), path.join(assetsDir, `${name}.png`));
+  await exportIcon(await fitToCanvas(buf), outPath);
 }
 
 async function deployToGame() {
@@ -160,8 +155,16 @@ async function main() {
 
   await processLogo('telebirr', refPath('telebirr'), { lumMin: 240, satMax: 35 });
   await processLogo('ethio-telecom', refPath('ethio'), { lumMin: 225, satMax: 40, cornerLumMin: 180 });
-  await copyPreserve('mesob', path.join(iconsDir, 'injera.png'));
-  await copyPreserve('jebena', path.join(iconsDir, 'coffee.png'));
+  await processLogo('mesob', path.join(assetsDir, 'source/injera.png'), {
+    lumMin: 252,
+    satMax: 18,
+    cornerLumMin: 245,
+  });
+  await processLogo('jebena', path.join(assetsDir, 'source/coffee.png'), {
+    lumMin: 254,
+    satMax: 12,
+    cornerLumMin: 250,
+  });
   await processLogo('nexsus', refPath('nexsus'), { lumMin: 248, satMax: 20, cornerLumMin: 210 });
   await processLogo('teleconnect', refPath('teleconnect'), { lumMin: 248, satMax: 20, cornerLumMin: 210 });
 

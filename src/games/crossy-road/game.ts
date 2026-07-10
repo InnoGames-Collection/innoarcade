@@ -1,8 +1,9 @@
 // Crossy Road — grid hopper with roads, rivers, and logs. Canvas arcade game.
 import { sfx } from '../../engine/audio';
+import { Juice } from '../../engine/juice';
 import type { Action } from '../../engine/input';
 import { mulberry32 } from '../_lq/lq';
-import { gridToIso, lerpCamera } from './iso';
+import { gridToIso, gridToScreen, lerpCamera } from './iso';
 import { renderWorld } from './render';
 import {
   CAM_LERP,
@@ -12,15 +13,21 @@ import {
   HOP_DUR,
   IDLE_LIMIT,
   PREMIUM_RENDER,
+  SCREEN_ANCHOR_Y,
   W,
   type Car,
   type GameState,
   type Log,
   type Row,
+  type VehicleKind,
   type WorldSnapshot,
   hopProgress,
   playerGridPos,
 } from './types';
+
+const VEHICLE_KINDS: VehicleKind[] = [
+  'sedan', 'suv', 'taxi', 'bus', 'police', 'van', 'minibus',
+];
 
 export type { GameState } from './types';
 export { W, H, COLS, CELL, PREMIUM_RENDER } from './types';
@@ -50,6 +57,7 @@ export class CrossyRoad {
   private idleT = 0;
   private tutorialT = 6;
   private animT = 0;
+  private juice = new Juice();
 
   start(): void {
     this.score = 0;
@@ -69,6 +77,7 @@ export class CrossyRoad {
     this.idleT = 0;
     this.tutorialT = 6;
     this.animT = 0;
+    this.juice = new Juice();
     for (let z = -4; z <= 12; z++) this.ensureRow(z);
     this.setState('playing');
   }
@@ -126,6 +135,7 @@ export class CrossyRoad {
           x: this.rnd() * W,
           w: CELL * (1.2 + this.rnd() * 0.8),
           speed: speed * dir,
+          kind: VEHICLE_KINDS[Math.floor(this.rnd() * VEHICLE_KINDS.length)]!,
         });
       }
     }
@@ -146,6 +156,7 @@ export class CrossyRoad {
   update(dt: number): void {
     if (this.state !== 'playing') return;
     this.animT += dt;
+    this.juice.update(dt);
 
     if (this.hopT > 0) {
       this.hopT = Math.max(0, this.hopT - dt);
@@ -219,6 +230,31 @@ export class CrossyRoad {
       const onLog = this.logs.some((l) => l.row === this.pz && cx >= l.x && cx <= l.x + l.w);
       if (!onLog) this.die();
     }
+    this.spawnLandingParticles(row.kind);
+  }
+
+  private spawnLandingParticles(kind: Row['kind']): void {
+    let sx: number;
+    let sy: number;
+    if (PREMIUM_RENDER) {
+      const p = gridToScreen(
+        this.px + 0.5,
+        this.pz + 0.5,
+        { x: this.camIsoX, y: this.camIsoY },
+        { x: W / 2, y: H * SCREEN_ANCHOR_Y },
+        this.camBob,
+      );
+      sx = p.x;
+      sy = p.y;
+    } else {
+      sx = this.px * CELL + CELL / 2;
+      sy = H - (this.pz * CELL - this.camZ) - CELL / 2;
+    }
+    if (kind === 'river') {
+      this.juice.burst(sx, sy, '#5ecae8', 10, 120, 3);
+    } else if (kind === 'grass') {
+      this.juice.burst(sx, sy, '#8ed85c', 8, 100, 3);
+    }
   }
 
   private checkCarHit(): void {
@@ -234,6 +270,8 @@ export class CrossyRoad {
   private die(): void {
     if (this.state !== 'playing') return;
     sfx.crash();
+    this.juice.shake(0.5);
+    this.juice.flashOverlay('rgba(231,76,60,0.45)', 0.4);
     this.setState('over');
     this.onGameOver(this.score, this.score > this.best);
   }
@@ -260,7 +298,10 @@ export class CrossyRoad {
   }
 
   render(ctx: CanvasRenderingContext2D): void {
+    this.juice.applyShake(ctx);
     renderWorld(ctx, this.buildSnapshot());
+    this.juice.drawParticles(ctx);
+    this.juice.drawFlash(ctx, W, H);
   }
 
   private setState(s: GameState): void {
