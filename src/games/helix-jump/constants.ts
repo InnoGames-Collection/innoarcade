@@ -33,15 +33,15 @@ export const SOLID_EDGE_INSET = 0.05;
 /** Landing assist — snap to safe zone when grazing gap edge. */
 export const LANDING_ASSIST_ANGLE = 0.09;
 
-export const GRAVITY_BASE = 20;
-export const BOUNCE_VEL = 14;
-export const BOUNCE_UP_VEL = 8.0;
-export const BOUNCE_UP_MAX = 8.6;
-export const BOUNCE_RESTITUTION = 0.06;
-export const FALL_TERMINAL_VY = 16;
-export const FALL_STRETCH_SPEED = 12;
-export const BALL_STRETCH_MAX = 0.12;
-export const BALL_ROLL_RATE = 2.4;
+export const GRAVITY_BASE = 11;
+export const BOUNCE_VEL = 9;
+export const BOUNCE_UP_VEL = 5.0;
+export const BOUNCE_UP_MAX = 5.6;
+export const BOUNCE_RESTITUTION = 0.04;
+export const FALL_TERMINAL_VY = 9;
+export const FALL_STRETCH_SPEED = 18;
+export const BALL_STRETCH_MAX = 0.1;
+export const BALL_ROLL_RATE = 1.6;
 export const BALL_SQUASH_MIN = 0.72;
 export const BALL_SQUASH_MAX = 1.06;
 export const CAM_FOV = 42;
@@ -50,8 +50,10 @@ export const CAM_Y = 6.2;
 export const CAM_Z = 9.0;
 export const CAM_LOOK_Y = 0;
 
-/** ~2.2× ball diameter between platforms. */
-export const RING_SPACING_BASE = 2.22;
+/** ~2.5× ball diameter between platforms — more air time for control. */
+export const RING_SPACING_BASE = 2.5;
+/** Global sim scale — keeps motion readable on mobile without changing feel ratios. */
+export const SIM_SPEED = 0.78;
 export const FEVER_THRESHOLD = 4;
 export const FEVER_DURATION = 2.8;
 export const COMBO_CAP = 8;

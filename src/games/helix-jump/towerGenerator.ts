@@ -11,14 +11,14 @@ export interface TowerConfig {
 const MIN_GAP = 0.82;
 const MIN_SOLID = 0.65;
 const TAU = Math.PI * 2;
-const MOVE_FREQ = 2.15;
+const MOVE_FREQ = 1.35;
 
 export function towerConfigForDepth(passed: number): TowerConfig {
   const t = Math.min(1, passed / 160);
   return {
     depth: passed,
     gapArc: Math.max(MIN_GAP, GAP_ARC - t * 0.24),
-    spacing: Math.max(2.1, RING_SPACING_BASE - t * 0.45),
+    spacing: Math.max(2.35, RING_SPACING_BASE - t * 0.18),
     dangerChance: passed < 12 ? 0 : 0.08 + t * 0.14,
   };
 }
@@ -93,8 +93,8 @@ export function createRing(
 
   let moveAmp = 0;
   let movePhase = 0;
-  if (depth > 35 && rnd() < 0.14) {
-    moveAmp = 0.12 + rnd() * 0.22;
+  if (depth > 55 && rnd() < 0.1) {
+    moveAmp = 0.08 + rnd() * 0.14;
     movePhase = rnd() * TAU;
   }
 

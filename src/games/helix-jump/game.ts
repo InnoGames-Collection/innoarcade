@@ -7,7 +7,7 @@ import { mulberry32 } from '../_lq/lq';
 import { CameraController } from './camera';
 import {
   BALL_CONTACT_ANGLE, BALL_CONTACT_R, COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD,
-  RING_COLORS, RING_HEIGHT, STREAK_SHATTER_THRESHOLD, THEME, BALL_R,
+  RING_COLORS, RING_HEIGHT, SIM_SPEED, STREAK_SHATTER_THRESHOLD, THEME, BALL_R,
 } from './constants';
 import { helixAudio } from './helixAudio';
 import {
@@ -168,7 +168,7 @@ export class HelixJump {
   update(dt: number): void {
     if (this.state !== 'playing') return;
 
-    const capped = Math.min(dt, 1 / 45);
+    const capped = Math.min(dt, 1 / 45) * SIM_SPEED;
     this.time += capped;
     this.rotation.update(capped);
 
@@ -269,7 +269,7 @@ export class HelixJump {
         this.bonusScore += mult;
         this.score = this.depth + this.bonusScore;
         applyFallBoost(this.ball, this.combo);
-        this.fallMul = Math.min(1.45, this.fallMul + 0.05 + mult * 0.01);
+        this.fallMul = Math.min(1.1, this.fallMul + 0.015 + mult * 0.003);
         this.camera.addShake(0.015 + mult * 0.004);
         this.world.particles.comboBurst(px, ry, pz, mult);
         helixAudio.gapPass(this.combo);
@@ -304,7 +304,7 @@ export class HelixJump {
 
     if (hit.smashed) {
       this.breakRing(hit.ring, wy, px, pz, 2, true, contactAngle);
-      applyFallBoost(this.ball, 2);
+      applyFallBoost(this.ball, 1);
       helixAudio.breakPlatform();
       return;
     }

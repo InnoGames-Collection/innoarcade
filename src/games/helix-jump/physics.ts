@@ -52,7 +52,7 @@ function gapCenterDist(ballAng: number, gapStart: number, gapArc: number): numbe
 }
 
 export function gravityForDepth(passed: number, fallMul: number): number {
-  return (GRAVITY_BASE + Math.min(12, passed * 0.1)) * fallMul;
+  return (GRAVITY_BASE + Math.min(4, passed * 0.035)) * fallMul;
 }
 
 export function integrateBall(ball: BallState, gravity: number, dt: number): void {
@@ -133,10 +133,10 @@ function evaluateRingCrossing(
   const gapDist = gapCenterDist(ang, ring.gapStart, ring.gapArc);
   const nearGapEdge = !passedGap && gapDist < ring.gapArc * 0.5 + LANDING_ASSIST_ANGLE;
 
-  const perfect = passedGap && Math.abs(ball.y - ringY) < 0.05 && ball.vy > 4;
+  const perfect = passedGap && Math.abs(ball.y - ringY) < 0.05 && ball.vy > 2.5;
 
   // Smart pass: in gap, near gap center at speed, or landing-assist at gap lip.
-  if (passedGap || (nearGapEdge && ball.vy > 5)) {
+  if (passedGap || (nearGapEdge && ball.vy > 3)) {
     return {
       ring, screenY: ringY - ball.y, passedGap: true, bounced: false,
       smashed: false, died: false, perfect, impactSpeed,
@@ -273,7 +273,7 @@ export function clearYThroughRing(ringY: number): number {
 
 export function applyFallBoost(ball: BallState, combo: number): void {
   if (ball.vy <= 0) return;
-  const boost = 0.45 + Math.min(combo, 8) * 0.2;
+  const boost = 0.12 + Math.min(combo, 8) * 0.06;
   ball.vy = Math.min(FALL_TERMINAL_VY, ball.vy + boost);
 }
 

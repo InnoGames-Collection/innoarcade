@@ -5,10 +5,10 @@
 const DRAG_SENS = 0.0085;
 const MOMENTUM_BLEND = 0.32;
 const VELOCITY_SMOOTH = 12;
-const TAP_IMPULSE = Math.PI / 12;
-const SWIPE_IMPULSE = Math.PI / 14;
-const FRICTION = 10;
-const MAX_VELOCITY = 2.6;
+const TAP_IMPULSE = Math.PI / 18;
+const SWIPE_IMPULSE = Math.PI / 22;
+const FRICTION = 12;
+const MAX_VELOCITY = 1.9;
 const STOP_THRESHOLD = 0.01;
 
 export class RotationController {
