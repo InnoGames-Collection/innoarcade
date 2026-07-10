@@ -30,8 +30,13 @@ export const BOUNCE_UP_VEL = 10.0;
 export const BOUNCE_UP_MAX = 11.5;
 /** Extra pop coefficient for impacts above BOUNCE_VEL. */
 export const BOUNCE_RESTITUTION = 0.22;
-export const CAM_LERP = 7.2;
-export const CAM_OFFSET = 0.38;
+export const CAM_FOV = 44;
+/** Screen framing — ball sits in upper-middle third (reference). */
+export const CAM_OFFSET = 0.44;
+/** Camera rig height / distance — ~40° downward tilt. */
+export const CAM_Y = 7.0;
+export const CAM_Z = 7.5;
+export const CAM_LOOK_BELOW = 0.45;
 
 /** ~2.2× ball diameter — matches reference platform spacing. */
 export const RING_SPACING_BASE = 2.38;

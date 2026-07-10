@@ -3,7 +3,7 @@ import {
   BALL_CONTACT_ANGLE, BALL_CONTACT_R, BALL_R, H, PILLAR_R, THEME, W,
 } from './constants';
 import {
-  BallTrail, ParticleSystem, SmashShards,
+  BallTrail, LandingSplats, ParticleSystem, SmashShards,
 } from './effects';
 import {
   createPlatformGeometry, makeGradientBackground, platformArc, ringColor,
@@ -27,6 +27,7 @@ export class HelixWorld {
   readonly particles: ParticleSystem;
   readonly shards: SmashShards;
   readonly trail: BallTrail;
+  readonly splats: LandingSplats;
 
   private readonly helix = new THREE.Group();
   private readonly tower = new THREE.Group();
@@ -160,7 +161,9 @@ export class HelixWorld {
 
     this.particles = new ParticleSystem(this.scene);
     this.shards = new SmashShards(this.scene);
-    this.trail = new BallTrail(this.scene);
+    this.trail = new BallTrail();
+    this.ballRig.add(this.trail.group);
+    this.splats = new LandingSplats();
 
     const flashGeo = new THREE.PlaneGeometry(40, 60);
     const flashMat = new THREE.MeshBasicMaterial({
@@ -256,7 +259,7 @@ export class HelixWorld {
     }
   }
 
-  updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number): void {
+  updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number, combo = 0): void {
     // Ball rig stays on contact ring; only squash animates locally.
     this.ballRig.position.y = 0;
     this.ball.position.set(0, 0, 0.14);
@@ -284,7 +287,14 @@ export class HelixWorld {
     }
 
     this.pillar.position.y = 0;
-    this.trail.push(0, Math.abs(ball.vy), skin.color);
+    this.trail.push(Math.abs(ball.vy), skin.color, combo);
+  }
+
+  addLandingSplat(ringId: number, color: string, towerAngle: number): void {
+    const rv = this.ringPool.find((r) => r.ringId === ringId);
+    if (!rv) return;
+    const contactAngle = towerAngle + BALL_CONTACT_ANGLE;
+    this.splats.place(rv.group, color, contactAngle);
   }
 
   ringOffset(ballY: number, ringY: number): number {
@@ -305,6 +315,7 @@ export class HelixWorld {
     this.particles.update(dt);
     this.shards.update(dt);
     this.trail.update(dt);
+    this.splats.update(dt);
 
     if (this.flashMesh && this.flashOpacity > 0) {
       this.flashOpacity = Math.max(0, this.flashOpacity - dt * 2.8);
@@ -321,6 +332,7 @@ export class HelixWorld {
     this.particles.clear();
     this.shards.clear();
     this.trail.clear();
+    this.splats.clear();
     for (const rv of this.ringPool) {
       this.tower.remove(rv.group);
       this.freeRings.push(rv);

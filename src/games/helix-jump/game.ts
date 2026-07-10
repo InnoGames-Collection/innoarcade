@@ -183,7 +183,7 @@ export class HelixJump {
 
     const fever = this.feverLeft > 0;
     this.world.setTowerAngle(this.rotation.angle);
-    this.world.updateBall(this.ball, this.skin, fever, capped);
+    this.world.updateBall(this.ball, this.skin, fever, capped, this.combo);
     this.world.syncRings(this.rings, this.cfg.gapArc, this.ball.y);
     this.world.updateEffects(capped);
 
@@ -269,7 +269,7 @@ export class HelixJump {
     this.fallMul = 1;
 
     if (hit.died) {
-      this.die();
+      this.die(hit.ring);
       return;
     }
 
@@ -288,6 +288,7 @@ export class HelixJump {
       const landShake = 0.08 + Math.min(0.12, Math.abs(impact) / 40);
       this.camera.addShake(landShake);
       this.world.particles.landing(px, ry, pz, this.skin.color);
+      this.world.addLandingSplat(hit.ring.id, this.skin.color, this.rotation.angle);
       sfx.coin();
       vibrate(12);
     }
@@ -347,20 +348,26 @@ export class HelixJump {
     this.rings.push(createRing(y, this.rnd, this.cfg, prev));
   }
 
-  private die(): void {
+  private die(hitRing?: Ring): void {
     sfx.crash();
     this.camera.addShake(0.4);
     this.flashColor = 'rgba(229,57,53,0.45)';
     this.flashAlpha = 0.5;
     this.world.flash('#e53935', 0.45);
-    this.world.particles.burst(
-      Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
-      0,
-      Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R,
-      THEME.danger,
-      22,
-      7,
-    );
+
+    const px = Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
+    const pz = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
+    this.world.particles.burst(px, 0, pz, THEME.danger, 22, 7);
+
+    const burstY = hitRing?.y ?? this.ball.y;
+    const radius = this.cfg.spacing * 2.8;
+    for (const ring of this.rings) {
+      if (ring.broken) continue;
+      if (Math.abs(ring.y - burstY) > radius) continue;
+      const ry = this.world.ringOffset(this.ball.y, ring.y);
+      this.breakRing(ring, ry, px, pz, 5, false);
+    }
+
     vibrate(35);
 
     const result = recordPlay(this.score);

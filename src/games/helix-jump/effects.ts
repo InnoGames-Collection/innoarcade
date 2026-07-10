@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { RING_INNER, RING_R, THEME } from './constants';
+import {
+  BALL_CONTACT_R, RING_INNER, RING_R, THEME,
+} from './constants';
 
 const POOL = 120;
 
@@ -259,14 +261,13 @@ export class SmashShards {
 }
 
 export class BallTrail {
+  readonly group = new THREE.Group();
   private readonly points: THREE.Mesh[] = [];
-  private readonly group = new THREE.Group();
-  private readonly geo = new THREE.SphereGeometry(0.12, 8, 8);
+  private readonly geo = new THREE.SphereGeometry(0.11, 8, 8);
   private head = 0;
 
-  constructor(scene: THREE.Scene) {
-    scene.add(this.group);
-    for (let i = 0; i < 10; i++) {
+  constructor() {
+    for (let i = 0; i < 12; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
@@ -275,38 +276,125 @@ export class BallTrail {
       });
       const m = new THREE.Mesh(this.geo, mat);
       m.visible = false;
+      m.renderOrder = 18;
       this.group.add(m);
       this.points.push(m);
     }
   }
 
-  push(_worldY: number, speed: number, color: string): void {
-    if (speed < 3) return;
+  push(speed: number, color: string, combo = 0): void {
+    const streak = combo >= 2;
+    const minSpeed = streak ? 1.2 : 2.5;
+    if (speed < minSpeed) return;
+
     const m = this.points[this.head];
     this.head = (this.head + 1) % this.points.length;
-    m.position.set(0, 0, 0);
-    const t = Math.min(1, speed / 18);
+
+    const t = Math.min(1, speed / 16);
+    const slot = streak ? (this.head % 6) : 0;
+    m.position.set(0, slot * 0.2, 0.12);
     (m.material as THREE.MeshBasicMaterial).color.set(color);
-    (m.material as THREE.MeshBasicMaterial).opacity = 0.15 + t * 0.35;
-    m.scale.setScalar(0.5 + t * 0.5);
+    (m.material as THREE.MeshBasicMaterial).opacity = streak
+      ? 0.2 + t * 0.42
+      : 0.1 + t * 0.25;
+    m.scale.setScalar(streak ? 0.5 + t * 0.48 : 0.38 + t * 0.38);
     m.visible = true;
     m.userData.life = 1;
   }
 
   update(dt: number): void {
+    const fade = dt * (this.points.some((p) => p.visible && p.position.y > 0) ? 3.2 : 4.5);
     for (const m of this.points) {
       if (!m.visible) continue;
-      m.userData.life -= dt * 4;
+      m.userData.life -= fade;
       if (m.userData.life <= 0) {
         m.visible = false;
         continue;
       }
-      (m.material as THREE.MeshBasicMaterial).opacity = m.userData.life * 0.4;
-      m.scale.multiplyScalar(0.97);
+      (m.material as THREE.MeshBasicMaterial).opacity = m.userData.life * 0.45;
+      m.scale.multiplyScalar(0.98);
     }
   }
 
   clear(): void {
     for (const m of this.points) m.visible = false;
+  }
+}
+
+interface Splat {
+  mesh: THREE.Mesh;
+  life: number;
+  maxLife: number;
+}
+
+const SPLAT_POOL = 24;
+
+export class LandingSplats {
+  private readonly pool: Splat[] = [];
+  private readonly geo = new THREE.CircleGeometry(0.42, 20);
+
+  constructor() {
+    for (let i = 0; i < SPLAT_POOL; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(this.geo, mat);
+      mesh.visible = false;
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.renderOrder = 5;
+      this.pool.push({ mesh, life: 0, maxLife: 1 });
+    }
+  }
+
+  place(parent: THREE.Group, color: string, contactAngle: number): void {
+    for (const s of this.pool) {
+      if (s.life > 0 && s.life < s.maxLife) continue;
+      if (s.mesh.parent && s.mesh.parent !== parent) {
+        s.mesh.parent.remove(s.mesh);
+      }
+      parent.add(s.mesh);
+      const jitter = (Math.random() - 0.5) * 0.14;
+      s.mesh.position.set(
+        Math.cos(contactAngle) * BALL_CONTACT_R + jitter,
+        0.04,
+        Math.sin(contactAngle) * BALL_CONTACT_R + jitter * 0.6,
+      );
+      s.mesh.rotation.z = Math.random() * Math.PI * 2;
+      const scale = 0.55 + Math.random() * 0.35;
+      s.mesh.scale.set(scale, scale, 1);
+      (s.mesh.material as THREE.MeshBasicMaterial).color.set(color);
+      (s.mesh.material as THREE.MeshBasicMaterial).opacity = 0.5;
+      s.mesh.visible = true;
+      s.life = 0.001;
+      s.maxLife = 2.2 + Math.random() * 0.8;
+      return;
+    }
+  }
+
+  update(dt: number): void {
+    for (const s of this.pool) {
+      if (s.life <= 0) continue;
+      s.life += dt;
+      if (s.life >= s.maxLife) {
+        s.mesh.visible = false;
+        s.mesh.removeFromParent();
+        s.life = 0;
+        continue;
+      }
+      const t = 1 - s.life / s.maxLife;
+      (s.mesh.material as THREE.MeshBasicMaterial).opacity = 0.5 * t;
+    }
+  }
+
+  clear(): void {
+    for (const s of this.pool) {
+      s.life = 0;
+      s.mesh.visible = false;
+      s.mesh.removeFromParent();
+    }
   }
 }
