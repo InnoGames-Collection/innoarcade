@@ -38,6 +38,8 @@ export const RING_SPACING_BASE = 2.38;
 export const FEVER_THRESHOLD = 4;
 export const FEVER_DURATION = 2.8;
 export const COMBO_CAP = 8;
+/** Consecutive gap passes before platforms shatter on streak (reference Helix Jump). */
+export const STREAK_SHATTER_THRESHOLD = 2;
 
 /** Bright premium arcade palette — high contrast, clean backgrounds. */
 export const THEME = {

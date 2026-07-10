@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RING_R, THEME } from './constants';
+import { RING_INNER, RING_R, THEME } from './constants';
 
 const POOL = 120;
 
@@ -199,20 +199,21 @@ export class SmashShards {
 
   burst(relY: number, color: string, towerAngle: number, count = 14): void {
     const c = new THREE.Color(color);
+    const span = RING_R - RING_INNER;
     let spawned = 0;
     for (const s of this.pool) {
       if (s.life > 0 && s.life < s.maxLife) continue;
       const angle = towerAngle + (spawned / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-      const dist = RING_R + (Math.random() - 0.5) * 0.4;
+      const dist = RING_INNER + span * (0.25 + Math.random() * 0.75);
       s.mesh.position.set(
         Math.cos(angle) * dist,
         relY + (Math.random() - 0.5) * 0.15,
         Math.sin(angle) * dist,
       );
       s.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      s.vx = Math.cos(angle) * (2 + Math.random() * 4);
-      s.vy = 2 + Math.random() * 5;
-      s.vz = Math.sin(angle) * (1.5 + Math.random() * 3);
+      s.vx = Math.cos(angle) * (2.5 + Math.random() * 4.5);
+      s.vy = 1.5 + Math.random() * 5;
+      s.vz = Math.sin(angle) * (2 + Math.random() * 3.5);
       s.rotV.set(
         (Math.random() - 0.5) * 14,
         (Math.random() - 0.5) * 14,

@@ -48,6 +48,18 @@ export class OrchardBackground {
   private birds: Bird[] = [];
   private dust: Dust[] = [];
   private nextBird = 8;
+  private cache: HTMLCanvasElement | null = null;
+  private cacheCtx: CanvasRenderingContext2D | null = null;
+
+  private ensureCache(): CanvasRenderingContext2D {
+    if (!this.cache) {
+      this.cache = document.createElement('canvas');
+      this.cache.width = BG_W;
+      this.cache.height = BG_H;
+      this.cacheCtx = this.cache.getContext('2d')!;
+    }
+    return this.cacheCtx!;
+  }
 
   constructor() {
     for (let i = 0; i < 6; i++) {
@@ -58,7 +70,7 @@ export class OrchardBackground {
         speed: 6 + Math.random() * 10,
       });
     }
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 12; i++) {
       this.leaves.push({
         x: Math.random() * BG_W,
         y: 120 + Math.random() * 380,
@@ -67,7 +79,7 @@ export class OrchardBackground {
         size: 8 + Math.random() * 14,
       });
     }
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       this.butterflies.push({
         x: Math.random() * BG_W,
         y: 180 + Math.random() * 280,
@@ -76,7 +88,7 @@ export class OrchardBackground {
         hue: 30 + Math.random() * 50,
       });
     }
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 15; i++) {
       this.dust.push({
         x: Math.random() * BG_W,
         y: 200 + Math.random() * 400,
@@ -86,7 +98,7 @@ export class OrchardBackground {
     }
   }
 
-  update(dt: number, _time: number): void {
+  update(dt: number): void {
     for (const c of this.clouds) {
       c.x += c.speed * dt;
       if (c.x > BG_W + 80) {
@@ -119,7 +131,22 @@ export class OrchardBackground {
     this.birds = this.birds.filter((b) => b.x < BG_W + 40);
   }
 
-  render(ctx: CanvasRenderingContext2D, time: number, blur = 0): void {
+  /** Paint the full scene into an offscreen buffer, then blit once (fast). */
+  render(ctx: CanvasRenderingContext2D, time: number): void {
+    const c = this.ensureCache();
+    this.paintScene(c, time);
+    ctx.drawImage(this.cache!, 0, 0);
+    // Soft depth vignette — cheap substitute for blur pass
+    const vignette = ctx.createLinearGradient(0, 0, 0, BG_H);
+    vignette.addColorStop(0, 'rgba(255,255,255,0)');
+    vignette.addColorStop(0.55, 'rgba(255,255,255,0)');
+    vignette.addColorStop(1, 'rgba(20,60,20,0.08)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, BG_W, BG_H);
+  }
+
+  private paintScene(ctx: CanvasRenderingContext2D, time: number): void {
+    ctx.clearRect(0, 0, BG_W, BG_H);
     this.drawSky(ctx, time);
     this.drawSunRays(ctx, time);
     this.drawMountains(ctx);
@@ -130,15 +157,15 @@ export class OrchardBackground {
     this.drawFences(ctx);
     this.drawFlowers(ctx);
     this.drawAmbient(ctx, time);
+  }
 
-    if (blur > 0) {
-      ctx.save();
-      ctx.filter = `blur(${blur}px)`;
-      ctx.globalAlpha = 0.15;
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, BG_W, BG_H);
-      ctx.restore();
-    }
+  /** Menu-only: slightly softer look without expensive canvas filters. */
+  renderMenu(ctx: CanvasRenderingContext2D, time: number): void {
+    const c = this.ensureCache();
+    this.paintScene(c, time);
+    ctx.drawImage(this.cache!, 0, 0);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.fillRect(0, 0, BG_W, BG_H);
   }
 
   private drawSky(ctx: CanvasRenderingContext2D, time: number): void {
@@ -368,7 +395,7 @@ export class OrchardBackground {
 
     ctx.strokeStyle = 'rgba(46, 125, 50, 0.3)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 20; i++) {
       const gx = (i * 47) % BG_W;
       const gyy = gy + 20 + (i * 13) % (BG_H - gy - 30);
       ctx.beginPath();

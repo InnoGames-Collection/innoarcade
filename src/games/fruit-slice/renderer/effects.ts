@@ -25,7 +25,7 @@ export interface SliceTrail {
   sparks: Array<{ x: number; y: number; life: number }>;
 }
 
-const MAX_PARTICLES = 120;
+const MAX_PARTICLES = 60;
 
 export function createJuiceBurst(
   particles: VfxParticle[],
@@ -37,7 +37,7 @@ export function createJuiceBurst(
   const room = MAX_PARTICLES - particles.length;
   if (room <= 0) return;
 
-  const juiceCount = Math.min(14, room);
+  const juiceCount = Math.min(8, room);
   for (let i = 0; i < juiceCount; i++) {
     const angle = (i / juiceCount) * Math.PI * 2 + Math.random() * 0.5;
     const speed = 100 + Math.random() * 140;
@@ -55,7 +55,7 @@ export function createJuiceBurst(
     });
   }
 
-  const pulpCount = Math.min(10, MAX_PARTICLES - particles.length);
+  const pulpCount = Math.min(5, MAX_PARTICLES - particles.length);
   for (let i = 0; i < pulpCount; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 60 + Math.random() * 100;
@@ -73,7 +73,7 @@ export function createJuiceBurst(
     });
   }
 
-  const seedCount = Math.min(6, MAX_PARTICLES - particles.length);
+  const seedCount = Math.min(3, MAX_PARTICLES - particles.length);
   for (let i = 0; i < seedCount; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 80 + Math.random() * 120;
@@ -91,7 +91,7 @@ export function createJuiceBurst(
     });
   }
 
-  const dropletCount = Math.min(8, MAX_PARTICLES - particles.length);
+  const dropletCount = Math.min(4, MAX_PARTICLES - particles.length);
   for (let i = 0; i < dropletCount; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 140 + Math.random() * 80;
@@ -112,7 +112,7 @@ export function createJuiceBurst(
 
 export function createBombBurst(particles: VfxParticle[], x: number, y: number): void {
   const room = MAX_PARTICLES - particles.length;
-  const n = Math.min(16, room);
+  const n = Math.min(10, room);
   for (let i = 0; i < n; i++) {
     const angle = (i / n) * Math.PI * 2;
     const speed = 100 + Math.random() * 100;
@@ -174,12 +174,9 @@ export function drawParticles(ctx: CanvasRenderingContext2D, particles: VfxParti
       ctx.fill();
     } else if (p.kind === 'spark' || p.kind === 'glow') {
       ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 6;
       ctx.beginPath();
       ctx.arc(0, 0, p.size * t * 0.7, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
     } else if (p.kind === 'leaf') {
       ctx.fillStyle = p.color;
       ctx.beginPath();
@@ -209,40 +206,19 @@ export function drawSliceTrail(
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  ctx.shadowColor = 'rgba(100, 180, 255, 0.8)';
-  ctx.shadowBlur = 12;
-  ctx.strokeStyle = `rgba(180, 220, 255, ${alpha * 0.5})`;
-  ctx.lineWidth = 8;
+  ctx.strokeStyle = `rgba(180, 220, 255, ${alpha * 0.45})`;
+  ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
   ctx.stroke();
 
-  ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
-  ctx.shadowBlur = 16;
-  ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.95})`;
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
   ctx.stroke();
-
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-  ctx.stroke();
-
-  for (let i = 1; i < points.length; i += 3) {
-    const p = points[i];
-    const sparkA = alpha * (0.5 + Math.random() * 0.5);
-    ctx.fillStyle = `rgba(200, 230, 255, ${sparkA})`;
-    ctx.beginPath();
-    ctx.arc(p.x + (Math.random() - 0.5) * 6, p.y + (Math.random() - 0.5) * 6, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
 
   ctx.restore();
 }

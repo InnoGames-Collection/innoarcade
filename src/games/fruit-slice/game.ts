@@ -6,11 +6,10 @@ import type { Action } from '../../engine/input';
 import { OrchardBackground } from './renderer/background';
 import {
   createJuiceBurst, createBombBurst, updateParticles, drawParticles,
-  drawSliceTrail, drawComboEffect, drawFruitGlow, type VfxParticle,
+  drawSliceTrail, drawComboEffect, type VfxParticle,
 } from './renderer/effects';
 import {
   drawFruit, drawBomb, drawSlicedHalf,
-  getFruitColor,
 } from './renderer/fruits';
 
 export const W = 480;
@@ -85,8 +84,7 @@ export class FruitSlice {
   private bg = new OrchardBackground();
   private comboFlash = 0;
   private lastCombo = 0;
-  private zoomScale = 1;
-  private ambientTimer = 0;
+  private menuBgTime = 0;
 
   start(): void {
     this.score = 0;
@@ -104,8 +102,6 @@ export class FruitSlice {
     this.currentSlice = [];
     this.comboFlash = 0;
     this.lastCombo = 0;
-    this.zoomScale = 1;
-    this.ambientTimer = 0;
     this.setState('playing');
   }
 
@@ -127,6 +123,7 @@ export class FruitSlice {
   startSlice(x: number, y: number): void {
     if (this.state !== 'playing') return;
     this.currentSlice = [{ x, y }];
+    this.checkSliceCollisions(x, y);
   }
 
   continueSlice(x: number, y: number): void {
@@ -213,7 +210,9 @@ export class FruitSlice {
   }
 
   update(dt: number): void {
-    this.bg.update(dt, this.time);
+    if (this.state === 'playing') {
+      this.bg.update(dt);
+    }
 
     if (this.state !== 'playing') return;
 
@@ -228,8 +227,6 @@ export class FruitSlice {
 
     this.screenShake = Math.max(0, this.screenShake - dt * 8);
     this.comboFlash = Math.max(0, this.comboFlash - dt * 2);
-    const targetZoom = this.combo >= 10 ? 1.02 : 1;
-    this.zoomScale += (targetZoom - this.zoomScale) * Math.min(1, dt * 6);
 
     this.speedMul = 1 + this.time / 45;
     const grav = 380 * this.speedMul;
@@ -246,9 +243,6 @@ export class FruitSlice {
         fruit.y += fruit.vy * dt;
         fruit.vy += grav * dt;
         fruit.rot += fruit.rotSpeed * dt;
-        fruit.spawnAge += dt;
-        const bounceT = Math.min(1, fruit.spawnAge / 0.25);
-        fruit.scale = 0.85 + 0.15 * (1 - Math.pow(1 - bounceT, 3));
         const bounced = this.bounceInBounds(fruit.x, fruit.vx);
         fruit.x = bounced.x;
         fruit.vx = bounced.vx;
@@ -269,24 +263,6 @@ export class FruitSlice {
     }
 
     updateParticles(this.particles, dt);
-
-    this.ambientTimer -= dt;
-    if (this.ambientTimer <= 0 && this.particles.length < 100) {
-      this.ambientTimer = 0.4 + Math.random() * 0.6;
-      this.particles.push({
-        x: Math.random() * W,
-        y: H * 0.75 + Math.random() * (H * 0.2),
-        vx: (Math.random() - 0.5) * 20,
-        vy: -10 - Math.random() * 20,
-        life: 0,
-        maxLife: 2 + Math.random() * 2,
-        size: 2 + Math.random() * 3,
-        color: 'rgba(255, 240, 180, 0.4)',
-        kind: 'glow',
-        rotation: 0,
-        rotSpeed: 0,
-      });
-    }
 
     this.fruits = this.fruits.filter((f) => f.y < H + 50 && f.sliceTime < 0.3);
     this.bombs = this.bombs.filter((b) => b.y < H + 50);
@@ -321,7 +297,7 @@ export class FruitSlice {
         rot: Math.random() * Math.PI * 2,
         rotSpeed: (Math.random() - 0.5) * 4,
         spawnAge: 0,
-        scale: 0.85,
+        scale: 1,
       });
     }
   }
@@ -334,8 +310,6 @@ export class FruitSlice {
 
   render(ctx: CanvasRenderingContext2D): void {
     const shake = this.screenShake * 4;
-    const cx = W / 2;
-    const cy = H / 2;
 
     ctx.save();
     ctx.translate(
@@ -343,19 +317,7 @@ export class FruitSlice {
       shake * (Math.random() - 0.5),
     );
 
-    if (this.zoomScale !== 1) {
-      ctx.translate(cx, cy);
-      ctx.scale(this.zoomScale, this.zoomScale);
-      ctx.translate(-cx, -cy);
-    }
-
-    this.bg.render(ctx, this.time, 1.2);
-
-    ctx.save();
-    ctx.filter = 'blur(0.8px)';
-    ctx.globalAlpha = 0.15;
-    this.bg.render(ctx, this.time, 0);
-    ctx.restore();
+    this.bg.render(ctx, this.time);
 
     ctx.save();
     ctx.beginPath();
@@ -363,7 +325,7 @@ export class FruitSlice {
     ctx.clip();
 
     const warmLight = ctx.createRadialGradient(W * 0.7, 80, 20, W * 0.5, H * 0.4, 400);
-    warmLight.addColorStop(0, 'rgba(255, 240, 180, 0.12)');
+    warmLight.addColorStop(0, 'rgba(255, 240, 180, 0.08)');
     warmLight.addColorStop(1, 'rgba(255, 240, 180, 0)');
     ctx.fillStyle = warmLight;
     ctx.fillRect(0, 0, W, H);
@@ -380,8 +342,7 @@ export class FruitSlice {
         drawSlicedHalf(ctx, fruit.x + offset, fruit.y + offset * 0.3, FRUIT_RADIUS, fruit.type, 1, alpha);
         continue;
       }
-      drawFruitGlow(ctx, fruit.x, fruit.y, FRUIT_RADIUS, getFruitColor(fruit.type));
-      drawFruit(ctx, fruit.x, fruit.y, FRUIT_RADIUS, fruit.type, fruit.rot, fruit.scale);
+      drawFruit(ctx, fruit.x, fruit.y, FRUIT_RADIUS, fruit.type, fruit.rot, 1);
     }
 
     for (const s of this.slices) {
@@ -395,7 +356,9 @@ export class FruitSlice {
 
     drawParticles(ctx, this.particles);
 
-    drawComboEffect(ctx, this.combo, this.comboFlash, W / 2, H * 0.35);
+    if (this.combo >= 2 && this.comboFlash > 0) {
+      drawComboEffect(ctx, this.combo, this.comboFlash, W / 2, H * 0.35);
+    }
 
     ctx.restore();
     ctx.restore();
@@ -403,13 +366,8 @@ export class FruitSlice {
 
   /** Render background only — used for menu backdrop. */
   renderMenuBg(ctx: CanvasRenderingContext2D): void {
-    this.bg.update(0.016, this.time);
-    this.time += 0.016;
-    this.bg.render(ctx, this.time, 2.5);
-    const overlay = ctx.createLinearGradient(0, 0, 0, H);
-    overlay.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
-    overlay.addColorStop(1, 'rgba(255, 255, 255, 0.35)');
-    ctx.fillStyle = overlay;
-    ctx.fillRect(0, 0, W, H);
+    this.menuBgTime += 0.016;
+    this.bg.update(0.016);
+    this.bg.renderMenu(ctx, this.menuBgTime);
   }
 }

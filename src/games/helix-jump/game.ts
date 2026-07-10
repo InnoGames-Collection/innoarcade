@@ -8,7 +8,7 @@ import { mulberry32 } from '../_lq/lq';
 import { CameraController } from './camera';
 import {
   BALL_CONTACT_ANGLE, BALL_CONTACT_R, COMBO_CAP, FEVER_DURATION, FEVER_THRESHOLD,
-  RING_COLORS, RING_HEIGHT, THEME, BALL_R,
+  RING_COLORS, RING_HEIGHT, STREAK_SHATTER_THRESHOLD, THEME, BALL_R,
 } from './constants';
 import {
   applyBounce,
@@ -257,6 +257,10 @@ export class HelixJump {
           this.world.particles.feverRing(px, ry, pz);
           this.camera.addShake(0.18);
         }
+
+        if (this.combo >= STREAK_SHATTER_THRESHOLD) {
+          this.shatterRingOnStreak(hit.ring, ry, px, pz, mult);
+        }
       }
       return;
     }
@@ -270,15 +274,8 @@ export class HelixJump {
     }
 
     if (hit.smashed) {
-      hit.ring.broken = true;
-      hit.ring.breakAnim = 0.01;
-      this.bonusScore += 2;
-      this.score = this.depth + this.bonusScore;
+      this.breakRing(hit.ring, ry, px, pz, 2, true);
       applyFallBoost(this.ball, 2);
-      const color = hit.ring.danger ? THEME.danger : RING_COLORS[hit.ring.colorIndex] ?? this.skin.color;
-      this.world.shards.burst(ry, color, this.rotation.angle, 14);
-      this.world.particles.burst(px, ry, pz, color, 18, 5.5);
-      this.camera.addShake(0.14);
       sfx.coin();
       vibrate(10);
       return;
@@ -294,6 +291,44 @@ export class HelixJump {
       sfx.coin();
       vibrate(12);
     }
+  }
+
+  private shatterRingOnStreak(
+    ring: Ring,
+    ry: number,
+    px: number,
+    pz: number,
+    mult: number,
+  ): void {
+    if (ring.broken || ring.danger) return;
+    this.breakRing(ring, ry, px, pz, mult, false);
+    vibrate(4 + mult);
+  }
+
+  private breakRing(
+    ring: Ring,
+    ry: number,
+    px: number,
+    pz: number,
+    mult: number,
+    feverHit: boolean,
+  ): void {
+    if (ring.broken) return;
+    ring.broken = true;
+    ring.breakAnim = 0.01;
+    this.bonusScore += feverHit ? 2 : 1;
+    this.score = this.depth + this.bonusScore;
+
+    const color = ring.danger
+      ? THEME.danger
+      : RING_COLORS[ring.colorIndex] ?? this.skin.color;
+    const shardCount = feverHit ? 14 : 10 + mult * 2;
+    const particleCount = feverHit ? 18 : 10 + mult * 2;
+    const spread = feverHit ? 5.5 : 4 + mult * 0.35;
+
+    this.world.shards.burst(ry, color, this.rotation.angle, shardCount);
+    this.world.particles.burst(px, ry, pz, color, particleCount, spread);
+    this.camera.addShake(feverHit ? 0.14 : 0.07 + mult * 0.01);
   }
 
   private recycleRings(): void {
