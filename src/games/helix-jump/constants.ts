@@ -5,7 +5,7 @@ export const H = 720;
 export const CX = W / 2;
 
 /** World units — Y increases downward in gameplay space. */
-export const BALL_R = 0.48;
+export const BALL_R = 0.24;
 /** Outer platform lip — reference: short wedges around a thick pillar. */
 export const RING_R = 3.05;
 /** Thick central pillar — ~38% of platform diameter (reference). */
