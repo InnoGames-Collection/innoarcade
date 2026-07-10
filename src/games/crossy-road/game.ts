@@ -1,8 +1,8 @@
 // Crossy Road — grid hopper with roads, rivers, and logs. Canvas arcade game.
-import { sfx } from '../../engine/audio';
 import { Juice } from '../../engine/juice';
 import type { Action } from '../../engine/input';
 import { mulberry32 } from '../_lq/lq';
+import { crossyRoadAudio } from './crossyRoadAudio';
 import { gridToIso, gridToScreen, lerpCamera } from './iso';
 import { renderWorld } from './render';
 import {
@@ -108,7 +108,7 @@ export class CrossyRoad {
     this.pz += dz;
     this.hopT = HOP_DUR;
     this.idleT = 0;
-    sfx.click();
+    crossyRoadAudio.hop();
     if (this.pz > this.maxZ) {
       this.maxZ = this.pz;
       this.score = this.maxZ;
@@ -252,8 +252,10 @@ export class CrossyRoad {
     }
     if (kind === 'river') {
       this.juice.burst(sx, sy, '#5ecae8', 10, 120, 3);
+      crossyRoadAudio.splash();
     } else if (kind === 'grass') {
       this.juice.burst(sx, sy, '#8ed85c', 8, 100, 3);
+      crossyRoadAudio.dust();
     }
   }
 
@@ -269,7 +271,7 @@ export class CrossyRoad {
 
   private die(): void {
     if (this.state !== 'playing') return;
-    sfx.crash();
+    crossyRoadAudio.gameOver();
     this.juice.shake(0.5);
     this.juice.flashOverlay('rgba(231,76,60,0.45)', 0.4);
     this.setState('over');

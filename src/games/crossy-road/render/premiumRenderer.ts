@@ -22,6 +22,7 @@ import { hopArcHeight, hopSquash } from './animation';
 import { drawBackground } from './background';
 import { drawGrassDecor } from './decorations';
 import { drawTerrainCell } from './terrain';
+import { drawPremiumHud } from './ui';
 import {
   drawDropShadow,
   drawVoxelChicken,
@@ -146,31 +147,5 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
   queue.sort((a, b) => a.depth - b.depth);
   for (const item of queue) item.draw();
 
-  drawHudHints(ctx, s);
-}
-
-function drawHudHints(ctx: CanvasRenderingContext2D, s: WorldSnapshot): void {
-  if (s.state !== 'playing') return;
-
-  if (s.tutorialT > 0) {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath();
-    ctx.roundRect(12, H - 52, W - 24, 40, 12);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = '600 13px system-ui,sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Swipe or tap arrows to hop forward', W / 2, H - 28);
-  } else if (s.idleT > 10) {
-    const pulse = 0.7 + Math.sin(s.animT * 10) * 0.3;
-    ctx.fillStyle = `rgba(231,76,60,${0.55 + pulse * 0.35})`;
-    ctx.beginPath();
-    ctx.roundRect(W / 2 - 64, 14, 128, 30, 15);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = '700 12px system-ui,sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Hop soon!', W / 2, 29);
-  }
+  drawPremiumHud(ctx, s);
 }

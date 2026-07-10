@@ -1,9 +1,146 @@
-body[data-game="crossy-road"] .arc-canvas-wrap {
-  background: linear-gradient(180deg, #a8d878 0%, #87c06a 100%);
+/* Crossy Road — premium Ethio Telecom–inspired shell (green / blue / white) */
+
+:root {
+  --cr-green: #4f9e16;
+  --cr-green-light: #7ec850;
+  --cr-blue: #1f74e0;
+  --cr-blue-light: #5ecae8;
+  --cr-white: #ffffff;
+  --cr-glass: rgba(255, 255, 255, 0.88);
 }
 
-.arc-canvas-wrap canvas {
+html,
+body.arcade-shell[data-game="crossy-road"] {
+  background: linear-gradient(160deg, #e8f4fc 0%, #e8f8e0 45%, #d4edd0 100%);
+}
+
+body[data-game="crossy-road"] .arcade-stage > .fc-backdrop {
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(31, 116, 224, 0.12) 0%, transparent 55%),
+    radial-gradient(80% 60% at 80% 100%, rgba(79, 158, 22, 0.1) 0%, transparent 50%),
+    linear-gradient(180deg, #f8fcff 0%, #f0f9eb 100%);
+}
+
+body[data-game="crossy-road"] .arc-play-wrapper {
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(31, 116, 224, 0.06) 0%, transparent 55%),
+    radial-gradient(80% 50% at 0% 100%, rgba(79, 158, 22, 0.06) 0%, transparent 45%),
+    #ffffff;
+  border-color: rgba(31, 116, 224, 0.15);
+  box-shadow:
+    0 12px 40px rgba(31, 116, 224, 0.1),
+    0 4px 16px rgba(79, 158, 22, 0.08);
+}
+
+body[data-game="crossy-road"] .arc-canvas-wrap {
+  background: linear-gradient(180deg, #a8dff8 0%, #8ecf5a 100%);
+  border: 1.5px solid rgba(31, 116, 224, 0.18);
+  box-shadow: inset 0 2px 12px rgba(31, 116, 224, 0.08);
+}
+
+body[data-game="crossy-road"] .arc-canvas-wrap canvas {
   display: block;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Glass HUD strip */
+body[data-game="crossy-road"] .arc-hud .fp-stats {
+  background: linear-gradient(135deg, var(--cr-glass) 0%, rgba(240, 248, 255, 0.75) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 14px;
+  border: 1px solid rgba(31, 116, 224, 0.2);
+  box-shadow:
+    0 4px 14px rgba(31, 116, 224, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+body[data-game="crossy-road"] .fp-stat-score {
+  padding: 8px 16px;
+  min-height: 52px;
+  justify-content: center;
+}
+
+body[data-game="crossy-road"] .fp-stat-label {
+  color: var(--cr-blue);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+body[data-game="crossy-road"] .fp-stat-value {
+  color: var(--cr-green);
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body[data-game="crossy-road"] .fp-stat-score.cr-score-bump .fp-stat-value {
+  transform: scale(1.18);
+  color: var(--cr-blue);
+}
+
+body[data-game="crossy-road"] .arc-hud-actions button {
+  background: var(--cr-glass);
+  border-color: rgba(31, 116, 224, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s, transform 0.15s;
+}
+
+body[data-game="crossy-road"] .arc-hud-actions button:active {
+  transform: scale(0.94);
+  background: rgba(31, 116, 224, 0.1);
+}
+
+/* Menu & overlay panels */
+body[data-game="crossy-road"] .cr-panel {
+  border: 1.5px solid rgba(31, 116, 224, 0.2);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 248, 255, 0.88) 100%);
+  box-shadow:
+    0 16px 48px rgba(31, 116, 224, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+body[data-game="crossy-road"] .cr-tagline {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #4a6080;
+  line-height: 1.4;
+}
+
+body[data-game="crossy-road"] #startBtn,
+body[data-game="crossy-road"] #againBtn,
+body[data-game="crossy-road"] #resumeBtn {
+  background: linear-gradient(135deg, var(--cr-green) 0%, #3d7a12 100%);
+  border: none;
+  box-shadow: 0 4px 14px rgba(79, 158, 22, 0.35);
+}
+
+body[data-game="crossy-road"] #startBtn:active,
+body[data-game="crossy-road"] #againBtn:active,
+body[data-game="crossy-road"] #resumeBtn:active {
+  transform: scale(0.97);
+}
+
+body[data-game="crossy-road"] .shell-over-final {
+  border: 1px solid rgba(31, 116, 224, 0.15);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+body[data-game="crossy-road"] .shell-over-stat strong {
+  color: var(--cr-blue);
+}
+
+body[data-game="crossy-road"] .new-best {
+  color: var(--cr-green);
+  font-weight: 700;
 }

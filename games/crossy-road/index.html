@@ -10,9 +10,10 @@
     <div id="stage" class="fc-stage arcade-stage game-shell-stage">
       <div id="fcBackdrop" class="fc-backdrop" aria-hidden="true"></div>
       <div id="menuOverlay" class="game-overlay">
-        <div class="game-panel panel-clean">
+        <div class="game-panel panel-clean cr-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close">✕</button>
           <div class="shell-free-menu" id="freeMenu"></div>
+          <p class="cr-tagline" data-i18n="cr.tagline">Hop across roads, rivers, and traffic!</p>
           <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
         </div>
       </div>
@@ -35,7 +36,7 @@
         </div>
       </div>
       <div id="pauseOverlay" class="game-overlay hidden">
-        <div class="game-panel">
+        <div class="game-panel cr-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close">✕</button>
           <h2 data-i18n="td.paused">Paused</h2>
           <button id="resumeBtn" class="btn primary" data-i18n="td.resume">Resume</button>
@@ -43,7 +44,7 @@
         </div>
       </div>
       <div id="overOverlay" class="game-overlay hidden">
-        <div class="game-panel">
+        <div class="game-panel cr-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>

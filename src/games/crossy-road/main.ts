@@ -6,10 +6,11 @@ import { GameHost } from '../../platform/gameHost';
 import { standardStateOverlay, wireFreeEngineMain, wireMutePause } from '../../platform/freeGameShell';
 import './style.css';
 import { applyTranslations, getLang } from '../../i18n';
+import { crossyRoadAudio } from './crossyRoadAudio';
 import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
 import { sfx } from '../../engine/audio';
-import { CrossyRoad, W, H } from './game';
+import { CrossyRoad, W, H, type GameState } from './game';
 import {
   bindHubCanvasChrome, scaleArcadeScore, submitArcadeScore, trackArcadeRunStart,
 } from '../_arcade/hubCanvas';
@@ -67,6 +68,21 @@ if (typeof ResizeObserver !== 'undefined') {
 const game = new CrossyRoad();
 const run = trackArcadeRunStart(GAME_ID);
 const scoreVal = $('#scoreVal');
+const scoreStat = scoreVal.closest('.fp-stat-score') as HTMLElement | null;
+let lastScore = 0;
+
+function bumpScoreHud(): void {
+  if (!scoreStat) return;
+  scoreStat.classList.remove('cr-score-bump');
+  void scoreStat.offsetWidth;
+  scoreStat.classList.add('cr-score-bump');
+  window.setTimeout(() => scoreStat.classList.remove('cr-score-bump'), 320);
+}
+
+function syncAudio(state: GameState): void {
+  if (state === 'playing') crossyRoadAudio.startSession();
+  else crossyRoadAudio.stopSession();
+}
 
 const shell = wireFreeEngineMain({
   host,
@@ -92,9 +108,16 @@ const syncChrome = bindHubCanvasChrome({ playWrapper, backdrop: $('#fcBackdrop')
 game.onStateChange = (state) => {
   run.onStateChange(state);
   syncChrome(state);
-  if (state === 'playing') requestAnimationFrame(fitCanvas);
+  syncAudio(state);
+  if (state === 'playing') {
+    requestAnimationFrame(fitCanvas);
+    lastScore = game.score;
+  }
 };
-game.onGameOver = (score) => { submitArcadeScore(score, run.getRunStart(), shell, { budgetSec: 90, gameId: GAME_ID, winScore: host.winScore }); };
+game.onGameOver = (score, record) => {
+  if (record) crossyRoadAudio.newBest();
+  submitArcadeScore(score, run.getRunStart(), shell, { budgetSec: 90, gameId: GAME_ID, winScore: host.winScore });
+};
 
 const input = new Input(canvas);
 input.onAction((a) => {
@@ -113,7 +136,12 @@ const loop = new GameLoop(
   (dt) => game.update(dt),
   () => {
     game.render(ctx);
-    scoreVal.textContent = String(scaleArcadeScore(game.score));
+    const scaled = scaleArcadeScore(game.score);
+    scoreVal.textContent = String(scaled);
+    if (game.state === 'playing' && game.score > lastScore) {
+      bumpScoreHud();
+      lastScore = game.score;
+    }
   },
 );
 

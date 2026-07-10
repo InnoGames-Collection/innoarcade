@@ -27,6 +27,7 @@ export const crossyRoadAudio = {
   },
 
   gameOver(): void {
+    sfx.crash();
     sfx.stopMusic();
   },
 
