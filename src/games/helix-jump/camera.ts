@@ -47,7 +47,7 @@ export class CameraController {
 
   applyView(): void {
     this.camera.position.set(this.shakeX, CAM_Y + this.shakeY, CAM_Z);
-    this.camera.lookAt(this.shakeX * 0.08, CAM_LOOK_Y, 0);
+    this.camera.lookAt(this.shakeX * 0.08, CAM_LOOK_Y, CAM_LOOK_Z);
   }
 
   reset(): void {

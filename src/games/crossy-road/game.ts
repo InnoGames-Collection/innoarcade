@@ -442,30 +442,24 @@ export class CrossyRoad {
     for (const coin of this.coinItems) {
       const center = cellCenterScreen(coin.col, coin.row, CELL, cam, origin);
       const depth = paintDepth(coin.row, coin.col) + 0.15;
+      const unit = CELL * 0.22;
       queue.push({
         depth,
-        draw: () => drawCoin(ctx, center.x, center.y, coin.spin),
+        draw: () => drawCoin(ctx, center.x, center.y, coin.spin, this.animT, coin.col, unit),
       });
     }
+
+    const unit = CELL * 0.22;
 
     for (const c of this.cars) {
       const gridCx = (c.x + c.w / 2) / CELL;
       const center = gridToScreen(gridCx, c.row + 0.5, CELL, cam, origin);
       const depth = paintDepth(c.row, gridCx) + 0.2;
       const facingRight = c.speed > 0;
-      const drawW = c.w * 0.55;
-      const drawH = CELL * 0.55;
+      const gridSpan = c.w / CELL;
       queue.push({
         depth,
-        draw: () => drawVehicle(
-          ctx,
-          c.kind,
-          center.x - drawW / 2,
-          center.y - drawH / 2,
-          drawW,
-          drawH,
-          facingRight,
-        ),
+        draw: () => drawVehicle(ctx, c.kind, center.x, center.y, gridSpan, facingRight, unit),
       });
     }
 
@@ -473,17 +467,10 @@ export class CrossyRoad {
       const gridCx = (l.x + l.w / 2) / CELL;
       const center = gridToScreen(gridCx, l.row + 0.5, CELL, cam, origin);
       const depth = paintDepth(l.row, gridCx) + 0.2;
-      const drawW = l.w * 0.55;
-      const drawH = CELL * 0.5;
+      const gridSpan = l.w / CELL;
       queue.push({
         depth,
-        draw: () => drawLog(
-          ctx,
-          center.x - drawW / 2,
-          center.y - drawH / 2,
-          drawW,
-          drawH,
-        ),
+        draw: () => drawLog(ctx, center.x, center.y, gridSpan, unit),
       });
     }
 
@@ -526,10 +513,8 @@ export class CrossyRoad {
         ctx.save();
         ctx.translate(e.grabX, chickenY);
         ctx.scale(chickenScale, chickenScale);
-        ctx.font = `${CELL - 6}px serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🐔', 0, 0);
+        ctx.translate(-e.grabX, -chickenY);
+        drawChicken(ctx, e.grabX, chickenY, CELL, 1, false);
         ctx.restore();
       } else {
         drawChicken(ctx, e.grabX, e.grabY, CELL, 1, false);

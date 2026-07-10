@@ -144,7 +144,11 @@ function evaluateRingCrossing(
   }
 
   if (!solid) {
-    return null;
+    // Grazing the wedge lip — treat as a bounce so the ball cannot fall through.
+    return {
+      ring, screenY: ringY - ball.y, passedGap: false, bounced: true,
+      smashed: false, died: false, perfect: false, impactSpeed,
+    };
   }
 
   // Must be crossing the top surface plane (not side-grazing).

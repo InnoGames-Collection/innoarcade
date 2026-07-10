@@ -166,7 +166,7 @@ export class HelixWorld {
       roughness: 0.1,
       metalness: 0.06,
       emissive: 0x3a1060,
-      emissiveIntensity: 0.18,
+      emissiveIntensity: 0.32,
     });
     this.ball = new THREE.Mesh(ballGeo, this.ballMat);
     this.ball.castShadow = true;

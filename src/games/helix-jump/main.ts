@@ -6,8 +6,8 @@ import './style.css';
 import { GameHost } from '../../platform/gameHost';
 import { standardStateOverlay, wireFreeEngineMain, wireMutePause } from '../../platform/freeGameShell';
 import { applyTranslations, getLang } from '../../i18n';
+import type { Action } from '../../engine/input';
 import { GameLoop } from '../../engine/loop';
-import { Input } from '../../engine/input';
 import { sfx } from '../../engine/audio';
 import { HelixJump, W, H, claimDailyReward } from './game';
 import { helixAudio } from './helixAudio';
@@ -62,8 +62,62 @@ game.onGameOver = (score) => {
   submitArcadeScore(score, run.getRunStart(), shell, { budgetSec: 120, gameId: GAME_ID, winScore: host.winScore });
 };
 
-const input = new Input(canvas);
-input.onAction((a) => game.handleAction(a));
+const KEY_ACTIONS: Record<string, Action> = {
+  ArrowLeft: 'left', a: 'left',
+  ArrowRight: 'right', d: 'right',
+  ArrowUp: 'up', w: 'up',
+  ArrowDown: 'down', s: 'down',
+  ' ': 'tap', Enter: 'tap',
+  Escape: 'pause', p: 'pause', P: 'pause',
+};
+
+window.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+  const action = KEY_ACTIONS[e.key];
+  if (!action) return;
+  e.preventDefault();
+  game.handleAction(action);
+});
+
+const playArea = document.querySelector('.arc-canvas-wrap') as HTMLElement;
+const TAP_SLOP = 14;
+let dragStartX = 0;
+let dragStartY = 0;
+let dragActive = false;
+
+const bindPointer = (el: HTMLElement) => {
+  el.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('button, header, a')) return;
+    dragActive = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    game.setDragging(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!dragActive) return;
+    const dx = e.clientX - dragStartX;
+    if (Math.abs(dx) > 1) {
+      game.onDrag(dx);
+      dragStartX = e.clientX;
+    }
+  });
+  el.addEventListener('pointerup', (e) => {
+    if (!dragActive) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    if (Math.hypot(dx, dy) < TAP_SLOP) game.handleAction('tap');
+    dragActive = false;
+    game.setDragging(false);
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+  });
+  el.addEventListener('pointercancel', () => {
+    dragActive = false;
+    game.setDragging(false);
+  });
+};
+if (playArea) bindPointer(playArea);
+else bindPointer(canvas);
 wireMutePause($('#muteBtn'), $('#pauseBtn'), game, sfx);
 
 game.onStateChange = (s) => {
@@ -99,31 +153,6 @@ window.addEventListener('resize', () => {
   resizeCanvases();
   game.resize();
 });
-
-let dragX: number | null = null;
-const bindPointer = (el: HTMLElement) => {
-  el.addEventListener('pointerdown', (e) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    dragX = e.clientX;
-    game.setDragging(true);
-    el.setPointerCapture(e.pointerId);
-  });
-  el.addEventListener('pointermove', (e) => {
-    if (dragX === null) return;
-    const dx = e.clientX - dragX;
-    game.onDrag(dx);
-    dragX = e.clientX;
-  });
-  el.addEventListener('pointerup', () => {
-    dragX = null;
-    game.setDragging(false);
-  });
-  el.addEventListener('pointercancel', () => {
-    dragX = null;
-    game.setDragging(false);
-  });
-};
-bindPointer(canvas);
 
 const scoreEl = $('#scoreVal');
 const scorePill = document.querySelector('.hx-score-pill');

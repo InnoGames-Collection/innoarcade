@@ -1,6 +1,16 @@
 // Crossy Road — canvas rendering helpers (vehicles, player, VFX).
 
-export type VehicleKind = 'minibus' | 'bus' | 'telecomVan';
+import {
+  drawVoxelChicken,
+  drawVoxelCoin,
+  drawVoxelLog,
+  drawVoxelVehicle,
+} from './voxel';
+
+import type { VehicleKind } from './voxel';
+
+export type { VehicleKind } from './voxel';
+export { draw3DBox } from './voxel';
 
 export function drawDropShadow(
   ctx: CanvasRenderingContext2D,
@@ -18,182 +28,28 @@ export function drawDropShadow(
   ctx.restore();
 }
 
-function glossBody(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  light: string,
-  mid: string,
-  dark: string,
-  radius = 6,
-): void {
-  const g = ctx.createLinearGradient(x, y, x, y + h);
-  g.addColorStop(0, light);
-  g.addColorStop(0.45, mid);
-  g.addColorStop(1, dark);
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, radius);
-  ctx.fillStyle = g;
-  ctx.fill();
-}
-
-function drawWheels(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, n = 2): void {
-  const wheelY = y + h * 0.88;
-  const slots = n === 4 ? [0.18, 0.38, 0.62, 0.82] : [0.22, 0.78];
-  ctx.fillStyle = '#1a1a1a';
-  for (const slot of slots) {
-    ctx.beginPath();
-    ctx.ellipse(x + w * slot, wheelY, w * 0.09, h * 0.1, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#555';
-    ctx.beginPath();
-    ctx.ellipse(x + w * slot, wheelY, w * 0.045, h * 0.05, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#1a1a1a';
-  }
-}
-
-export function drawMinibus(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  facingRight: boolean,
-): void {
-  ctx.save();
-  if (!facingRight) {
-    ctx.translate(x + w, y);
-    ctx.scale(-1, 1);
-    x = 0;
-    y = 0;
-  }
-  glossBody(ctx, x, y + h * 0.12, w, h * 0.78, '#7ec8ff', '#1f74e0', '#0d4a9e', 7);
-  ctx.fillStyle = '#f4f8ff';
-  ctx.beginPath();
-  ctx.roundRect(x + w * 0.06, y + h * 0.16, w * 0.88, h * 0.22, 4);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(210,230,255,0.9)';
-  for (let i = 0; i < 3; i++) {
-    ctx.beginPath();
-    ctx.roundRect(x + w * (0.1 + i * 0.28), y + h * 0.2, w * 0.2, h * 0.14, 2);
-    ctx.fill();
-  }
-  ctx.fillStyle = '#ffd54f';
-  ctx.beginPath();
-  ctx.roundRect(x + w * 0.02, y + h * 0.42, w * 0.08, h * 0.12, 2);
-  ctx.fill();
-  drawWheels(ctx, x, y, w, h, 2);
-  ctx.restore();
-}
-
-export function drawBus(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  facingRight: boolean,
-): void {
-  ctx.save();
-  if (!facingRight) {
-    ctx.translate(x + w, y);
-    ctx.scale(-1, 1);
-    x = 0;
-    y = 0;
-  }
-  glossBody(ctx, x, y + h * 0.08, w, h * 0.84, '#ffe08a', '#f39c12', '#b86a08', 8);
-  ctx.fillStyle = '#fff8e8';
-  const winCount = Math.max(4, Math.floor(w / 28));
-  for (let i = 0; i < winCount; i++) {
-    ctx.beginPath();
-    ctx.roundRect(x + w * (0.06 + (i / winCount) * 0.86), y + h * 0.18, w * 0.12, h * 0.22, 2);
-    ctx.fill();
-  }
-  ctx.fillStyle = '#2c3e50';
-  ctx.fillRect(x, y + h * 0.08, w, h * 0.06);
-  drawWheels(ctx, x, y, w, h, 4);
-  ctx.restore();
-}
-
-export function drawTelecomVan(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  facingRight: boolean,
-): void {
-  ctx.save();
-  if (!facingRight) {
-    ctx.translate(x + w, y);
-    ctx.scale(-1, 1);
-    x = 0;
-    y = 0;
-  }
-  glossBody(ctx, x, y + h * 0.14, w, h * 0.76, '#ffffff', '#eef4ea', '#c8d4c0', 7);
-  ctx.fillStyle = '#4f9e16';
-  ctx.fillRect(x, y + h * 0.38, w, h * 0.14);
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.max(7, h * 0.16)}px system-ui,sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('ethio telecom', x + w * 0.52, y + h * 0.45);
-  ctx.fillStyle = 'rgba(200,220,255,0.85)';
-  ctx.beginPath();
-  ctx.roundRect(x + w * 0.12, y + h * 0.2, w * 0.35, h * 0.14, 3);
-  ctx.fill();
-  drawWheels(ctx, x, y, w, h, 2);
-  ctx.restore();
-}
-
 export function drawVehicle(
   ctx: CanvasRenderingContext2D,
   kind: VehicleKind,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  cx: number,
+  cy: number,
+  gridSpan: number,
   facingRight: boolean,
+  unit: number,
 ): void {
-  const cx = x + w / 2;
-  const cy = y + h * 0.92;
-  drawDropShadow(ctx, cx, cy, w * 0.38, h * 0.1, 0.2);
-  if (kind === 'minibus') drawMinibus(ctx, x, y, w, h, facingRight);
-  else if (kind === 'bus') drawBus(ctx, x, y, w, h, facingRight);
-  else drawTelecomVan(ctx, x, y, w, h, facingRight);
+  drawDropShadow(ctx, cx, cy + unit * 0.35, gridSpan * unit * 0.35, unit * 0.1, 0.2);
+  drawVoxelVehicle(ctx, cx, cy, gridSpan, kind, facingRight, unit);
 }
 
 export function drawLog(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  cx: number,
+  cy: number,
+  gridSpan: number,
+  unit: number,
 ): void {
-  const cx = x + w / 2;
-  const cy = y + h * 0.92;
-  drawDropShadow(ctx, cx, cy, w * 0.42, h * 0.08, 0.18);
-  const g = ctx.createLinearGradient(x, y, x, y + h);
-  g.addColorStop(0, '#c4884a');
-  g.addColorStop(0.5, '#8B5A2B');
-  g.addColorStop(1, '#5c3418');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.roundRect(x, y + h * 0.15, w, h * 0.7, h * 0.2);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-  ctx.lineWidth = 1;
-  for (let i = 1; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.ellipse(x + w * 0.15, y + h * 0.5, h * 0.12, h * 0.22, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(x + w - w * 0.15, y + h * 0.5, h * 0.12, h * 0.22, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  drawDropShadow(ctx, cx, cy + unit * 0.32, gridSpan * unit * 0.38, unit * 0.08, 0.18);
+  drawVoxelLog(ctx, cx, cy, gridSpan, unit);
 }
 
 export function drawCoin(
@@ -201,29 +57,11 @@ export function drawCoin(
   cx: number,
   cy: number,
   spin: number,
+  animT = 0,
+  col = 0,
   size = 14,
 ): void {
-  const squash = 0.55 + Math.abs(Math.cos(spin)) * 0.45;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(squash, 1);
-  const g = ctx.createRadialGradient(-size * 0.2, -size * 0.25, 0, 0, 0, size);
-  g.addColorStop(0, '#fff4a8');
-  g.addColorStop(0.5, '#f2b21a');
-  g.addColorStop(1, '#c8860a');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, size, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#a86a08';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.fillStyle = '#fff8dc';
-  ctx.font = `bold ${size * 0.9}px system-ui,sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('ብ', 0, 1);
-  ctx.restore();
+  drawVoxelCoin(ctx, cx, cy, spin, animT, col, size);
 }
 
 export function hopSquash(hopProgress: number): { sx: number; sy: number; lift: number } {
@@ -258,17 +96,9 @@ export function drawChicken(
   isHopping: boolean,
 ): void {
   const { sx, sy, lift } = isHopping ? hopSquash(hopProgress) : { sx: 1, sy: 1, lift: 0 };
-  const baseY = cy - lift;
-  drawDropShadow(ctx, cx, baseY + cell * 0.38, cell * 0.28, cell * 0.08, 0.26);
-
-  ctx.save();
-  ctx.translate(cx, baseY);
-  ctx.scale(sx, sy);
-  ctx.font = `${cell - 6}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🐔', 0, 0);
-  ctx.restore();
+  const unit = cell * 0.22;
+  drawDropShadow(ctx, cx, cy + unit * 0.9 + lift * 0.2, unit * 1.1, unit * 0.35, 0.24);
+  drawVoxelChicken(ctx, cx, cy, unit, lift, { sx, sy });
 }
 
 export function drawEagle(
