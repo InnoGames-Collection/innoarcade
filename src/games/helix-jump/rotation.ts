@@ -1,13 +1,11 @@
 /**
- * Tower rotation — 1:1 finger tracking while dragging, light coast on release.
- * Helix (pillar + platforms) pivots at origin; ball never inherits rotation.
+ * Tower rotation — 1:1 finger tracking, inertia on release, optional auto-spin from rings.
  */
 
-/** Radians per screen pixel — ~one full turn per screen width. */
+import { expDecay } from './easing';
+
 const DRAG_SENS = 0.013;
-/** Fraction of last drag speed carried into release coast. */
 const MOMENTUM_BLEND = 0.48;
-/** Smooth drag-speed estimate for stable release momentum. */
 const VELOCITY_SMOOTH = 16;
 const TAP_IMPULSE = Math.PI / 4;
 const SWIPE_IMPULSE = Math.PI / 5.5;
@@ -20,36 +18,40 @@ export class RotationController {
   private velocity = 0;
   private dragging = false;
   private lastDragVel = 0;
-  private lastDragTime = 0;
+  private autoSpin = 0;
+  private pendingDx = 0;
 
   setDragging(active: boolean): void {
     if (active) {
       this.dragging = true;
       this.lastDragVel = 0;
-      this.lastDragTime = 0;
       return;
     }
     if (!this.dragging) return;
     this.dragging = false;
     this.velocity = this.lastDragVel * MOMENTUM_BLEND;
     this.clampVelocity();
-    this.lastDragTime = 0;
   }
 
-  /** Immediate finger follow; velocity tracked for release coast. */
   drag(dx: number): void {
-    const now = performance.now() * 0.001;
-    const dt = this.lastDragTime > 0
-      ? Math.min(0.05, now - this.lastDragTime)
-      : 1 / 60;
-    this.lastDragTime = now;
+    this.pendingDx += dx;
+  }
 
-    const delta = dx * DRAG_SENS;
+  /** Flush accumulated pointer delta with game-loop dt for frame-rate independence. */
+  tickDrag(dt: number): void {
+    if (!this.dragging || this.pendingDx === 0) return;
+
+    const delta = this.pendingDx * DRAG_SENS;
+    this.pendingDx = 0;
     this.angle += delta;
 
-    const instantVel = delta / dt;
+    const instantVel = dt > 0.0001 ? delta / dt : 0;
     const blend = Math.min(1, VELOCITY_SMOOTH * dt);
     this.lastDragVel += (instantVel - this.lastDragVel) * blend;
+  }
+
+  addAutoSpin(radPerSec: number): void {
+    this.autoSpin = radPerSec;
   }
 
   tap(): void {
@@ -68,17 +70,23 @@ export class RotationController {
   }
 
   update(dt: number): void {
-    if (this.dragging) return;
-    this.angle += this.velocity * dt;
-    this.velocity *= Math.exp(-FRICTION * dt);
-    if (Math.abs(this.velocity) < STOP_THRESHOLD) this.velocity = 0;
+    this.tickDrag(dt);
+    if (!this.dragging) {
+      this.angle += (this.velocity + this.autoSpin) * dt;
+      this.velocity *= Math.exp(-FRICTION * dt);
+      if (Math.abs(this.velocity) < STOP_THRESHOLD) this.velocity = 0;
+    } else if (this.autoSpin !== 0) {
+      this.angle += this.autoSpin * dt;
+    }
+    this.autoSpin = expDecay(this.autoSpin, dt, 4.5);
   }
 
   reset(): void {
     this.angle = 0;
     this.velocity = 0;
     this.lastDragVel = 0;
-    this.lastDragTime = 0;
+    this.autoSpin = 0;
+    this.pendingDx = 0;
     this.dragging = false;
   }
 

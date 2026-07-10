@@ -4,9 +4,16 @@ export interface Ring {
   id: number;
   y: number;
   gapStart: number;
+  /** Per-ring gap size (rad) — enables narrow/large gap variety. */
+  gapArc: number;
   colorIndex: number;
   dangerStart: number;
   dangerArc: number;
+  /** Vertical oscillation amplitude (0 = static). */
+  moveAmp: number;
+  movePhase: number;
+  /** Auto-rotation boost while ball is near this ring (rad/s). */
+  spinVel: number;
   broken: boolean;
   breakAnim: number;
 }
@@ -27,4 +34,13 @@ export interface CollisionHit {
   smashed: boolean;
   died: boolean;
   perfect: boolean;
+  impactSpeed: number;
+}
+
+export interface LandingFx {
+  shake: number;
+  particleCount: number;
+  spread: number;
+  squash: number;
+  squashVel: number;
 }

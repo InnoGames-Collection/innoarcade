@@ -10,6 +10,7 @@ import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
 import { sfx } from '../../engine/audio';
 import { HelixJump, W, H, claimDailyReward } from './game';
+import { helixAudio } from './helixAudio';
 import { bindHubCanvasChrome, scaleArcadeScore, submitArcadeScore, trackArcadeRunStart } from '../_arcade/hubCanvas';
 import { loadSave, toggleMusic, toggleVibrate } from './saveData';
 
@@ -55,7 +56,8 @@ const shell = wireFreeEngineMain({
 });
 
 const syncChrome = bindHubCanvasChrome({ playWrapper, backdrop: $('#fcBackdrop'), shell, gameId: GAME_ID });
-game.onStateChange = (s) => { run.onStateChange(s); syncChrome(s); };
+
+const musicBtn = document.getElementById('musicBtn');
 game.onGameOver = (score) => {
   submitArcadeScore(score, run.getRunStart(), shell, { budgetSec: 120, gameId: GAME_ID, winScore: host.winScore });
 };
@@ -64,7 +66,11 @@ const input = new Input(canvas);
 input.onAction((a) => game.handleAction(a));
 wireMutePause($('#muteBtn'), $('#pauseBtn'), game, sfx);
 
-const musicBtn = document.getElementById('musicBtn');
+game.onStateChange = (s) => {
+  run.onStateChange(s);
+  syncChrome(s);
+  if (s === 'menu') helixAudio.stopSession();
+};
 if (musicBtn) {
   const save = loadSave();
   musicBtn.setAttribute('aria-pressed', save.musicOn ? 'true' : 'false');
@@ -72,6 +78,7 @@ if (musicBtn) {
     const on = toggleMusic();
     musicBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
     musicBtn.classList.toggle('hx-muted', !on);
+    helixAudio.syncMusic();
   });
 }
 
@@ -119,12 +126,13 @@ const bindPointer = (el: HTMLElement) => {
 bindPointer(canvas);
 
 const scoreEl = $('#scoreVal');
+const scorePill = document.querySelector('.hx-score-pill');
 let lastScore = 0;
 const loop = new GameLoop(
   (dt) => game.update(dt),
   () => {
     game.render();
-    const scaled = scaleArcadeScore(game.score);
+    const scaled = scaleArcadeScore(game.displayScore);
     scoreEl.textContent = String(scaled);
     if (scaled !== lastScore) {
       lastScore = scaled;
@@ -132,6 +140,7 @@ const loop = new GameLoop(
       void scoreEl.offsetWidth;
       scoreEl.classList.add('hx-score-pop');
     }
+    scorePill?.classList.toggle('hx-fever', game.feverLeft > 0);
   },
 );
 

@@ -88,15 +88,28 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 88px;
-  padding: 8px 20px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 2px solid rgba(255, 92, 138, 0.35);
+  min-width: 96px;
+  padding: 9px 22px;
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 240, 255, 0.88) 100%);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1.5px solid rgba(255, 92, 138, 0.28);
   box-shadow:
-    0 6px 20px rgba(40, 30, 60, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.8);
+    0 8px 24px rgba(40, 30, 60, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
   pointer-events: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.arcade-shell[data-game='helix-jump'] .hx-score-pill.hx-fever {
+  border-color: rgba(255, 217, 61, 0.55);
+  box-shadow:
+    0 8px 28px rgba(255, 180, 40, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .arcade-shell[data-game='helix-jump'] .hx-score-label {

@@ -42,9 +42,9 @@ export function createPlatformGeometry(startAngle: number, arcLength: number): T
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: RING_HEIGHT,
     bevelEnabled: true,
-    bevelThickness: 0.05,
-    bevelSize: 0.04,
-    bevelSegments: 2,
+    bevelThickness: 0.06,
+    bevelSize: 0.05,
+    bevelSegments: 3,
     curveSegments: segments,
   });
   geo.rotateX(-Math.PI / 2);
@@ -62,6 +62,19 @@ export function createPlatformGeometry(startAngle: number, arcLength: number): T
   return geo;
 }
 
+export function createWedgeGeometry(arcLength: number, startAngle = 0): THREE.BufferGeometry {
+  return createPlatformGeometry(startAngle, Math.max(0.18, Math.min(0.75, arcLength)));
+}
+
+export function makePlatformMaterial(color: THREE.Color, danger = false): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: danger ? 0.32 : 0.22,
+    metalness: danger ? 0.1 : 0.16,
+    emissive: color.clone().multiplyScalar(danger ? 0.08 : 0.1),
+    emissiveIntensity: danger ? 0.35 : 0.22,
+  });
+}
 export function ringColor(index: number, danger: boolean): THREE.Color {
   if (danger) return new THREE.Color(THEME.danger);
   const cols = ['#ff5c8a', '#00d4ff', '#ffd93d', '#7cff6b', '#ff8c42', '#c77dff', '#ff6bcb', '#4dffb8'];
