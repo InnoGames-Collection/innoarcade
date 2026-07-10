@@ -3,7 +3,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import {
-  BALL_CONTACT_ANGLE, BALL_R, BALL_RENDER_Z, BALL_SCREEN_Y, H, PILLAR_R, THEME, W,
+  BALL_CONTACT_ANGLE, BALL_R, BALL_SCREEN_Y, BALL_WORLD_X, BALL_WORLD_Z,
+  H, PILLAR_HEIGHT, PILLAR_R, THEME, W,
 } from './constants';
 import {
   BallTrail, BokehField, LandingSplats, ParticleSystem, SmashShards, SpeedLines,
@@ -77,7 +78,7 @@ export class HelixWorld {
 
     this.scene = new THREE.Scene();
     this.scene.background = makeGradientBackground();
-    this.scene.fog = new THREE.Fog(0x6b4a7a, 28, 72);
+    this.scene.fog = new THREE.Fog(0x6b4a7a, 18, 58);
 
     this.cameraCtrl = new CameraController(W / H);
 
@@ -126,7 +127,7 @@ export class HelixWorld {
     this.scene.add(ground);
 
     this.pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(PILLAR_R, PILLAR_R * 1.03, 160, 28),
+      new THREE.CylinderGeometry(PILLAR_R, PILLAR_R * 1.02, PILLAR_HEIGHT, 28),
       new THREE.MeshStandardMaterial({
         color: THEME.pillar,
         roughness: 0.32,
@@ -137,24 +138,25 @@ export class HelixWorld {
     );
     this.pillar.castShadow = true;
     this.pillar.receiveShadow = true;
+    this.pillar.position.y = 0;
     this.helix.add(this.pillar);
     this.helix.add(this.tower);
     this.scene.add(this.helix);
 
-    this.ballRig.position.set(0, BALL_SCREEN_Y, BALL_RENDER_Z);
+    this.ballRig.position.set(BALL_WORLD_X, BALL_SCREEN_Y, BALL_WORLD_Z);
     this.scene.add(this.ballRig);
 
     this.ballShadow = new THREE.Mesh(
-      new THREE.CircleGeometry(BALL_R * 0.9, 20),
+      new THREE.CircleGeometry(BALL_R * 0.95, 20),
       new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: true,
-        opacity: 0.16,
+        opacity: 0.22,
         depthWrite: false,
       }),
     );
     this.ballShadow.rotation.x = -Math.PI / 2;
-    this.ballShadow.position.set(0, BALL_SCREEN_Y - BALL_R - 0.06, BALL_RENDER_Z);
+    this.ballShadow.position.set(BALL_WORLD_X, BALL_SCREEN_Y - BALL_R - 0.05, BALL_WORLD_Z);
     this.ballShadow.renderOrder = 5;
     this.scene.add(this.ballShadow);
 
@@ -169,8 +171,8 @@ export class HelixWorld {
     this.ball = new THREE.Mesh(ballGeo, this.ballMat);
     this.ball.castShadow = true;
     this.ball.receiveShadow = false;
-    this.ball.renderOrder = 20;
-    this.ball.position.z = 0.14;
+    this.ball.renderOrder = 30;
+    this.ball.position.set(0, 0, 0);
     this.ballRig.add(this.ball);
 
     this.ballHalo = new THREE.Mesh(
@@ -183,8 +185,8 @@ export class HelixWorld {
         blending: THREE.AdditiveBlending,
       }),
     );
-    this.ballHalo.renderOrder = 18;
-    this.ballHalo.position.z = 0.12;
+    this.ballHalo.renderOrder = 28;
+    this.ballHalo.position.set(0, 0, -0.02);
     this.ballRig.add(this.ballHalo);
 
     this.ballGlow = new THREE.PointLight(0xb24bf3, 0.85, 6);
@@ -272,7 +274,6 @@ export class HelixWorld {
     approachId = -1,
   ): void {
     this.helix.position.set(0, 0, 0);
-    this.pillar.position.y = ballY;
 
     const activeIds = new Set(rings.filter((r) => !r.broken || r.breakAnim < 1).map((r) => r.id));
 
@@ -356,14 +357,14 @@ export class HelixWorld {
   }
 
   updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number, combo = 0): void {
-    this.ballRig.position.y = BALL_SCREEN_Y;
-    this.ballShadow.position.set(0, BALL_SCREEN_Y - BALL_R - 0.06, BALL_RENDER_Z);
+    this.ballRig.position.set(BALL_WORLD_X, BALL_SCREEN_Y, BALL_WORLD_Z);
+    this.ballShadow.position.set(BALL_WORLD_X, BALL_SCREEN_Y - BALL_R - 0.05, BALL_WORLD_Z);
     const shadowScale = 1 + Math.min(0.2, Math.abs(ball.vy) * 0.008);
     this.ballShadow.scale.set(shadowScale, shadowScale, 1);
     (this.ballShadow.material as THREE.MeshBasicMaterial).opacity =
       0.18 + Math.min(0.1, Math.abs(ball.vy) * 0.004);
-    this.ball.position.set(0, 0, 0.14);
-    this.ballHalo.position.set(0, 0, 0.12);
+    this.ball.position.set(0, 0, 0);
+    this.ballHalo.position.set(0, 0, -0.02);
 
     let sx = 1;
     let sy = 1;
@@ -408,7 +409,6 @@ export class HelixWorld {
       if (this.bloomPass) this.bloomPass.strength = 0.3 + Math.min(0.08, Math.abs(ball.vy) * 0.003);
     }
 
-    this.pillar.position.y = 0;
     this.trail.push(ball.vy, skin.color, combo, fever);
     this.speedLines.setIntensity(combo, fever, ball.vy);
   }

@@ -1,14 +1,15 @@
 /**
- * Tower rotation — calm 1:1 drag with gentle coast on release.
+ * Tower rotation — tap snaps a fixed step; drag is 1:1.
  */
 
-const DRAG_SENS = 0.0085;
-const MOMENTUM_BLEND = 0.32;
-const VELOCITY_SMOOTH = 12;
-const TAP_IMPULSE = Math.PI / 18;
-const SWIPE_IMPULSE = Math.PI / 22;
-const FRICTION = 12;
-const MAX_VELOCITY = 1.9;
+const DRAG_SENS = 0.011;
+const MOMENTUM_BLEND = 0.35;
+const VELOCITY_SMOOTH = 14;
+/** ~38° per tap — must be obvious on mobile. */
+const TAP_STEP = Math.PI / 4.8;
+const SWIPE_STEP = Math.PI / 5.5;
+const FRICTION = 11;
+const MAX_VELOCITY = 2.4;
 const STOP_THRESHOLD = 0.01;
 
 export class RotationController {
@@ -47,18 +48,18 @@ export class RotationController {
   }
 
   tap(): void {
-    this.velocity += TAP_IMPULSE;
-    this.clampVelocity();
+    this.angle += TAP_STEP;
+    this.velocity *= 0.35;
   }
 
   swipeLeft(): void {
-    this.velocity -= SWIPE_IMPULSE;
-    this.clampVelocity();
+    this.angle -= SWIPE_STEP;
+    this.velocity *= 0.35;
   }
 
   swipeRight(): void {
-    this.velocity += SWIPE_IMPULSE;
-    this.clampVelocity();
+    this.angle += SWIPE_STEP;
+    this.velocity *= 0.35;
   }
 
   update(dt: number): void {

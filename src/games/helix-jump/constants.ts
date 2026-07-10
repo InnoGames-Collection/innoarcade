@@ -20,7 +20,11 @@ export const BALL_CONTACT_R = RING_INNER + BALL_R * 0.88;
 export const BALL_CONTACT_ANGLE = Math.PI / 2;
 /** Fixed screen Y for the ball rig (world scrolls past it). */
 export const BALL_SCREEN_Y = 0;
-export const BALL_RENDER_Z = 0.3;
+/** World XZ of the ball on the platform inner rim (toward camera). */
+export const BALL_WORLD_X = Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
+export const BALL_WORLD_Z = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
+/** Visible pillar segment height around the play axis. */
+export const PILLAR_HEIGHT = 16;
 export const GAP_ARC = 1.05;
 /** Orange hazard wedge on solid platforms (reference: partial segment, not full ring). */
 export const DANGER_ARC_MIN = 0.42;
@@ -44,11 +48,11 @@ export const BALL_STRETCH_MAX = 0.08;
 export const BALL_ROLL_RATE = 1.2;
 export const BALL_SQUASH_MIN = 0.72;
 export const BALL_SQUASH_MAX = 1.06;
-export const CAM_FOV = 42;
-export const CAM_OFFSET = 0.44;
-export const CAM_Y = 6.2;
-export const CAM_Z = 9.0;
-export const CAM_LOOK_Y = 0;
+export const CAM_FOV = 44;
+export const CAM_Y = 5.6;
+export const CAM_Z = 8.2;
+export const CAM_LOOK_Y = -0.15;
+export const CAM_LOOK_Z = 0.9;
 
 /** ~2.5× ball diameter between platforms — more air time for control. */
 export const RING_SPACING_BASE = 2.5;

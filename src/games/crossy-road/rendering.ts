@@ -351,6 +351,65 @@ export function drawRiverRow(ctx: CanvasRenderingContext2D, sy: number, w: numbe
 
 type IsoCorner = { x: number; y: number };
 
+/** Vertical screen-space thickness of terrain voxels. */
+export const SLAB_DEPTH = 14;
+
+interface SlabPalette {
+  topLight: string;
+  topDark: string;
+  eastFace: string;
+  southFace: string;
+}
+
+const SLAB_PALETTES = {
+  grass: {
+    topLight: '#8ed85c',
+    topDark: '#6eb844',
+    eastFace: '#4a9a38',
+    southFace: '#3d8230',
+  },
+  grassStart: {
+    topLight: '#7ec850',
+    topDark: '#5a9a3e',
+    eastFace: '#428a32',
+    southFace: '#357028',
+  },
+  road: {
+    topLight: '#6a6a6a',
+    topDark: '#434343',
+    eastFace: '#2e2e2e',
+    southFace: '#252525',
+  },
+  river: {
+    topLight: '#6ec8f0',
+    topDark: '#2980b9',
+    eastFace: '#1f6f9f',
+    southFace: '#185a82',
+  },
+} satisfies Record<string, SlabPalette>;
+
+function dropCorner(corner: IsoCorner, depth: number): IsoCorner {
+  return { x: corner.x, y: corner.y + depth };
+}
+
+function fillQuad(
+  ctx: CanvasRenderingContext2D,
+  a: IsoCorner,
+  b: IsoCorner,
+  c: IsoCorner,
+  d: IsoCorner,
+  fill: string | CanvasGradient,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.lineTo(c.x, c.y);
+  ctx.lineTo(d.x, d.y);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
 function traceDiamond(ctx: CanvasRenderingContext2D, corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner]): void {
   ctx.beginPath();
   ctx.moveTo(corners[0].x, corners[0].y);
@@ -358,6 +417,118 @@ function traceDiamond(ctx: CanvasRenderingContext2D, corners: [IsoCorner, IsoCor
   ctx.lineTo(corners[2].x, corners[2].y);
   ctx.lineTo(corners[3].x, corners[3].y);
   ctx.closePath();
+}
+
+function fillTopFace(
+  ctx: CanvasRenderingContext2D,
+  corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
+  palette: SlabPalette,
+): void {
+  const cx = (corners[0].x + corners[2].x) / 2;
+  const g = ctx.createLinearGradient(cx, corners[0].y, cx, corners[2].y);
+  g.addColorStop(0, palette.topLight);
+  g.addColorStop(1, palette.topDark);
+  traceDiamond(ctx, corners);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 0.75;
+  ctx.stroke();
+}
+
+function drawSlabSides(
+  ctx: CanvasRenderingContext2D,
+  corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
+  palette: SlabPalette,
+  depth: number,
+): void {
+  const [, ne, se, sw] = corners;
+  const neB = dropCorner(ne, depth);
+  const seB = dropCorner(se, depth);
+  const swB = dropCorner(sw, depth);
+
+  // East face — right edge of the diamond (ne → se).
+  fillQuad(ctx, ne, se, seB, neB, palette.eastFace);
+  // South face — front edge of the diamond (se → sw).
+  fillQuad(ctx, se, sw, swB, seB, palette.southFace);
+}
+
+function paletteForKind(kind: 'grass' | 'road' | 'river', isStart?: boolean): SlabPalette {
+  if (kind === 'grass' && isStart) return SLAB_PALETTES.grassStart;
+  return SLAB_PALETTES[kind];
+}
+
+function drawRoadMarking(
+  ctx: CanvasRenderingContext2D,
+  corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
+): void {
+  const mid = {
+    x: (corners[1].x + corners[3].x) / 2,
+    y: (corners[1].y + corners[3].y) / 2,
+  };
+  const tip = {
+    x: (corners[0].x + corners[2].x) / 2,
+    y: (corners[0].y + corners[2].y) / 2,
+  };
+  ctx.strokeStyle = 'rgba(240,192,64,0.55)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(mid.x, mid.y);
+  ctx.lineTo(tip.x, tip.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawRiverShimmer(
+  ctx: CanvasRenderingContext2D,
+  corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
+  t: number,
+  col: number,
+): void {
+  const cy = (corners[0].y + corners[2].y) / 2;
+  const cx = corners[1].x + ((t * 36 + col * 19) % 40) - 20;
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 10, 3, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Side faces only — queue at base paint depth. */
+export function drawIsoTerrainSlabSides(
+  ctx: CanvasRenderingContext2D,
+  corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
+  kind: 'grass' | 'road' | 'river',
+  opts: { isStart?: boolean; depth?: number } = {},
+): void {
+  const depth = opts.depth ?? SLAB_DEPTH;
+  drawSlabSides(ctx, corners, paletteForKind(kind, opts.isStart), depth);
+}
+
+/** Top face only — queue slightly above sides for correct overlap. */
+export function drawIsoTerrainSlabTop(
+  ctx: CanvasRenderingContext2D,
+  corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
+  kind: 'grass' | 'road' | 'river',
+  opts: { isStart?: boolean; animT?: number; col?: number } = {},
+): void {
+  const palette = paletteForKind(kind, opts.isStart);
+  fillTopFace(ctx, corners, palette);
+  if (kind === 'road') drawRoadMarking(ctx, corners);
+  if (kind === 'river' && opts.animT !== undefined && opts.col !== undefined) {
+    drawRiverShimmer(ctx, corners, opts.animT, opts.col);
+  }
+}
+
+/** Draw a full 3D terrain voxel in one call (sides then top). */
+export function drawIsoTerrainSlab(
+  ctx: CanvasRenderingContext2D,
+  corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
+  kind: 'grass' | 'road' | 'river',
+  opts: { isStart?: boolean; animT?: number; col?: number; depth?: number } = {},
+): void {
+  drawIsoTerrainSlabSides(ctx, corners, kind, opts);
+  drawIsoTerrainSlabTop(ctx, corners, kind, opts);
 }
 
 export function fillIsoCell(
@@ -382,30 +553,20 @@ export function strokeIsoCell(
   ctx.stroke();
 }
 
+/** @deprecated Use drawIsoTerrainSlab — kept for reference during voxel migration. */
 export function drawIsoGrassCell(
   ctx: CanvasRenderingContext2D,
   corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
   isStart: boolean,
 ): void {
-  const top = isStart ? '#6ab04c' : '#7ec850';
-  const bottom = isStart ? '#5a9a3e' : '#6eb844';
-  const cx = (corners[0].x + corners[2].x) / 2;
-  const g = ctx.createLinearGradient(cx, corners[0].y, cx, corners[2].y);
-  g.addColorStop(0, top);
-  g.addColorStop(1, bottom);
-  fillIsoCell(ctx, corners, g);
+  drawIsoTerrainSlab(ctx, corners, 'grass', { isStart });
 }
 
 export function drawIsoRoadCell(
   ctx: CanvasRenderingContext2D,
   corners: [IsoCorner, IsoCorner, IsoCorner, IsoCorner],
 ): void {
-  const cx = (corners[0].x + corners[2].x) / 2;
-  const g = ctx.createLinearGradient(cx, corners[0].y, cx, corners[2].y);
-  g.addColorStop(0, '#555');
-  g.addColorStop(1, '#3d3d3d');
-  fillIsoCell(ctx, corners, g);
-  strokeIsoCell(ctx, corners, 'rgba(240,192,64,0.35)', 1);
+  drawIsoTerrainSlab(ctx, corners, 'road');
 }
 
 export function drawIsoRiverCell(
@@ -414,12 +575,5 @@ export function drawIsoRiverCell(
   t: number,
   col: number,
 ): void {
-  const cx = (corners[0].x + corners[2].x) / 2;
-  const g = ctx.createLinearGradient(cx, corners[0].y, cx, corners[2].y);
-  g.addColorStop(0, '#5dade2');
-  g.addColorStop(1, '#2980b9');
-  fillIsoCell(ctx, corners, g);
-  const shimmer = corners[0].x + ((t * 40 + col * 17) % 30);
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(shimmer, (corners[0].y + corners[2].y) / 2 - 2, 14, 3);
+  drawIsoTerrainSlab(ctx, corners, 'river', { animT: t, col });
 }

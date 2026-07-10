@@ -7,9 +7,8 @@ import {
   drawChicken,
   drawCoin,
   drawEagle,
-  drawIsoGrassCell,
-  drawIsoRoadCell,
-  drawIsoRiverCell,
+  drawIsoTerrainSlabSides,
+  drawIsoTerrainSlabTop,
   drawLog,
   drawVehicle,
   type VehicleKind,
@@ -420,23 +419,29 @@ export class CrossyRoad {
 
     for (let z = zMin; z <= zMax; z++) {
       const row = this.rowAt(z);
+      const kind = row.kind;
       for (let col = 0; col < COLS; col++) {
         const corners = cellDiamondScreen(col, z, CELL, cam, origin);
         const depth = paintDepth(z, col);
+        const slabOpts = {
+          isStart: z <= 0,
+          animT: this.animT,
+          col,
+        };
         queue.push({
           depth,
-          draw: () => {
-            if (row.kind === 'grass') drawIsoGrassCell(ctx, corners, z <= 0);
-            else if (row.kind === 'road') drawIsoRoadCell(ctx, corners);
-            else drawIsoRiverCell(ctx, corners, this.animT, col);
-          },
+          draw: () => drawIsoTerrainSlabSides(ctx, corners, kind, slabOpts),
+        });
+        queue.push({
+          depth: depth + 0.02,
+          draw: () => drawIsoTerrainSlabTop(ctx, corners, kind, slabOpts),
         });
       }
     }
 
     for (const coin of this.coinItems) {
       const center = cellCenterScreen(coin.col, coin.row, CELL, cam, origin);
-      const depth = paintDepth(coin.row, coin.col) + 0.1;
+      const depth = paintDepth(coin.row, coin.col) + 0.15;
       queue.push({
         depth,
         draw: () => drawCoin(ctx, center.x, center.y, coin.spin),
@@ -446,7 +451,7 @@ export class CrossyRoad {
     for (const c of this.cars) {
       const gridCx = (c.x + c.w / 2) / CELL;
       const center = gridToScreen(gridCx, c.row + 0.5, CELL, cam, origin);
-      const depth = paintDepth(c.row, gridCx);
+      const depth = paintDepth(c.row, gridCx) + 0.2;
       const facingRight = c.speed > 0;
       const drawW = c.w * 0.55;
       const drawH = CELL * 0.55;
@@ -467,7 +472,7 @@ export class CrossyRoad {
     for (const l of this.logs) {
       const gridCx = (l.x + l.w / 2) / CELL;
       const center = gridToScreen(gridCx, l.row + 0.5, CELL, cam, origin);
-      const depth = paintDepth(l.row, gridCx);
+      const depth = paintDepth(l.row, gridCx) + 0.2;
       const drawW = l.w * 0.55;
       const drawH = CELL * 0.5;
       queue.push({
@@ -485,7 +490,7 @@ export class CrossyRoad {
     if (!this.eagle) {
       const playerCenter = gridToScreen(playerGx, playerGz, CELL, cam, origin);
       queue.push({
-        depth: paintDepth(playerGz, playerGx) + 0.5,
+        depth: paintDepth(playerGz, playerGx) + 0.55,
         draw: () => drawChicken(
           ctx,
           playerCenter.x,

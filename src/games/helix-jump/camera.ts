@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CAM_FOV, CAM_LOOK_Y, CAM_Y, CAM_Z } from './constants';
+import { CAM_FOV, CAM_LOOK_Y, CAM_LOOK_Z, CAM_Y, CAM_Z } from './constants';
 
 export class CameraController {
   shake = 0;
@@ -12,7 +12,7 @@ export class CameraController {
   constructor(aspect: number) {
     this.camera = new THREE.PerspectiveCamera(CAM_FOV, aspect, 0.1, 120);
     this.camera.position.set(0, CAM_Y, CAM_Z);
-    this.camera.lookAt(0, CAM_LOOK_Y, 0);
+    this.camera.lookAt(0, CAM_LOOK_Y, CAM_LOOK_Z);
   }
 
   resize(aspect: number): void {
