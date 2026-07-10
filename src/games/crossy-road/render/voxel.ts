@@ -1,6 +1,6 @@
 // Premium voxel entities — classic lane layout (horizontal roads, vertical hops).
 
-import { CELL } from '../types';
+import { CELL, W } from '../types';
 import type { VehicleKind } from '../types';
 
 interface Point {
@@ -35,7 +35,26 @@ export function shadeColor(hex: string, factor: number): string {
   return `rgb(${c(r)},${c(g)},${c(b)})`;
 }
 
-/** 3/4 cabinet box: width along X, height up, shallow depth down (+Y). */
+function strokeQuad(
+  ctx: CanvasRenderingContext2D,
+  a: Point,
+  b: Point,
+  c: Point,
+  d: Point,
+  stroke: string,
+  width = 1,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.lineTo(c.x, c.y);
+  ctx.lineTo(d.x, d.y);
+  ctx.closePath();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
 function drawClassicBox(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -45,36 +64,27 @@ function drawClassicBox(
   depthPx: number,
   color: string,
   liftPx = 0,
+  outline = true,
 ): void {
   const hw = widthPx / 2;
   const baseY = bottomY - liftPx;
   const topY = baseY - heightPx;
   const lip = depthPx * 0.55;
 
-  fillQuad(
-    ctx,
-    { x: cx - hw, y: topY },
-    { x: cx + hw, y: topY },
-    { x: cx + hw, y: topY + lip },
-    { x: cx - hw, y: topY + lip },
-    color,
-  );
-  fillQuad(
-    ctx,
-    { x: cx - hw, y: topY + lip },
-    { x: cx + hw, y: topY + lip },
-    { x: cx + hw, y: baseY + depthPx },
-    { x: cx - hw, y: baseY + depthPx },
-    shadeColor(color, 0.78),
-  );
-  fillQuad(
-    ctx,
-    { x: cx + hw, y: topY },
-    { x: cx + hw, y: baseY },
-    { x: cx + hw, y: baseY + depthPx },
-    { x: cx + hw, y: topY + lip },
-    shadeColor(color, 0.58),
-  );
+  const tl = { x: cx - hw, y: topY };
+  const tr = { x: cx + hw, y: topY };
+  const bl = { x: cx - hw, y: topY + lip };
+  const br = { x: cx + hw, y: topY + lip };
+  const fl = { x: cx - hw, y: baseY + depthPx };
+  const fr = { x: cx + hw, y: baseY + depthPx };
+
+  fillQuad(ctx, tl, tr, br, bl, color);
+  fillQuad(ctx, bl, br, fr, fl, shadeColor(color, 0.78));
+  fillQuad(ctx, tr, { x: cx + hw, y: baseY }, fr, br, shadeColor(color, 0.58));
+
+  if (outline) {
+    strokeQuad(ctx, tl, tr, br, bl, 'rgba(0,0,0,0.22)', 1.2);
+  }
 }
 
 const VEHICLE_PAL: Record<VehicleKind, { body: string; accent: string; trim: string }> = {
@@ -96,7 +106,7 @@ export function drawVoxelChicken(
   squash: { sx: number; sy: number },
   animT: number,
 ): void {
-  const footY = cy + unit * 0.12;
+  const footY = cy + unit * 0.18;
   const breathe = 1 + Math.sin(animT * 2.4) * 0.03;
   const blink = Math.sin(animT * 0.9) > 0.92;
   const u = unit;
@@ -106,13 +116,13 @@ export function drawVoxelChicken(
   ctx.scale(squash.sx * breathe, squash.sy * breathe);
   ctx.translate(-cx, -cy);
 
-  drawClassicBox(ctx, cx, footY, u * 0.58, u * 0.52, u * 0.14, '#f8f8f8', arcZ);
-  drawClassicBox(ctx, cx - u * 0.02, footY, u * 0.22, u * 0.14, u * 0.08, '#e74c3c', arcZ + u * 0.48);
-  drawClassicBox(ctx, cx + u * 0.2, footY, u * 0.16, u * 0.1, u * 0.07, '#f2c40a', arcZ + u * 0.12);
+  drawClassicBox(ctx, cx, footY, u * 0.62, u * 0.55, u * 0.16, '#f8f8f8', arcZ);
+  drawClassicBox(ctx, cx - u * 0.02, footY, u * 0.24, u * 0.16, u * 0.09, '#e74c3c', arcZ + u * 0.5);
+  drawClassicBox(ctx, cx + u * 0.22, footY, u * 0.18, u * 0.11, u * 0.08, '#f2c40a', arcZ + u * 0.14);
   if (!blink) {
-    drawClassicBox(ctx, cx + u * 0.12, footY, u * 0.1, u * 0.08, u * 0.05, '#2c2c2c', arcZ + u * 0.32);
+    drawClassicBox(ctx, cx + u * 0.14, footY, u * 0.11, u * 0.09, u * 0.05, '#2c2c2c', arcZ + u * 0.34);
   }
-  drawClassicBox(ctx, cx - u * 0.16, footY, u * 0.12, u * 0.08, u * 0.06, '#f2c40a', arcZ + u * 0.06);
+  drawClassicBox(ctx, cx - u * 0.18, footY, u * 0.13, u * 0.09, u * 0.06, '#f2c40a', arcZ + u * 0.08);
 
   ctx.restore();
 }
@@ -129,12 +139,13 @@ export function drawVoxelVehicle(
   simple = false,
 ): void {
   const span = Math.max(0.85, Math.abs(gridSpan));
-  const bounce = Math.sin(animT * 10 + cx * 0.05) * 1.2;
-  const footY = cy + unit * 0.1 + bounce;
+  const bounce = Math.sin(animT * 10 + cx * 0.05) * 1.5;
+  const footY = cy + unit * 0.15 + bounce;
   const pal = VEHICLE_PAL[kind];
-  const bodyW = span * CELL * 0.92;
-  const bodyH = kind === 'bus' ? unit * 0.48 : unit * 0.38;
-  const bodyD = unit * 0.16;
+  const isTrain = kind === 'bus' && span > 1.6;
+  const bodyW = Math.min(W * 0.95, span * CELL * 0.94);
+  const bodyH = kind === 'bus' ? unit * 0.5 : unit * 0.4;
+  const bodyD = unit * 0.18;
 
   ctx.save();
   if (!facingRight) {
@@ -147,35 +158,39 @@ export function drawVoxelVehicle(
 
   if (!simple) {
     if (kind === 'van') {
-      drawClassicBox(ctx, cx, footY, bodyW * 0.82, unit * 0.12, unit * 0.08, pal.accent, bodyH * 0.7);
-      drawClassicBox(ctx, cx - bodyW * 0.18, footY, bodyW * 0.2, unit * 0.06, unit * 0.04, '#1f74e0', bodyH * 0.85);
-      drawClassicBox(ctx, cx + bodyW * 0.18, footY, bodyW * 0.12, unit * 0.06, unit * 0.04, '#27ae60', bodyH * 0.85);
+      drawClassicBox(ctx, cx, footY, bodyW * 0.82, unit * 0.13, unit * 0.09, pal.accent, bodyH * 0.72);
+      drawClassicBox(ctx, cx - bodyW * 0.18, footY, bodyW * 0.2, unit * 0.07, unit * 0.05, '#1f74e0', bodyH * 0.88);
+      drawClassicBox(ctx, cx + bodyW * 0.18, footY, bodyW * 0.12, unit * 0.07, unit * 0.05, '#27ae60', bodyH * 0.88);
     } else if (kind === 'taxi') {
-      drawClassicBox(ctx, cx, footY, bodyW * 0.45, unit * 0.08, unit * 0.05, '#2c2c2c', bodyH * 0.9);
+      drawClassicBox(ctx, cx, footY, bodyW * 0.45, unit * 0.09, unit * 0.05, '#2c2c2c', bodyH * 0.92);
     } else if (kind === 'police') {
-      drawClassicBox(ctx, cx, footY, bodyW * 0.32, unit * 0.08, unit * 0.05, '#3498db', bodyH * 0.95);
-      drawClassicBox(ctx, cx + bodyW * 0.12, footY, bodyW * 0.1, unit * 0.06, unit * 0.04, '#e74c3c', bodyH * 0.95);
+      drawClassicBox(ctx, cx, footY, bodyW * 0.34, unit * 0.09, unit * 0.05, '#3498db', bodyH * 0.96);
+      drawClassicBox(ctx, cx + bodyW * 0.12, footY, bodyW * 0.1, unit * 0.07, unit * 0.04, '#e74c3c', bodyH * 0.96);
     } else {
-      const winCount = kind === 'bus' ? 4 : 2;
+      const winCount = isTrain ? 5 : (kind === 'bus' ? 4 : 2);
       for (let i = 0; i < winCount; i++) {
-        const wx = cx + (i - (winCount - 1) / 2) * bodyW * 0.22;
-        drawClassicBox(ctx, wx, footY, unit * 0.14, unit * 0.1, unit * 0.06, pal.accent, bodyH * 0.75);
+        const wx = cx + (i - (winCount - 1) / 2) * bodyW * 0.18;
+        drawClassicBox(ctx, wx, footY, unit * 0.15, unit * 0.11, unit * 0.06, pal.accent, bodyH * 0.78);
       }
     }
-    drawClassicBox(ctx, cx, footY, bodyW * 0.98, unit * 0.06, unit * 0.04, pal.trim, bodyH * 0.82);
+    drawClassicBox(ctx, cx, footY, bodyW * 0.98, unit * 0.07, unit * 0.05, pal.trim, bodyH * 0.84);
   }
 
-  const wheelN = simple ? 2 : (kind === 'bus' ? 4 : 2);
-  const slots = wheelN === 4 ? [-0.32, -0.1, 0.1, 0.32] : [-0.24, 0.24];
-  const wheelRot = animT * 8;
+  const wheelN = isTrain ? 6 : (kind === 'bus' ? 4 : 2);
+  const slots = wheelN === 6
+    ? [-0.38, -0.22, -0.06, 0.1, 0.26, 0.38]
+    : wheelN === 4
+      ? [-0.32, -0.1, 0.1, 0.32]
+      : [-0.26, 0.26];
+  const wheelRot = animT * 10;
   for (const slot of slots) {
     const wx = cx + slot * bodyW;
-    const wy = footY + unit * 0.06;
-    drawClassicBox(ctx, wx, wy, unit * 0.14, unit * 0.14, unit * 0.08, '#1a1a1a');
+    const wy = footY + unit * 0.08;
+    drawClassicBox(ctx, wx, wy, unit * 0.15, unit * 0.15, unit * 0.09, '#1a1a1a');
     if (!simple) {
-      ctx.fillStyle = '#666';
+      ctx.fillStyle = '#888';
       ctx.beginPath();
-      ctx.ellipse(wx + Math.cos(wheelRot) * 1.5, wy + unit * 0.04, 2.5, 1.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(wx + Math.cos(wheelRot) * 2, wy + unit * 0.05, 3, 2, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -193,22 +208,22 @@ export function drawVoxelLog(
   gridCx: number,
 ): void {
   const span = Math.max(0.7, Math.abs(gridSpan));
-  const bob = Math.sin(animT * 2.2 + gridCx * 0.8) * 2;
-  const footY = cy + unit * 0.08 + bob;
-  const logW = span * CELL * 0.9;
-  const logH = unit * 0.28;
+  const bob = Math.sin(animT * 2.2 + gridCx * 0.8) * 2.5;
+  const footY = cy + unit * 0.12 + bob;
+  const logW = span * CELL * 0.92;
+  const logH = unit * 0.32;
 
-  drawClassicBox(ctx, cx, footY, logW, logH, unit * 0.12, '#a0622a');
-  drawClassicBox(ctx, cx - logW * 0.42, footY, unit * 0.12, logH * 0.85, unit * 0.1, '#5c3418', logH * 0.1);
-  drawClassicBox(ctx, cx + logW * 0.42, footY, unit * 0.12, logH * 0.85, unit * 0.1, '#5c3418', logH * 0.1);
+  drawClassicBox(ctx, cx, footY, logW, logH, unit * 0.14, '#a0622a');
+  drawClassicBox(ctx, cx - logW * 0.44, footY, unit * 0.14, logH * 0.88, unit * 0.11, '#5c3418', logH * 0.12);
+  drawClassicBox(ctx, cx + logW * 0.44, footY, unit * 0.14, logH * 0.88, unit * 0.11, '#5c3418', logH * 0.12);
 
-  ctx.strokeStyle = 'rgba(60,40,20,0.3)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(60,40,20,0.35)';
+  ctx.lineWidth = 1.2;
   for (let i = -2; i <= 2; i++) {
-    const lx = cx + i * logW * 0.14;
+    const lx = cx + i * logW * 0.15;
     ctx.beginPath();
-    ctx.moveTo(lx, footY - logH * 0.35);
-    ctx.lineTo(lx, footY + unit * 0.08);
+    ctx.moveTo(lx, footY - logH * 0.38);
+    ctx.lineTo(lx, footY + unit * 0.1);
     ctx.stroke();
   }
 }
@@ -221,16 +236,16 @@ export function drawVoxelCoin(
   animT: number,
   col: number,
 ): void {
-  const bob = Math.sin(animT * 4 + col * 1.3) * 5;
+  const bob = Math.sin(animT * 4 + col * 1.3) * 6;
   const spin = animT * 3 + col;
   const y = cy + bob;
-  const rx = unit * 0.2 * (0.55 + Math.abs(Math.cos(spin)) * 0.45);
-  const ry = unit * 0.22;
+  const rx = unit * 0.22 * (0.55 + Math.abs(Math.cos(spin)) * 0.45);
+  const ry = unit * 0.24;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.beginPath();
-  ctx.ellipse(cx, y + unit * 0.18, rx, unit * 0.06, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, y + unit * 0.2, rx, unit * 0.07, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const g = ctx.createLinearGradient(cx, y - ry, cx, y + ry);
@@ -241,19 +256,18 @@ export function drawVoxelCoin(
   ctx.beginPath();
   ctx.ellipse(cx, y, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#b8860b';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#9a7209';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
   ctx.fillStyle = '#fff8dc';
-  ctx.font = `bold ${Math.max(9, unit * 0.22)}px system-ui,sans-serif`;
+  ctx.font = `bold ${Math.max(10, unit * 0.26)}px system-ui,sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('★', cx, y);
   ctx.restore();
 }
 
-/** Small classic box for tree trunks in decorations. */
 export function drawDecorBox(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -264,7 +278,7 @@ export function drawDecorBox(
   color: string,
   lift = 0,
 ): void {
-  drawClassicBox(ctx, cx, bottomY, w, h, d, color, lift);
+  drawClassicBox(ctx, cx, bottomY, w, h, d, color, lift, false);
 }
 
 export function drawDropShadow(

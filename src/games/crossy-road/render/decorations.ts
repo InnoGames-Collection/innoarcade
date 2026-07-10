@@ -32,7 +32,7 @@ function decorCenter(
   camBob: number,
   jx: number,
 ): { x: number; y: number } {
-  return classicGridToScreen(col + 0.5 + jx, row + 0.5, camZ, camBob);
+  return classicGridToScreen(col + 0.5 + jx, row, camZ, camBob);
 }
 
 function drawFlower(

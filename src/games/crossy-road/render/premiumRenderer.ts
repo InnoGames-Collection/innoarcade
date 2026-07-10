@@ -12,7 +12,6 @@ import {
   COLS,
   hopProgress,
   rowAt,
-  W,
   type WorldSnapshot,
 } from '../types';
 import { hopArcHeight, hopSquash } from './animation';
@@ -30,7 +29,7 @@ import {
   drawVoxelVehicle,
 } from './voxel';
 
-const ENTITY_UNIT = CELL * 0.85;
+const ENTITY_UNIT = CELL * 0.92;
 
 type DrawItem = { depth: number; draw: () => void };
 const terrainQueue: DrawItem[] = [];
@@ -99,7 +98,7 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
 
   for (const coin of s.coins) {
     if (coin.row < zMin || coin.row > zMax) continue;
-    const center = classicGridToScreen(coin.col + 0.5, coin.row + 0.5, camZ, bob);
+    const center = classicGridToScreen(coin.col + 0.5, coin.row, camZ, bob);
     entityQueue.push({
       depth: classicPaintDepth(center.y, coin.col),
       draw: () => drawVoxelCoin(ctx, center.x, center.y, ENTITY_UNIT, s.animT, coin.col),

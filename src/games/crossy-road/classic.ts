@@ -30,13 +30,13 @@ export function classicCellCorners(
 
 export function classicGridToScreen(
   gridX: number,
-  gridY: number,
+  gridZ: number,
   camZ: number,
   camBob = 0,
 ): ClassicPoint {
   return {
     x: gridX * CELL,
-    y: H - (gridY * CELL - camZ) - CELL / 2 + camBob,
+    y: H - (gridZ * CELL - camZ) - CELL / 2 + camBob,
   };
 }
 
@@ -46,8 +46,8 @@ export function classicPlayerCenter(s: WorldSnapshot): ClassicPoint {
     ? s.fromPx + (s.px - s.fromPx) * t + 0.5
     : s.px + 0.5;
   const gz = s.hopT > 0
-    ? s.fromPz + (s.pz - s.fromPz) * t + 0.5
-    : s.pz + 0.5;
+    ? s.fromPz + (s.pz - s.fromPz) * t
+    : s.pz;
   return classicGridToScreen(gx, gz, s.camZ, s.camBob);
 }
 
@@ -56,7 +56,7 @@ export function classicPaintDepth(screenY: number, col = 0): number {
 }
 
 export function classicEntityY(row: number, camZ: number, camBob = 0): number {
-  return classicGridToScreen(0.5, row + 0.5, camZ, camBob).y;
+  return classicRowTop(row, camZ, camBob) + CELL / 2;
 }
 
 export function classicCamTarget(gz: number): number {

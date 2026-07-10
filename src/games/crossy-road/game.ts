@@ -141,12 +141,13 @@ export class CrossyRoad {
     if (kind === 'road') {
       const n = 1 + Math.floor(this.rnd() * 2);
       for (let i = 0; i < n; i++) {
+        const isTrain = this.rnd() < 0.2;
         this.cars.push({
           row: z,
           x: this.rnd() * W,
-          w: CELL * (1.2 + this.rnd() * 0.8),
+          w: CELL * (isTrain ? 2.4 + this.rnd() * 0.8 : 1.2 + this.rnd() * 0.8),
           speed: speed * dir,
-          kind: VEHICLE_KINDS[Math.floor(this.rnd() * VEHICLE_KINDS.length)]!,
+          kind: isTrain ? 'bus' : VEHICLE_KINDS[Math.floor(this.rnd() * VEHICLE_KINDS.length)]!,
         });
       }
     }
