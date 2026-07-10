@@ -1,7 +1,7 @@
 // Grass decorations — trees, flowers, rocks (classic horizontal layout).
 
 import { classicGridToScreen } from '../classic';
-import { draw3DBox } from './voxel';
+import { drawDecorBox } from './voxel';
 import { cellRand } from './cellHash';
 
 const UNIT = 13;
@@ -80,7 +80,7 @@ function drawTree(
 ): void {
   const { x, y } = decorCenter(col, row, camZ, camBob, col === 0 ? -0.2 : 0.2);
   const sway = Math.sin(animT * 1.5 + col) * 2;
-  draw3DBox(ctx, x + sway, y + 8, 4, 0.14, 0.12, UNIT * 0.55, '#5d4037', UNIT);
-  draw3DBox(ctx, x + sway, y - 2, UNIT * 0.5, 0.42, 0.38, UNIT * 0.35, '#2ecc71', UNIT);
-  draw3DBox(ctx, x + sway, y - UNIT * 0.35, UNIT * 0.65, 0.48, 0.42, UNIT * 0.28, '#27ae60', UNIT);
+  drawDecorBox(ctx, x + sway, y + 10, UNIT * 0.16, UNIT * 0.55, UNIT * 0.1, '#5d4037');
+  drawDecorBox(ctx, x + sway, y - 4, UNIT * 0.5, UNIT * 0.35, UNIT * 0.14, '#2ecc71', UNIT * 0.5);
+  drawDecorBox(ctx, x + sway, y - UNIT * 0.45, UNIT * 0.62, UNIT * 0.28, UNIT * 0.12, '#27ae60', UNIT * 0.72);
 }

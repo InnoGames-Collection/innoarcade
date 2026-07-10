@@ -1,6 +1,6 @@
-// Pseudo-3D voxel primitives for premium Crossy Road entities.
+// Premium voxel entities — classic lane layout (horizontal roads, vertical hops).
 
-import { COS30, SIN30 } from '../iso';
+import { CELL } from '../types';
 import type { VehicleKind } from '../types';
 
 interface Point {
@@ -35,41 +35,46 @@ export function shadeColor(hex: string, factor: number): string {
   return `rgb(${c(r)},${c(g)},${c(b)})`;
 }
 
-function isoOffset(dgx: number, dgy: number, scale: number): Point {
-  return {
-    x: (dgx - dgy) * COS30 * scale,
-    y: (dgx + dgy) * SIN30 * scale,
-  };
-}
-
-export function draw3DBox(
+/** 3/4 cabinet box: width along X, height up, shallow depth down (+Y). */
+function drawClassicBox(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  z: number,
-  width: number,
-  length: number,
-  height: number,
+  cx: number,
+  bottomY: number,
+  widthPx: number,
+  heightPx: number,
+  depthPx: number,
   color: string,
-  unitScale = 1,
+  liftPx = 0,
 ): void {
-  const hw = width / 2;
-  const hl = length / 2;
-  const baseY = y - z;
-  const pt = (dgx: number, dgy: number, lift: number): Point => {
-    const o = isoOffset(dgx, dgy, unitScale);
-    return { x: x + o.x, y: baseY + o.y - lift };
-  };
-  const nw = pt(-hw, -hl, height);
-  const ne = pt(hw, -hl, height);
-  const se = pt(hw, hl, height);
-  const sw = pt(-hw, hl, height);
-  const neB = pt(hw, -hl, 0);
-  const seB = pt(hw, hl, 0);
-  const swB = pt(-hw, hl, 0);
-  fillQuad(ctx, neB, seB, se, ne, shadeColor(color, 0.72));
-  fillQuad(ctx, seB, swB, sw, se, shadeColor(color, 0.52));
-  fillQuad(ctx, nw, ne, se, sw, color);
+  const hw = widthPx / 2;
+  const baseY = bottomY - liftPx;
+  const topY = baseY - heightPx;
+  const lip = depthPx * 0.55;
+
+  fillQuad(
+    ctx,
+    { x: cx - hw, y: topY },
+    { x: cx + hw, y: topY },
+    { x: cx + hw, y: topY + lip },
+    { x: cx - hw, y: topY + lip },
+    color,
+  );
+  fillQuad(
+    ctx,
+    { x: cx - hw, y: topY + lip },
+    { x: cx + hw, y: topY + lip },
+    { x: cx + hw, y: baseY + depthPx },
+    { x: cx - hw, y: baseY + depthPx },
+    shadeColor(color, 0.78),
+  );
+  fillQuad(
+    ctx,
+    { x: cx + hw, y: topY },
+    { x: cx + hw, y: baseY },
+    { x: cx + hw, y: baseY + depthPx },
+    { x: cx + hw, y: topY + lip },
+    shadeColor(color, 0.58),
+  );
 }
 
 const VEHICLE_PAL: Record<VehicleKind, { body: string; accent: string; trim: string }> = {
@@ -91,22 +96,23 @@ export function drawVoxelChicken(
   squash: { sx: number; sy: number },
   animT: number,
 ): void {
-  const footY = cy + unit * 0.22;
+  const footY = cy + unit * 0.12;
   const breathe = 1 + Math.sin(animT * 2.4) * 0.03;
   const blink = Math.sin(animT * 0.9) > 0.92;
+  const u = unit;
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(squash.sx * breathe, squash.sy * breathe);
   ctx.translate(-cx, -cy);
 
-  draw3DBox(ctx, cx, footY, arcZ + 1, 0.52, 0.48, unit * 0.58, '#f8f8f8', unit);
-  draw3DBox(ctx, cx - unit * 0.04, footY - unit * 0.06, arcZ + unit * 0.58, 0.2, 0.16, unit * 0.22, '#e74c3c', unit);
-  draw3DBox(ctx, cx + unit * 0.24, footY - unit * 0.02, arcZ + unit * 0.18, 0.14, 0.1, unit * 0.12, '#f2c40a', unit);
+  drawClassicBox(ctx, cx, footY, u * 0.58, u * 0.52, u * 0.14, '#f8f8f8', arcZ);
+  drawClassicBox(ctx, cx - u * 0.02, footY, u * 0.22, u * 0.14, u * 0.08, '#e74c3c', arcZ + u * 0.48);
+  drawClassicBox(ctx, cx + u * 0.2, footY, u * 0.16, u * 0.1, u * 0.07, '#f2c40a', arcZ + u * 0.12);
   if (!blink) {
-    draw3DBox(ctx, cx + unit * 0.14, footY - unit * 0.1, arcZ + unit * 0.38, 0.09, 0.07, unit * 0.08, '#2c2c2c', unit);
+    drawClassicBox(ctx, cx + u * 0.12, footY, u * 0.1, u * 0.08, u * 0.05, '#2c2c2c', arcZ + u * 0.32);
   }
-  draw3DBox(ctx, cx - unit * 0.18, footY + unit * 0.02, arcZ + unit * 0.08, 0.1, 0.08, unit * 0.1, '#f2c40a', unit);
+  drawClassicBox(ctx, cx - u * 0.16, footY, u * 0.12, u * 0.08, u * 0.06, '#f2c40a', arcZ + u * 0.06);
 
   ctx.restore();
 }
@@ -124,9 +130,11 @@ export function drawVoxelVehicle(
 ): void {
   const span = Math.max(0.85, Math.abs(gridSpan));
   const bounce = Math.sin(animT * 10 + cx * 0.05) * 1.2;
-  const footY = cy + unit * 0.18 + bounce;
+  const footY = cy + unit * 0.1 + bounce;
   const pal = VEHICLE_PAL[kind];
-  const bodyH = kind === 'bus' ? unit * 0.52 : unit * 0.44;
+  const bodyW = span * CELL * 0.92;
+  const bodyH = kind === 'bus' ? unit * 0.48 : unit * 0.38;
+  const bodyD = unit * 0.16;
 
   ctx.save();
   if (!facingRight) {
@@ -135,44 +143,40 @@ export function drawVoxelVehicle(
     ctx.translate(-cx, -cy);
   }
 
-  draw3DBox(ctx, cx, footY, 2, span * 0.96, 0.54, bodyH, pal.body, unit);
+  drawClassicBox(ctx, cx, footY, bodyW, bodyH, bodyD, pal.body);
 
   if (!simple) {
     if (kind === 'van') {
-      draw3DBox(ctx, cx, footY - unit * 0.02, unit * 0.48, span * 0.82, 0.5, unit * 0.14, pal.accent, unit);
-      draw3DBox(ctx, cx, footY - unit * 0.04, bodyH + 3, span * 0.22, 0.08, unit * 0.06, '#1f74e0', unit);
-      draw3DBox(ctx, cx + span * unit * 0.28, footY - unit * 0.04, bodyH + 3, span * 0.12, 0.08, unit * 0.06, '#27ae60', unit);
+      drawClassicBox(ctx, cx, footY, bodyW * 0.82, unit * 0.12, unit * 0.08, pal.accent, bodyH * 0.7);
+      drawClassicBox(ctx, cx - bodyW * 0.18, footY, bodyW * 0.2, unit * 0.06, unit * 0.04, '#1f74e0', bodyH * 0.85);
+      drawClassicBox(ctx, cx + bodyW * 0.18, footY, bodyW * 0.12, unit * 0.06, unit * 0.04, '#27ae60', bodyH * 0.85);
     } else if (kind === 'taxi') {
-      draw3DBox(ctx, cx, footY - unit * 0.02, bodyH + 2, span * 0.5, 0.12, unit * 0.08, '#2c2c2c', unit);
+      drawClassicBox(ctx, cx, footY, bodyW * 0.45, unit * 0.08, unit * 0.05, '#2c2c2c', bodyH * 0.9);
     } else if (kind === 'police') {
-      draw3DBox(ctx, cx, footY - unit * 0.04, bodyH + 4, span * 0.35, 0.1, unit * 0.08, '#3498db', unit);
-      draw3DBox(ctx, cx, footY - unit * 0.04, bodyH + 4, span * 0.12, 0.08, unit * 0.06, '#e74c3c', unit);
+      drawClassicBox(ctx, cx, footY, bodyW * 0.32, unit * 0.08, unit * 0.05, '#3498db', bodyH * 0.95);
+      drawClassicBox(ctx, cx + bodyW * 0.12, footY, bodyW * 0.1, unit * 0.06, unit * 0.04, '#e74c3c', bodyH * 0.95);
     } else {
       const winCount = kind === 'bus' ? 4 : 2;
       for (let i = 0; i < winCount; i++) {
-        const wx = cx + (i - (winCount - 1) / 2) * span * unit * 0.22;
-        draw3DBox(ctx, wx, footY - unit * 0.04, bodyH + 3, 0.18, 0.14, unit * 0.1, pal.accent, unit);
+        const wx = cx + (i - (winCount - 1) / 2) * bodyW * 0.22;
+        drawClassicBox(ctx, wx, footY, unit * 0.14, unit * 0.1, unit * 0.06, pal.accent, bodyH * 0.75);
       }
     }
-    draw3DBox(ctx, cx, footY - unit * 0.02, bodyH + 1, span * 0.98, 0.08, unit * 0.06, pal.trim, unit);
+    drawClassicBox(ctx, cx, footY, bodyW * 0.98, unit * 0.06, unit * 0.04, pal.trim, bodyH * 0.82);
   }
 
   const wheelN = simple ? 2 : (kind === 'bus' ? 4 : 2);
-  const slots = wheelN === 4 ? [-0.32, -0.1, 0.1, 0.32] : [-0.22, 0.22];
-  if (!simple) {
-    const wheelRot = animT * 8;
-    for (const slot of slots) {
-      const wx = cx + slot * span * unit;
-      draw3DBox(ctx, wx, footY + unit * 0.08, 0, 0.14, 0.12, unit * 0.14, '#1a1a1a', unit);
-      ctx.fillStyle = '#555';
+  const slots = wheelN === 4 ? [-0.32, -0.1, 0.1, 0.32] : [-0.24, 0.24];
+  const wheelRot = animT * 8;
+  for (const slot of slots) {
+    const wx = cx + slot * bodyW;
+    const wy = footY + unit * 0.06;
+    drawClassicBox(ctx, wx, wy, unit * 0.14, unit * 0.14, unit * 0.08, '#1a1a1a');
+    if (!simple) {
+      ctx.fillStyle = '#666';
       ctx.beginPath();
-      ctx.ellipse(wx + Math.cos(wheelRot) * 2, footY + unit * 0.14, 2, 1, 0, 0, Math.PI * 2);
+      ctx.ellipse(wx + Math.cos(wheelRot) * 1.5, wy + unit * 0.04, 2.5, 1.5, 0, 0, Math.PI * 2);
       ctx.fill();
-    }
-  } else {
-    for (const slot of slots) {
-      const wx = cx + slot * span * unit;
-      draw3DBox(ctx, wx, footY + unit * 0.08, 0, 0.14, 0.12, unit * 0.12, '#1a1a1a', unit);
     }
   }
 
@@ -190,16 +194,21 @@ export function drawVoxelLog(
 ): void {
   const span = Math.max(0.7, Math.abs(gridSpan));
   const bob = Math.sin(animT * 2.2 + gridCx * 0.8) * 2;
-  const footY = cy + unit * 0.16 + bob;
-  draw3DBox(ctx, cx, footY, 1, span * 0.95, 0.44, unit * 0.3, '#a0622a', unit);
-  draw3DBox(ctx, cx - span * unit * 0.38, footY, unit * 0.22, 0.1, 0.38, unit * 0.08, '#5c3418', unit);
-  draw3DBox(ctx, cx + span * unit * 0.38, footY, unit * 0.22, 0.1, 0.38, unit * 0.08, '#5c3418', unit);
+  const footY = cy + unit * 0.08 + bob;
+  const logW = span * CELL * 0.9;
+  const logH = unit * 0.28;
+
+  drawClassicBox(ctx, cx, footY, logW, logH, unit * 0.12, '#a0622a');
+  drawClassicBox(ctx, cx - logW * 0.42, footY, unit * 0.12, logH * 0.85, unit * 0.1, '#5c3418', logH * 0.1);
+  drawClassicBox(ctx, cx + logW * 0.42, footY, unit * 0.12, logH * 0.85, unit * 0.1, '#5c3418', logH * 0.1);
+
+  ctx.strokeStyle = 'rgba(60,40,20,0.3)';
+  ctx.lineWidth = 1;
   for (let i = -2; i <= 2; i++) {
-    ctx.strokeStyle = 'rgba(60,40,20,0.25)';
-    ctx.lineWidth = 1;
+    const lx = cx + i * logW * 0.14;
     ctx.beginPath();
-    ctx.moveTo(cx + i * span * unit * 0.15, footY - unit * 0.08);
-    ctx.lineTo(cx + i * span * unit * 0.15, footY + unit * 0.1);
+    ctx.moveTo(lx, footY - logH * 0.35);
+    ctx.lineTo(lx, footY + unit * 0.08);
     ctx.stroke();
   }
 }
@@ -212,19 +221,50 @@ export function drawVoxelCoin(
   animT: number,
   col: number,
 ): void {
-  const bob = Math.sin(animT * 4 + col * 1.3) * 4;
+  const bob = Math.sin(animT * 4 + col * 1.3) * 5;
   const spin = animT * 3 + col;
-  const footY = cy + unit * 0.1 + bob;
-  const thick = 0.08 + Math.abs(Math.cos(spin)) * 0.06;
+  const y = cy + bob;
+  const rx = unit * 0.2 * (0.55 + Math.abs(Math.cos(spin)) * 0.45);
+  const ry = unit * 0.22;
 
-  draw3DBox(ctx, cx, footY, 6, 0.22, thick, unit * 0.2, '#f1c40f', unit);
-  draw3DBox(ctx, cx, footY - unit * 0.02, unit * 0.18, 0.18, thick * 0.9, unit * 0.04, '#f9e076', unit);
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(cx, y + unit * 0.18, rx, unit * 0.06, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  ctx.fillStyle = '#d4a017';
-  ctx.font = `bold ${Math.max(7, unit * 0.16)}px system-ui,sans-serif`;
+  const g = ctx.createLinearGradient(cx, y - ry, cx, y + ry);
+  g.addColorStop(0, '#ffe566');
+  g.addColorStop(0.5, '#f1c40f');
+  g.addColorStop(1, '#d4a017');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(cx, y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#b8860b';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = '#fff8dc';
+  ctx.font = `bold ${Math.max(9, unit * 0.22)}px system-ui,sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('★', cx, footY - unit * 0.08);
+  ctx.fillText('★', cx, y);
+  ctx.restore();
+}
+
+/** Small classic box for tree trunks in decorations. */
+export function drawDecorBox(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  bottomY: number,
+  w: number,
+  h: number,
+  d: number,
+  color: string,
+  lift = 0,
+): void {
+  drawClassicBox(ctx, cx, bottomY, w, h, d, color, lift);
 }
 
 export function drawDropShadow(

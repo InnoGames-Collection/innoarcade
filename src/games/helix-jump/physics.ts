@@ -7,7 +7,7 @@ import {
 } from './constants';
 import {
   ballOnSolidWedge, ballOverDanger, ballOverGap, ballRingAngle,
-  gapCenterOffset, normalizeAngle,
+  gapCenterOffset,
 } from './coords';
 import { easeOutBack } from './easing';
 import { ringWorldY } from './towerGenerator';
@@ -237,4 +237,4 @@ export function substepCount(vy: number, dt: number): number {
   return Math.max(1, Math.min(16, Math.ceil(Math.abs(vy) * dt / SUBSTEP_DIST)));
 }
 
-export { normalizeAngle };
+export { ballRingAngle, normalizeAngle } from './coords';

@@ -27,7 +27,7 @@ export const BALL_WORLD_Z = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
 export const PILLAR_HEIGHT = 16;
 export const GAP_ARC = 1.0;
 /** Tiny tolerance at the solid lip only — gap is [0, gapArc) in ring space. */
-export const GAP_PASS_TOLERANCE = 0.018;
+export const GAP_PASS_TOLERANCE = 0.008;
 export const SOLID_EDGE_INSET = 0.02;
 export const DANGER_ARC_MIN = 0.45;
 export const DANGER_ARC_MAX = 0.68;

@@ -13,6 +13,7 @@ export function platformArc(gapArc: number): number {
   return Math.PI * 2 - gapArc;
 }
 
+/** Wedge mesh in shape space; see coords.ts for ball/gap alignment. */
 export function createPlatformGeometry(startAngle: number, arcLength: number): THREE.BufferGeometry {
   const key = geoKey(startAngle, arcLength);
   const cached = GEO_CACHE.get(key);

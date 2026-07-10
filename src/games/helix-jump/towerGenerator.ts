@@ -1,6 +1,7 @@
 import {
   DANGER_ARC_MAX, DANGER_ARC_MIN, DANGER_TOLERANCE, GAP_ARC, RING_COLORS, RING_SPACING_BASE,
 } from './constants';
+import { normalizeAngle } from './coords';
 import type { Ring } from './types';
 
 export interface TowerConfig {
@@ -33,16 +34,9 @@ function gapIsFair(gapArc: number): boolean {
   return solidArc >= MIN_SOLID && gapArc >= MIN_GAP;
 }
 
-function normalizeAngle(a: number): number {
-  let r = a;
-  while (r < 0) r += TAU;
-  while (r >= TAU) r -= TAU;
-  return r;
-}
-
-function ballOnSolid(ballAng: number, gapStart: number, gapArc: number, margin = SOLID_UNDER_MARGIN): boolean {
-  const rel = normalizeAngle(ballAng - gapStart);
-  return rel >= gapArc + margin || rel < margin * 0.45;
+function ballOnSolid(ballShapeAng: number, gapStart: number, gapArc: number, margin = SOLID_UNDER_MARGIN): boolean {
+  const rel = normalizeAngle(ballShapeAng - gapStart);
+  return rel >= gapArc + margin;
 }
 
 function placeGapStart(

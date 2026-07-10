@@ -28,7 +28,7 @@ import {
   drawVoxelVehicle,
 } from './voxel';
 
-const ENTITY_UNIT = CELL * 0.55;
+const ENTITY_UNIT = CELL;
 
 type DrawItem = { depth: number; draw: () => void };
 const drawQueue: DrawItem[] = [];
@@ -87,7 +87,7 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
   for (const coin of s.coins) {
     if (coin.row < zMin || coin.row > zMax) continue;
     const center = classicGridToScreen(coin.col + 0.5, coin.row + 0.5, camZ, bob);
-    const depth = classicPaintDepth(coin.row, coin.col) + 0.15;
+    const depth = classicPaintDepth(coin.row, coin.col) + 0.45;
     drawQueue.push({
       depth,
       draw: () => drawVoxelCoin(ctx, center.x, center.y, ENTITY_UNIT, s.animT, coin.col),
@@ -100,8 +100,11 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
   for (const c of s.cars) {
     if (c.row < zMin || c.row > zMax) continue;
     const gridCx = (c.x + c.w * 0.5) / CELL;
-    const center = classicGridToScreen(gridCx, c.row + 0.5, camZ, bob);
-    const depth = classicPaintDepth(c.row, gridCx) + 0.2;
+    const center = {
+      x: c.x + c.w * 0.5,
+      y: classicGridToScreen(gridCx, c.row + 0.5, camZ, bob).y,
+    };
+    const depth = classicPaintDepth(c.row, gridCx) + 0.5;
     const gridSpan = c.w / CELL;
     const facingRight = c.speed > 0;
     drawQueue.push({
@@ -134,8 +137,11 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
   for (const l of s.logs) {
     if (l.row < zMin || l.row > zMax) continue;
     const gridCx = (l.x + l.w * 0.5) / CELL;
-    const center = classicGridToScreen(gridCx, l.row + 0.5, camZ, bob);
-    const depth = classicPaintDepth(l.row, gridCx) + 0.2;
+    const center = {
+      x: l.x + l.w * 0.5,
+      y: classicGridToScreen(gridCx, l.row + 0.5, camZ, bob).y,
+    };
+    const depth = classicPaintDepth(l.row, gridCx) + 0.5;
     const gridSpan = l.w / CELL;
     drawQueue.push({
       depth,
@@ -155,7 +161,7 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
 
   if (shadows) {
     drawQueue.push({
-      depth: classicPaintDepth(s.pz, s.px) + 0.5,
+      depth: classicPaintDepth(s.pz, s.px) + 0.8,
       draw: () => drawDropShadow(
         ctx,
         playerCenter.x,
@@ -167,13 +173,13 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
     });
   }
   drawQueue.push({
-    depth: classicPaintDepth(s.pz, s.px) + 0.55,
+    depth: classicPaintDepth(s.pz, s.px) + 0.85,
     draw: () => {
       if (s.eagleT <= 0) {
         drawVoxelChicken(
           ctx,
           playerCenter.x,
-          playerCenter.y - arcZ,
+          playerCenter.y,
           ENTITY_UNIT,
           arcZ,
           squash,
@@ -191,6 +197,6 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
   drawPremiumHud(ctx, s);
 
   if (s.eagleT > 0) {
-    drawEagleSwoop(ctx, s, playerCenter.x, playerCenter.y - arcZ);
+    drawEagleSwoop(ctx, s, playerCenter.x, playerCenter.y - arcZ * 0.5);
   }
 }
