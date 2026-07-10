@@ -17,15 +17,22 @@ const GAME_ID = 'helix-jump';
 const host = new GameHost(GAME_ID);
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const playWrapper = $('#arc-play-wrapper');
-const canvas = $('#game') as unknown as HTMLCanvasElement;
-const ctx = canvas.getContext('2d')!;
-const dpr = Math.min(window.devicePixelRatio || 1, 2);
-canvas.width = W * dpr;
-canvas.height = H * dpr;
-ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-ctx.imageSmoothingEnabled = true;
+const canvas = $('#game') as HTMLCanvasElement;
+const hudCanvas = $('#hudOverlay') as HTMLCanvasElement;
+const hudCtx = hudCanvas.getContext('2d')!;
 
-const game = new HelixJump();
+function resizeCanvases(): void {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  hudCanvas.width = W * dpr;
+  hudCanvas.height = H * dpr;
+  hudCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+resizeCanvases();
+
+const game = new HelixJump(canvas);
+game.setHudContext(hudCtx);
+
 const run = trackArcadeRunStart(GAME_ID);
 
 const shell = wireFreeEngineMain({
@@ -60,7 +67,6 @@ wireMutePause($('#muteBtn'), $('#pauseBtn'), game, sfx);
 const musicBtn = document.getElementById('musicBtn');
 if (musicBtn) {
   const save = loadSave();
-  musicBtn.textContent = save.musicOn ? '🎵' : '🎵';
   musicBtn.setAttribute('aria-pressed', save.musicOn ? 'true' : 'false');
   musicBtn.addEventListener('click', () => {
     const on = toggleMusic();
@@ -82,34 +88,43 @@ if (vibeBtn) {
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.pause(); });
 
+window.addEventListener('resize', () => {
+  resizeCanvases();
+  game.resize();
+});
+
 let dragX: number | null = null;
-canvas.addEventListener('pointerdown', (e) => {
-  if ((e.target as HTMLElement).closest('button')) return;
-  dragX = e.clientX;
-  game.setDragging(true);
-  canvas.setPointerCapture(e.pointerId);
-});
-canvas.addEventListener('pointermove', (e) => {
-  if (dragX === null) return;
-  const dx = e.clientX - dragX;
-  game.onDrag(dx);
-  dragX = e.clientX;
-});
-canvas.addEventListener('pointerup', () => {
-  dragX = null;
-  game.setDragging(false);
-});
-canvas.addEventListener('pointercancel', () => {
-  dragX = null;
-  game.setDragging(false);
-});
+const bindPointer = (el: HTMLElement) => {
+  el.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    dragX = e.clientX;
+    game.setDragging(true);
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (dragX === null) return;
+    const dx = e.clientX - dragX;
+    game.onDrag(dx);
+    dragX = e.clientX;
+  });
+  el.addEventListener('pointerup', () => {
+    dragX = null;
+    game.setDragging(false);
+  });
+  el.addEventListener('pointercancel', () => {
+    dragX = null;
+    game.setDragging(false);
+  });
+};
+bindPointer(canvas);
+bindPointer(hudCanvas);
 
 const scoreEl = $('#scoreVal');
 let lastScore = 0;
 const loop = new GameLoop(
   (dt) => game.update(dt),
   () => {
-    game.render(ctx);
+    game.render();
     const scaled = scaleArcadeScore(game.score);
     scoreEl.textContent = String(scaled);
     if (scaled !== lastScore) {

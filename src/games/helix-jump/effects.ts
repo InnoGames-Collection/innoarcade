@@ -1,174 +1,311 @@
-import { BALL_R, CX, RING_R } from './constants';
+import * as THREE from 'three';
+import { RING_R, THEME } from './constants';
 
-interface TrailPoint {
-  x: number;
-  y: number;
+const POOL = 120;
+
+interface Particle {
+  active: boolean;
   life: number;
+  maxLife: number;
+  px: number;
+  py: number;
+  pz: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  size: number;
+  color: THREE.Color;
+}
+
+export class ParticleSystem {
+  private readonly points: THREE.Points;
+  private readonly pool: Particle[] = [];
+  private readonly positions: Float32Array;
+  private readonly colors: Float32Array;
+  private readonly sizes: Float32Array;
+
+  constructor(scene: THREE.Scene) {
+    this.positions = new Float32Array(POOL * 3);
+    this.colors = new Float32Array(POOL * 3);
+    this.sizes = new Float32Array(POOL);
+
+    for (let i = 0; i < POOL; i++) {
+      this.pool.push({
+        active: false, life: 0, maxLife: 1,
+        px: 0, py: 0, pz: 0,
+        vx: 0, vy: 0, vz: 0, size: 0.08,
+        color: new THREE.Color(),
+      });
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(this.sizes, 1));
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.22,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.92,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+
+    this.points = new THREE.Points(geo, mat);
+    this.points.frustumCulled = false;
+    scene.add(this.points);
+  }
+
+  burst(x: number, y: number, z: number, color: string | number, count = 14, spread = 5): void {
+    const c = new THREE.Color(color);
+    let spawned = 0;
+    for (const p of this.pool) {
+      if (p.active) continue;
+      const a = (Math.PI * 2 * spawned) / count + Math.random() * 0.5;
+      const sp = spread * (0.3 + Math.random() * 0.7);
+      p.active = true;
+      p.life = 0;
+      p.maxLife = 0.35 + Math.random() * 0.35;
+      p.vx = Math.cos(a) * sp;
+      p.vy = Math.random() * sp * 0.6 + 1.5;
+      p.vz = Math.sin(a) * sp * 0.35;
+      p.size = 0.06 + Math.random() * 0.1;
+      p.color.copy(c);
+      p.px = x;
+      p.py = y;
+      p.pz = z;
+      spawned++;
+      if (spawned >= count) break;
+    }
+    this.syncBuffers();
+  }
+
+  comboBurst(x: number, y: number, z: number, mult: number): void {
+    const hue = (mult * 0.12) % 1;
+    const col = new THREE.Color().setHSL(hue, 0.85, 0.62);
+    this.burst(x, y, z, col.getHex(), 8 + mult * 2, 4 + mult * 0.6);
+  }
+
+  feverRing(x: number, y: number, z: number): void {
+    this.burst(x, y, z, THEME.fever, 24, 7);
+  }
+
+  landing(x: number, y: number, z: number, color: string): void {
+    this.burst(x, y, z, color, 10, 3.5);
+  }
+
+  victory(x: number, y: number, z: number): void {
+    const cols = ['#ff5c8a', '#00d4ff', '#ffd93d', '#7cff6b'];
+    for (let i = 0; i < cols.length; i++) {
+      this.burst(x, y + i * 0.3, z, cols[i], 14, 7);
+    }
+  }
+
+  private syncBuffers(): void {
+    let idx = 0;
+    for (const p of this.pool) {
+      if (!p.active) continue;
+      this.positions[idx * 3] = p.px;
+      this.positions[idx * 3 + 1] = p.py;
+      this.positions[idx * 3 + 2] = p.pz;
+      this.colors[idx * 3] = p.color.r;
+      this.colors[idx * 3 + 1] = p.color.g;
+      this.colors[idx * 3 + 2] = p.color.b;
+      this.sizes[idx] = p.size;
+      idx++;
+    }
+    for (let i = idx; i < POOL; i++) this.sizes[i] = 0;
+    this.points.geometry.attributes.position.needsUpdate = true;
+    this.points.geometry.attributes.color.needsUpdate = true;
+    (this.points.geometry.attributes.size as THREE.BufferAttribute).needsUpdate = true;
+  }
+
+  update(dt: number): void {
+    let idx = 0;
+    for (const p of this.pool) {
+      if (!p.active) continue;
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        p.active = false;
+        continue;
+      }
+      const t = 1 - p.life / p.maxLife;
+      p.px += p.vx * dt;
+      p.py += p.vy * dt;
+      p.pz += p.vz * dt;
+      p.vy -= 12 * dt;
+      this.positions[idx * 3] = p.px;
+      this.positions[idx * 3 + 1] = p.py;
+      this.positions[idx * 3 + 2] = p.pz;
+      this.colors[idx * 3] = p.color.r;
+      this.colors[idx * 3 + 1] = p.color.g;
+      this.colors[idx * 3 + 2] = p.color.b;
+      this.sizes[idx] = p.size * t;
+      idx++;
+    }
+    for (let i = idx; i < POOL; i++) this.sizes[i] = 0;
+    this.points.geometry.attributes.position.needsUpdate = true;
+    this.points.geometry.attributes.color.needsUpdate = true;
+    (this.points.geometry.attributes.size as THREE.BufferAttribute).needsUpdate = true;
+  }
+
+  clear(): void {
+    for (const p of this.pool) p.active = false;
+    this.sizes.fill(0);
+    (this.points.geometry.attributes.size as THREE.BufferAttribute).needsUpdate = true;
+  }
 }
 
 interface Shard {
-  x: number;
-  y: number;
+  mesh: THREE.Mesh;
   vx: number;
   vy: number;
-  rot: number;
-  rotV: number;
+  vz: number;
+  rotV: THREE.Vector3;
   life: number;
   maxLife: number;
-  color: string;
-  w: number;
-  h: number;
 }
 
-const MAX_TRAIL = 16;
-const MAX_SHARDS = 40;
-const SHARD_POOL: Shard[] = [];
+const SHARD_POOL = 48;
 
-for (let i = 0; i < MAX_SHARDS; i++) {
-  SHARD_POOL.push({
-    x: 0, y: 0, vx: 0, vy: 0, rot: 0, rotV: 0,
-    life: 0, maxLife: 1, color: '#fff', w: 8, h: 4,
-  });
+export class SmashShards {
+  private readonly group = new THREE.Group();
+  private readonly pool: Shard[] = [];
+  private readonly geo: THREE.BoxGeometry;
+
+  constructor(scene: THREE.Scene) {
+    this.geo = new THREE.BoxGeometry(0.18, 0.08, 0.28);
+    scene.add(this.group);
+
+    for (let i = 0; i < SHARD_POOL; i++) {
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.35,
+        metalness: 0.08,
+      });
+      const mesh = new THREE.Mesh(this.geo, mat);
+      mesh.castShadow = true;
+      mesh.visible = false;
+      this.group.add(mesh);
+      this.pool.push({
+        mesh, vx: 0, vy: 0, vz: 0,
+        rotV: new THREE.Vector3(),
+        life: 0, maxLife: 1,
+      });
+    }
+  }
+
+  burst(worldY: number, color: string, towerAngle: number, count = 14): void {
+    const c = new THREE.Color(color);
+    let spawned = 0;
+    for (const s of this.pool) {
+      if (s.life > 0 && s.life < s.maxLife) continue;
+      const angle = towerAngle + (spawned / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const dist = RING_R + (Math.random() - 0.5) * 0.4;
+      s.mesh.position.set(
+        Math.cos(angle) * dist,
+        -worldY + (Math.random() - 0.5) * 0.15,
+        Math.sin(angle) * dist,
+      );
+      s.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      s.vx = Math.cos(angle) * (2 + Math.random() * 4);
+      s.vy = 2 + Math.random() * 5;
+      s.vz = Math.sin(angle) * (1.5 + Math.random() * 3);
+      s.rotV.set(
+        (Math.random() - 0.5) * 14,
+        (Math.random() - 0.5) * 14,
+        (Math.random() - 0.5) * 14,
+      );
+      s.life = 0.001;
+      s.maxLife = 0.5 + Math.random() * 0.35;
+      (s.mesh.material as THREE.MeshStandardMaterial).color.copy(c);
+      s.mesh.scale.setScalar(0.7 + Math.random() * 0.8);
+      s.mesh.visible = true;
+      spawned++;
+      if (spawned >= count) break;
+    }
+  }
+
+  update(dt: number): void {
+    for (const s of this.pool) {
+      if (s.life <= 0) continue;
+      s.life += dt;
+      if (s.life >= s.maxLife) {
+        s.mesh.visible = false;
+        s.life = 0;
+        continue;
+      }
+      s.mesh.position.x += s.vx * dt;
+      s.mesh.position.y += s.vy * dt;
+      s.mesh.position.z += s.vz * dt;
+      s.vy -= 18 * dt;
+      s.mesh.rotation.x += s.rotV.x * dt;
+      s.mesh.rotation.y += s.rotV.y * dt;
+      s.mesh.rotation.z += s.rotV.z * dt;
+      const t = 1 - s.life / s.maxLife;
+      s.mesh.scale.setScalar(t * 0.9);
+    }
+  }
+
+  clear(): void {
+    for (const s of this.pool) {
+      s.life = 0;
+      s.mesh.visible = false;
+    }
+  }
 }
 
 export class BallTrail {
-  private points: TrailPoint[] = [];
+  private readonly points: THREE.Mesh[] = [];
+  private readonly group = new THREE.Group();
+  private readonly geo = new THREE.SphereGeometry(0.12, 8, 8);
+  private head = 0;
 
-  push(screenY: number, speed: number): void {
-    this.points.push({ x: CX, y: screenY, life: 1 });
-    if (this.points.length > MAX_TRAIL) this.points.shift();
-    if (speed > 400 && this.points.length > 4) {
-      this.points.shift();
+  constructor(scene: THREE.Scene) {
+    scene.add(this.group);
+    for (let i = 0; i < 10; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      });
+      const m = new THREE.Mesh(this.geo, mat);
+      m.visible = false;
+      this.group.add(m);
+      this.points.push(m);
     }
+  }
+
+  push(worldY: number, speed: number, color: string): void {
+    if (speed < 3) return;
+    const m = this.points[this.head];
+    this.head = (this.head + 1) % this.points.length;
+    m.position.set(0, -worldY, 0);
+    const t = Math.min(1, speed / 18);
+    (m.material as THREE.MeshBasicMaterial).color.set(color);
+    (m.material as THREE.MeshBasicMaterial).opacity = 0.15 + t * 0.35;
+    m.scale.setScalar(0.5 + t * 0.5);
+    m.visible = true;
+    m.userData.life = 1;
   }
 
   update(dt: number): void {
-    for (let i = this.points.length - 1; i >= 0; i--) {
-      this.points[i].life -= dt * 3.2;
-      if (this.points[i].life <= 0) this.points.splice(i, 1);
-    }
-  }
-
-  draw(ctx: CanvasRenderingContext2D, color: string): void {
-    const n = this.points.length;
-    for (let i = 0; i < n; i++) {
-      const p = this.points[i];
-      const t = p.life * (i / Math.max(1, n));
-      ctx.globalAlpha = t * 0.4;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, BALL_R * (0.3 + t * 0.5), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  clear(): void {
-    this.points.length = 0;
-  }
-}
-
-export class BreakShards {
-  private active: Shard[] = [];
-
-  burst(screenY: number, color: string, towerAngle: number, count = 10): void {
-    for (let i = 0; i < count; i++) {
-      const shard = SHARD_POOL.find((s) => s.life <= 0);
-      if (!shard) break;
-      const angle = towerAngle + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-      const dist = RING_R + (Math.random() - 0.5) * 20;
-      shard.x = CX + Math.cos(angle) * dist;
-      shard.y = screenY + Math.sin(angle) * dist * 0.15;
-      shard.vx = Math.cos(angle) * (80 + Math.random() * 120);
-      shard.vy = -60 - Math.random() * 100;
-      shard.rot = Math.random() * Math.PI;
-      shard.rotV = (Math.random() - 0.5) * 12;
-      shard.life = 0.001;
-      shard.maxLife = 0.45 + Math.random() * 0.35;
-      shard.color = color;
-      shard.w = 6 + Math.random() * 10;
-      shard.h = 3 + Math.random() * 5;
-      this.active.push(shard);
-    }
-  }
-
-  update(dt: number): void {
-    for (let i = this.active.length - 1; i >= 0; i--) {
-      const s = this.active[i];
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vy += 520 * dt;
-      s.rot += s.rotV * dt;
-      s.life += dt;
-      if (s.life >= s.maxLife) {
-        s.life = 0;
-        this.active.splice(i, 1);
+    for (const m of this.points) {
+      if (!m.visible) continue;
+      m.userData.life -= dt * 4;
+      if (m.userData.life <= 0) {
+        m.visible = false;
+        continue;
       }
+      (m.material as THREE.MeshBasicMaterial).opacity = m.userData.life * 0.4;
+      m.scale.multiplyScalar(0.97);
     }
-  }
-
-  draw(ctx: CanvasRenderingContext2D): void {
-    for (const s of this.active) {
-      const t = 1 - s.life / s.maxLife;
-      ctx.save();
-      ctx.translate(s.x, s.y);
-      ctx.rotate(s.rot);
-      ctx.globalAlpha = t * 0.9;
-      ctx.fillStyle = s.color;
-      ctx.fillRect(-s.w / 2, -s.h / 2, s.w, s.h);
-      ctx.restore();
-    }
-    ctx.globalAlpha = 1;
   }
 
   clear(): void {
-    for (const s of this.active) s.life = 0;
-    this.active.length = 0;
+    for (const m of this.points) m.visible = false;
   }
-}
-
-export function drawSquashBall(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  r: number,
-  squash: number,
-  color: string,
-  fever: boolean,
-): void {
-  const stretch = 1 - squash;
-  const sy = 1 + stretch * 0.28;
-  const sx = 1 - stretch * 0.14;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(sx, sy);
-  if (fever) {
-    ctx.shadowColor = 'rgba(255,213,79,0.85)';
-    ctx.shadowBlur = 18;
-  } else {
-    ctx.shadowColor = 'rgba(30,136,229,0.45)';
-    ctx.shadowBlur = 10;
-  }
-  const grad = ctx.createRadialGradient(-r * 0.25, -r * 0.35, r * 0.1, 0, 0, r);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(0.45, color);
-  grad.addColorStop(1, shade(color, -30));
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.beginPath();
-  ctx.ellipse(-r * 0.28, -r * 0.32, r * 0.28, r * 0.18, -0.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function shade(hex: string, amt: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, Math.min(255, ((n >> 16) & 255) + amt));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt));
-  const b = Math.max(0, Math.min(255, (n & 255) + amt));
-  return `rgb(${r},${g},${b})`;
 }

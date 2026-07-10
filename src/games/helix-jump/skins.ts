@@ -9,12 +9,12 @@ export interface BallSkin {
 
 export const BALL_SKINS: BallSkin[] = [
   { id: 'classic', name: 'Classic', color: '#ffffff', cost: 0 },
-  { id: 'ethio-green', name: 'Ethio Green', color: '#2ecc71', cost: 0 },
-  { id: 'telecom-blue', name: 'Telecom Blue', color: '#1e88e5', cost: 150 },
-  { id: 'sky', name: 'Sky', color: '#42a5f5', cost: 200 },
-  { id: 'mint', name: 'Mint', color: '#26c6da', cost: 250 },
-  { id: 'gold', name: 'Gold', color: '#ffd54f', cost: 400 },
-  { id: 'coral', name: 'Coral', color: '#ff7043', cost: 500 },
+  { id: 'bubblegum', name: 'Bubblegum', color: '#ff5c8a', cost: 0 },
+  { id: 'ocean', name: 'Ocean', color: '#00d4ff', cost: 150 },
+  { id: 'sunburst', name: 'Sunburst', color: '#ffd93d', cost: 200 },
+  { id: 'mint', name: 'Mint', color: '#4dffb8', cost: 250 },
+  { id: 'gold', name: 'Gold', color: '#ffb347', cost: 400 },
+  { id: 'coral', name: 'Coral', color: '#ff8c42', cost: 500 },
 ];
 
 export function getBallSkin(save: HelixSave): BallSkin {

@@ -25,4 +25,5 @@ export interface CollisionHit {
   bounced: boolean;
   smashed: boolean;
   died: boolean;
+  perfect: boolean;
 }

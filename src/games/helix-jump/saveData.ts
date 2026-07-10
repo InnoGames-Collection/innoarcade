@@ -15,8 +15,8 @@ export interface HelixSave {
 const DEFAULT: HelixSave = {
   best: 0,
   coins: 0,
-  unlockedSkins: ['classic', 'ethio-green'],
-  selectedSkin: 'ethio-green',
+  unlockedSkins: ['classic', 'bubblegum'],
+  selectedSkin: 'bubblegum',
   musicOn: true,
   vibrateOn: true,
   lastDailyMs: 0,

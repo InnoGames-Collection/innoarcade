@@ -8,23 +8,23 @@ export interface TowerConfig {
   dangerChance: number;
 }
 
-const MIN_GAP = 0.88;
-const MIN_SOLID = 0.55;
+const MIN_GAP = 0.82;
+const MIN_SOLID = 0.65;
 
 export function towerConfigForDepth(passed: number): TowerConfig {
-  const t = Math.min(1, passed / 140);
+  const t = Math.min(1, passed / 160);
   return {
     depth: passed,
-    gapArc: Math.max(MIN_GAP, GAP_ARC - t * 0.22),
-    spacing: Math.max(72, RING_SPACING_BASE - t * 12),
-    dangerChance: 0.12 + t * 0.14,
+    gapArc: Math.max(MIN_GAP, GAP_ARC - t * 0.24),
+    spacing: Math.max(2.1, RING_SPACING_BASE - t * 0.45),
+    dangerChance: 0.1 + t * 0.16,
   };
 }
 
 let nextRingId = 1;
 
 function gapIsFair(gapArc: number): boolean {
-  const solidArc = Math.PI * 2 - gapArc * 1.28;
+  const solidArc = Math.PI * 2 - gapArc * 1.22;
   return solidArc >= MIN_SOLID && gapArc >= MIN_GAP;
 }
 
@@ -35,19 +35,19 @@ export function createRing(
   prev?: Ring,
 ): Ring {
   let danger = rnd() < cfg.dangerChance;
-  if (prev?.danger) danger = rnd() < cfg.dangerChance * 0.3;
+  if (prev?.danger) danger = rnd() < cfg.dangerChance * 0.25;
 
   let gapStart = rnd() * Math.PI * 2;
-  for (let i = 0; i < 6 && !gapIsFair(cfg.gapArc); i++) {
+  for (let i = 0; i < 8 && !gapIsFair(cfg.gapArc); i++) {
     gapStart = rnd() * Math.PI * 2;
   }
 
   if (prev && !danger && !prev.danger) {
-    const minSep = cfg.gapArc * 0.85;
+    const minSep = cfg.gapArc * 0.9;
     let sep = Math.abs(gapStart - prev.gapStart);
     if (sep > Math.PI) sep = Math.PI * 2 - sep;
     if (sep < minSep) {
-      gapStart = (prev.gapStart + minSep + 0.4) % (Math.PI * 2);
+      gapStart = (prev.gapStart + minSep + 0.35) % (Math.PI * 2);
     }
   }
 
