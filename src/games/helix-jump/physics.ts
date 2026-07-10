@@ -2,15 +2,15 @@ import {
   BALL_CONTACT_ANGLE, BALL_R, BALL_ROLL_RATE, BALL_SQUASH_MAX, BALL_SQUASH_MIN,
   BALL_STRETCH_MAX, BOUNCE_RESTITUTION, BOUNCE_UP_MAX, BOUNCE_UP_VEL,
   BOUNCE_VEL, DANGER_TOLERANCE, FALL_STRETCH_SPEED, FALL_TERMINAL_VY,
-  GAP_EDGE_INSET, GAP_PASS_TOLERANCE, GAP_PASS_VEL_BONUS, GRAVITY_BASE,
-  RING_HEIGHT, SOLID_EDGE_INSET,
+  GAP_EDGE_INSET, GAP_PASS_TOLERANCE, GRAVITY_BASE,
+  RING_HEIGHT,
 } from './constants';
 import { easeOutBack } from './easing';
 import { ringWorldY } from './towerGenerator';
 import type { BallState, CollisionHit, LandingFx, Ring } from './types';
 
 const PLATFORM_TOP = RING_HEIGHT * 0.5;
-const SUBSTEP_DIST = 0.14;
+const SUBSTEP_DIST = 0.1;
 
 function normalizeAngle(a: number): number {
   let r = a;
@@ -23,22 +23,29 @@ export function ballAngle(towerAngle: number): number {
   return normalizeAngle(towerAngle + BALL_CONTACT_ANGLE);
 }
 
-/** Tiny speed bonus at high fall — never widens gap enough to auto-pass. */
-export function gapTolerance(vy: number): number {
-  return GAP_PASS_TOLERANCE + Math.min(0.025, Math.max(0, vy) * GAP_PASS_VEL_BONUS);
+export function gapTolerance(_vy: number): number {
+  return GAP_PASS_TOLERANCE;
 }
 
-/** Strict: ball must be clearly inside the gap opening to drop. */
-export function inGap(ballAng: number, gapStart: number, gapArc: number, tol = GAP_PASS_TOLERANCE): boolean {
+/**
+ * True only when the ball sits over the empty gap arc [gapStart, gapStart + gapArc).
+ * Matches platform geometry: safe mesh starts at gapStart + gapArc.
+ */
+export function inGapOpening(
+  ballAng: number,
+  gapStart: number,
+  gapArc: number,
+  tol = GAP_PASS_TOLERANCE,
+): boolean {
   const rel = normalizeAngle(ballAng - gapStart);
-  const edge = GAP_EDGE_INSET - tol * 0.5;
-  return rel > edge && rel < gapArc - edge;
+  const inset = GAP_EDGE_INSET;
+  return rel > inset - tol && rel < gapArc - inset + tol;
 }
 
-/** Looser check for approach highlight only. */
-export function inGapLoose(ballAng: number, gapStart: number, gapArc: number, tol = GAP_PASS_TOLERANCE): boolean {
+/** Looser — approach highlight only. */
+export function inGapLoose(ballAng: number, gapStart: number, gapArc: number): boolean {
   const rel = normalizeAngle(ballAng - gapStart);
-  return rel < gapArc + tol * 1.5;
+  return rel < gapArc + GAP_PASS_TOLERANCE * 2;
 }
 
 export function inDangerZone(ballAng: number, dangerStart: number, dangerArc: number): boolean {
@@ -47,15 +54,14 @@ export function inDangerZone(ballAng: number, dangerStart: number, dangerArc: nu
   return rel < dangerArc + DANGER_TOLERANCE;
 }
 
-export function onSolid(ballAng: number, gapStart: number, gapArc: number, tol = 0): boolean {
-  const rel = normalizeAngle(ballAng - gapStart);
-  return rel >= gapArc - SOLID_EDGE_INSET - tol;
+/** Solid platform wedge (everything that is not the gap opening). */
+export function onSolid(ballAng: number, gapStart: number, gapArc: number): boolean {
+  return !inGapOpening(ballAng, gapStart, gapArc);
 }
 
 function gapCenterDist(ballAng: number, gapStart: number, gapArc: number): number {
   const rel = normalizeAngle(ballAng - gapStart);
-  const center = gapArc * 0.5;
-  return Math.abs(rel - center);
+  return Math.abs(rel - gapArc * 0.5);
 }
 
 export function gravityForDepth(passed: number, fallMul: number): number {
@@ -100,7 +106,6 @@ function collectCandidates(
   time: number,
   clearedIds?: ReadonlySet<number>,
 ): RingCandidate[] {
-  const hitPad = BALL_R + PLATFORM_TOP;
   const out: RingCandidate[] = [];
 
   for (const ring of rings) {
@@ -108,13 +113,16 @@ function collectCandidates(
     if (clearedIds?.has(ring.id)) continue;
 
     const ringY = ringWorldY(ring, time);
-    if (ringY > ball.y + hitPad * 0.35) continue;
-    if (ringY < prevY - hitPad * 1.2) continue;
-
     const surfaceY = ringY - BALL_R - PLATFORM_TOP;
-    const crossed = prevY <= ringY + PLATFORM_TOP * 0.5 && ball.y >= ringY - PLATFORM_TOP;
-    const landing = ball.vy > 0.25 && ball.y >= surfaceY - 0.06 && prevY <= surfaceY + 0.14;
-    if (!crossed && !landing) continue;
+
+    // Swept segment must cross the platform top plane while falling.
+    if (ball.vy <= 0) continue;
+    if (prevY > surfaceY + 0.12 && ball.y < surfaceY - 0.04) continue;
+    if (ringY > ball.y + BALL_R + PLATFORM_TOP) continue;
+    if (ringY < prevY - BALL_R - PLATFORM_TOP * 2) continue;
+
+    const crossedSurface = prevY <= surfaceY + 0.04 && ball.y >= surfaceY - 0.02;
+    if (!crossedSurface) continue;
 
     out.push({ ring, ringY, surfaceY });
   }
@@ -125,39 +133,25 @@ function collectCandidates(
 
 function evaluateRingCrossing(
   ball: BallState,
-  prevY: number,
+  _prevY: number,
   cand: RingCandidate,
   towerAngle: number,
   feverActive: boolean,
-): CollisionHit | null {
-  const { ring, ringY, surfaceY } = cand;
+): CollisionHit {
+  const { ring, ringY } = cand;
   const ang = ballAngle(towerAngle);
-  const tol = gapTolerance(ball.vy);
   const impactSpeed = Math.abs(ball.vy);
-
-  const passedGap = inGap(ang, ring.gapStart, ring.gapArc, tol);
-  const solid = onSolid(ang, ring.gapStart, ring.gapArc);
+  const overGap = inGapOpening(ang, ring.gapStart, ring.gapArc);
   const gapDist = gapCenterDist(ang, ring.gapStart, ring.gapArc);
-  const perfect = passedGap && gapDist < ring.gapArc * 0.18 && ball.vy > 3;
+  const perfect = overGap && gapDist < ring.gapArc * 0.2 && ball.vy > 3;
 
-  if (passedGap) {
+  // Hole under the ball → drop through. Everything else is solid.
+  if (overGap) {
     return {
       ring, screenY: ringY - ball.y, passedGap: true, bounced: false,
       smashed: false, died: false, perfect, impactSpeed,
     };
   }
-
-  const planeCross = prevY <= surfaceY + 0.08 && ball.y >= surfaceY - 0.03;
-  if (!solid) {
-    if (!planeCross) return null;
-    // Grazing gap lip — bounce back (must rotate to align gap).
-    return {
-      ring, screenY: ringY - ball.y, passedGap: false, bounced: true,
-      smashed: false, died: false, perfect: false, impactSpeed,
-    };
-  }
-
-  if (!planeCross && ball.vy > 2) return null;
 
   if (inDangerZone(ang, ring.dangerStart, ring.dangerArc)) {
     return {
@@ -173,6 +167,7 @@ function evaluateRingCrossing(
     };
   }
 
+  // Solid platform — always bounce (snap to surface).
   return {
     ring, screenY: ringY - ball.y, passedGap: false, bounced: true,
     smashed: false, died: false, perfect: false, impactSpeed,
@@ -192,8 +187,7 @@ export function findSweepCollision(
 
   const candidates = collectCandidates(ball, prevY, rings, time, clearedIds);
   for (const cand of candidates) {
-    const hit = evaluateRingCrossing(ball, prevY, cand, towerAngle, feverActive);
-    if (hit) return hit;
+    return evaluateRingCrossing(ball, prevY, cand, towerAngle, feverActive);
   }
   return null;
 }
@@ -228,8 +222,7 @@ export function approachZone(
   towerAngle: number,
 ): 'gap' | 'safe' | 'danger' | 'none' {
   const ang = ballAngle(towerAngle);
-  const tol = gapTolerance(6);
-  if (inGapLoose(ang, ring.gapStart, ring.gapArc, tol)) return 'gap';
+  if (inGapLoose(ang, ring.gapStart, ring.gapArc)) return 'gap';
   if (inDangerZone(ang, ring.dangerStart, ring.dangerArc)) return 'danger';
   if (onSolid(ang, ring.gapStart, ring.gapArc)) return 'safe';
   return 'none';
@@ -271,7 +264,7 @@ export function restYOnPlatform(ringY: number): number {
 }
 
 export function clearYThroughRing(ringY: number): number {
-  return ringY + PLATFORM_TOP + BALL_R * 0.12;
+  return ringY + PLATFORM_TOP + BALL_R * 0.1;
 }
 
 export function applyFallBoost(ball: BallState, combo: number): void {
@@ -285,7 +278,7 @@ export function breakAnimScale(t: number): number {
 }
 
 export function substepCount(vy: number, dt: number): number {
-  return Math.max(1, Math.min(14, Math.ceil(Math.abs(vy) * dt / SUBSTEP_DIST)));
+  return Math.max(1, Math.min(16, Math.ceil(Math.abs(vy) * dt / SUBSTEP_DIST)));
 }
 
 export { normalizeAngle };

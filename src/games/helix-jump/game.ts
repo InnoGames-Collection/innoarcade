@@ -315,6 +315,7 @@ export class HelixJump {
       const impact = this.ball.vy;
       const impactSpeed = applyBounce(this.ball, impact);
       this.ball.y = restYOnPlatform(wy);
+      this.cleared.delete(hit.ring.id);
       const fx = landingFx(impactSpeed);
       applyLandingFx(this.ball, fx);
       this.camera.addShake(fx.shake * 0.5);

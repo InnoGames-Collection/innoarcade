@@ -26,14 +26,14 @@ export const BALL_WORLD_Z = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
 /** Visible pillar segment height around the play axis. */
 export const PILLAR_HEIGHT = 16;
 export const GAP_ARC = 1.0;
-/** Must be this far inside the gap opening to drop through (reference: aim the gap). */
-export const GAP_EDGE_INSET = 0.07;
+/** Angular margin at gap edges — keep small so solid platforms stop the ball. */
+export const GAP_EDGE_INSET = 0.04;
+export const GAP_PASS_TOLERANCE = 0.012;
+export const GAP_PASS_VEL_BONUS = 0;
+export const SOLID_EDGE_INSET = 0.03;
 export const DANGER_ARC_MIN = 0.45;
 export const DANGER_ARC_MAX = 0.68;
 export const DANGER_TOLERANCE = 0.03;
-export const GAP_PASS_TOLERANCE = 0.02;
-export const GAP_PASS_VEL_BONUS = 0.0015;
-export const SOLID_EDGE_INSET = 0.05;
 
 export const GRAVITY_BASE = 15;
 export const BOUNCE_VEL = 10;
