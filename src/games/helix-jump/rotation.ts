@@ -1,13 +1,13 @@
 /**
  * Tower rotation — tap snaps a fixed step; drag is 1:1.
+ * Depth progression scales input speed and auto-drift.
  */
 
-const DRAG_SENS = 0.011;
-const MOMENTUM_BLEND = 0.35;
+const DRAG_SENS = 0.012;
+const MOMENTUM_BLEND = 0.38;
 const VELOCITY_SMOOTH = 14;
-/** ~26° per tap — fine enough to line up gaps (reference drag/tap). */
-const TAP_STEP = Math.PI / 7;
-const SWIPE_STEP = Math.PI / 8;
+const TAP_STEP = Math.PI / 6.5;
+const SWIPE_STEP = Math.PI / 7.5;
 const FRICTION = 11;
 const MAX_VELOCITY = 2.4;
 const STOP_THRESHOLD = 0.01;
@@ -18,6 +18,19 @@ export class RotationController {
   private dragging = false;
   private lastDragVel = 0;
   private pendingDx = 0;
+  private inputScale = 1;
+  private maxVelScale = 1;
+
+  setProgression(inputScale: number, maxVelScale: number): void {
+    this.inputScale = inputScale;
+    this.maxVelScale = maxVelScale;
+  }
+
+  /** Slow helix drift — increases with depth. */
+  applyAutoSpin(dt: number, rate: number): void {
+    if (rate === 0) return;
+    this.angle += rate * dt;
+  }
 
   setDragging(active: boolean): void {
     if (active) {
@@ -38,7 +51,7 @@ export class RotationController {
   tickDrag(dt: number): void {
     if (!this.dragging || this.pendingDx === 0) return;
 
-    const delta = this.pendingDx * DRAG_SENS;
+    const delta = this.pendingDx * DRAG_SENS * this.inputScale;
     this.pendingDx = 0;
     this.angle += delta;
 
@@ -48,17 +61,17 @@ export class RotationController {
   }
 
   tap(): void {
-    this.angle += TAP_STEP;
+    this.angle += TAP_STEP * this.inputScale;
     this.velocity *= 0.35;
   }
 
   swipeLeft(): void {
-    this.angle -= SWIPE_STEP;
+    this.angle -= SWIPE_STEP * this.inputScale;
     this.velocity *= 0.35;
   }
 
   swipeRight(): void {
-    this.angle += SWIPE_STEP;
+    this.angle += SWIPE_STEP * this.inputScale;
     this.velocity *= 0.35;
   }
 
@@ -77,10 +90,13 @@ export class RotationController {
     this.lastDragVel = 0;
     this.pendingDx = 0;
     this.dragging = false;
+    this.inputScale = 1;
+    this.maxVelScale = 1;
   }
 
   private clampVelocity(): void {
-    if (this.velocity > MAX_VELOCITY) this.velocity = MAX_VELOCITY;
-    if (this.velocity < -MAX_VELOCITY) this.velocity = -MAX_VELOCITY;
+    const cap = MAX_VELOCITY * this.maxVelScale;
+    if (this.velocity > cap) this.velocity = cap;
+    if (this.velocity < -cap) this.velocity = -cap;
   }
 }

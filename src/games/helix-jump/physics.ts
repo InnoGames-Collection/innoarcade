@@ -6,8 +6,8 @@ import {
   RING_HEIGHT,
 } from './constants';
 import {
-  ballOnSolidWedge, ballOverDanger, ballOverGap, ballRingAngle,
-  gapCenterOffset,
+  ballOnSolidForRing, ballOverDangerForRing, ballOverGapForRing,
+  ballRingAngle, gapCenterOffsetForRing,
 } from './coords';
 import { easeOutBack } from './easing';
 import { ringWorldY } from './towerGenerator';
@@ -70,6 +70,7 @@ function collectCandidates(
   prevY: number,
   rings: Ring[],
   time: number,
+  moveFreqMul: number,
   clearedIds?: ReadonlySet<number>,
 ): RingCandidate[] {
   const out: RingCandidate[] = [];
@@ -78,7 +79,7 @@ function collectCandidates(
     if (ring.broken) continue;
     if (clearedIds?.has(ring.id)) continue;
 
-    const ringY = ringWorldY(ring, time);
+    const ringY = ringWorldY(ring, time, moveFreqMul);
     const surfaceY = ringY - BALL_R - PLATFORM_TOP;
 
     if (ball.vy <= 0) continue;
@@ -102,11 +103,12 @@ function evaluateRingCrossing(
   cand: RingCandidate,
   towerAngle: number,
   feverActive: boolean,
+  time: number,
 ): CollisionHit {
   const { ring, ringY } = cand;
   const impactSpeed = Math.abs(ball.vy);
-  const overGap = ballOverGap(towerAngle, ring.gapStart, ring.gapArc);
-  const gapDist = gapCenterOffset(towerAngle, ring.gapStart, ring.gapArc);
+  const overGap = ballOverGapForRing(towerAngle, ring, time);
+  const gapDist = gapCenterOffsetForRing(towerAngle, ring, time);
   const perfect = overGap && gapDist < ring.gapArc * 0.2 && ball.vy > 3;
 
   if (overGap) {
@@ -116,7 +118,7 @@ function evaluateRingCrossing(
     };
   }
 
-  if (ballOverDanger(towerAngle, ring.dangerStart, ring.dangerArc)) {
+  if (ballOverDangerForRing(towerAngle, ring, time)) {
     return {
       ring, screenY: ringY - ball.y, passedGap: false, bounced: false,
       smashed: false, died: true, perfect: false, impactSpeed,
@@ -143,13 +145,14 @@ export function findSweepCollision(
   towerAngle: number,
   feverActive: boolean,
   time: number,
+  moveFreqMul: number,
   clearedIds?: ReadonlySet<number>,
 ): CollisionHit | null {
   if (ball.vy <= 0) return null;
 
-  const candidates = collectCandidates(ball, prevY, rings, time, clearedIds);
+  const candidates = collectCandidates(ball, prevY, rings, time, moveFreqMul, clearedIds);
   for (const cand of candidates) {
-    return evaluateRingCrossing(ball, prevY, cand, towerAngle, feverActive);
+    return evaluateRingCrossing(ball, prevY, cand, towerAngle, feverActive, time);
   }
   return null;
 }
@@ -158,6 +161,7 @@ export function findApproachRing(
   ball: BallState,
   rings: Ring[],
   time: number,
+  moveFreqMul: number,
   clearedIds?: ReadonlySet<number>,
 ): Ring | null {
   if (ball.vy <= 0.5) return null;
@@ -168,7 +172,7 @@ export function findApproachRing(
   for (const ring of rings) {
     if (ring.broken) continue;
     if (clearedIds?.has(ring.id)) continue;
-    const ringY = ringWorldY(ring, time);
+    const ringY = ringWorldY(ring, time, moveFreqMul);
     const dy = ringY - ball.y;
     if (dy <= 0.2 || dy > RING_HEIGHT + BALL_R + 2.4) continue;
     if (dy < bestDy) {
@@ -182,10 +186,11 @@ export function findApproachRing(
 export function approachZone(
   ring: Ring,
   towerAngle: number,
+  time: number,
 ): 'gap' | 'safe' | 'danger' | 'none' {
-  if (ballOverGap(towerAngle, ring.gapStart, ring.gapArc)) return 'gap';
-  if (ballOverDanger(towerAngle, ring.dangerStart, ring.dangerArc)) return 'danger';
-  if (ballOnSolidWedge(towerAngle, ring.gapStart, ring.gapArc)) return 'safe';
+  if (ballOverGapForRing(towerAngle, ring, time)) return 'gap';
+  if (ballOverDangerForRing(towerAngle, ring, time)) return 'danger';
+  if (ballOnSolidForRing(towerAngle, ring, time)) return 'safe';
   return 'none';
 }
 

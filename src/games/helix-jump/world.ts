@@ -246,6 +246,7 @@ export class HelixWorld {
     time: number,
     towerAngle: number,
     approachId = -1,
+    moveFreqMul = 1,
   ): void {
     this.helix.position.set(0, 0, 0);
 
@@ -305,7 +306,7 @@ export class HelixWorld {
       }
 
       const isApproach = ring.id === approachId;
-      const zone = isApproach ? approachZone(ring, towerAngle) : 'none';
+      const zone = isApproach ? approachZone(ring, towerAngle, time) : 'none';
 
       if (isApproach) {
         const alert = 0.5 + 0.5 * Math.sin(time * 9.5);
@@ -321,7 +322,8 @@ export class HelixWorld {
         }
       }
 
-      rv.group.position.y = ballY - ringWorldY(ring, time);
+      rv.group.position.y = ballY - ringWorldY(ring, time, moveFreqMul);
+      rv.group.rotation.y = ring.spinVel * time;
       if (ring.broken) {
         const scale = breakAnimScale(ring.breakAnim);
         rv.group.scale.set(scale, scale, scale);

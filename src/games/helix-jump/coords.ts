@@ -37,6 +37,43 @@ export function gapOffset(ballShapeAng: number, gapStart: number): number {
   return normalizeAngle(ballShapeAng - gapStart);
 }
 
+/** Ring gap/danger angles after per-ring auto-spin. */
+export function effectiveGapStart(ring: { gapStart: number; spinVel: number }, time: number): number {
+  if (ring.spinVel === 0) return ring.gapStart;
+  return normalizeAngle(ring.gapStart + ring.spinVel * time);
+}
+
+export function effectiveDangerStart(ring: { dangerStart: number; spinVel: number }, time: number): number {
+  if (ring.spinVel === 0) return ring.dangerStart;
+  return normalizeAngle(ring.dangerStart + ring.spinVel * time);
+}
+
+/** Ball over the empty hole [gapStart, gapStart + gapArc). */
+export function ballOverGapForRing(
+  towerAngle: number,
+  ring: { gapStart: number; gapArc: number; spinVel: number },
+  time: number,
+  tol = GAP_PASS_TOLERANCE,
+): boolean {
+  return ballOverGap(towerAngle, effectiveGapStart(ring, time), ring.gapArc, tol);
+}
+
+export function ballOverDangerForRing(
+  towerAngle: number,
+  ring: { dangerStart: number; dangerArc: number; spinVel: number },
+  time: number,
+): boolean {
+  return ballOverDanger(towerAngle, effectiveDangerStart(ring, time), ring.dangerArc);
+}
+
+export function ballOnSolidForRing(
+  towerAngle: number,
+  ring: { gapStart: number; gapArc: number; spinVel: number },
+  time: number,
+): boolean {
+  return ballOnSolidWedge(towerAngle, effectiveGapStart(ring, time), ring.gapArc);
+}
+
 /** Ball over the empty hole [gapStart, gapStart + gapArc). */
 export function ballOverGap(
   towerAngle: number,
@@ -67,9 +104,14 @@ export function ballOnSolidWedge(
   return rel >= gapArc;
 }
 
-export function gapCenterOffset(towerAngle: number, gapStart: number, gapArc: number): number {
-  const rel = gapOffset(ballRingAngle(towerAngle), gapStart);
-  return Math.abs(rel - gapArc * 0.5);
+export function gapCenterOffsetForRing(
+  towerAngle: number,
+  ring: { gapStart: number; gapArc: number; spinVel: number },
+  time: number,
+): number {
+  const gs = effectiveGapStart(ring, time);
+  const rel = gapOffset(ballRingAngle(towerAngle), gs);
+  return Math.abs(rel - ring.gapArc * 0.5);
 }
 
 /** Tower rotation that centers the gap under the ball (for tests / debug). */

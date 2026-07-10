@@ -19,11 +19,12 @@ const MOVE_FREQ = 1.8;
 const SOLID_UNDER_MARGIN = 0.4;
 
 export function towerConfigForDepth(passed: number): TowerConfig {
-  const t = Math.min(1, passed / 75);
+  const d = Math.max(0, passed);
+  const t = Math.min(1, d / 65);
   return {
     depth: passed,
-    gapArc: Math.max(MIN_GAP, GAP_ARC - t * 0.3),
-    spacing: Math.max(1.78, RING_SPACING_BASE - t * 0.4),
+    gapArc: Math.max(MIN_GAP, GAP_ARC - d * 0.0048 - t * 0.12),
+    spacing: Math.max(1.65, RING_SPACING_BASE - d * 0.006 - t * 0.22),
     dangerChance: progressionForDepth(passed).dangerChance,
   };
 }
@@ -97,9 +98,9 @@ export function ringHasDanger(ring: Ring): boolean {
   return ring.dangerArc > 0;
 }
 
-export function ringWorldY(ring: Ring, time: number): number {
+export function ringWorldY(ring: Ring, time: number, moveFreqMul = 1): number {
   if (ring.moveAmp <= 0) return ring.y;
-  return ring.y + Math.sin(time * MOVE_FREQ + ring.movePhase) * ring.moveAmp;
+  return ring.y + Math.sin(time * MOVE_FREQ * moveFreqMul + ring.movePhase) * ring.moveAmp;
 }
 
 function pickGapArc(cfg: TowerConfig, rnd: () => number, depth: number): number {
@@ -140,14 +141,16 @@ export function createRing(
 
   let moveAmp = 0;
   let movePhase = 0;
-  if (depth > 2 && rnd() < prog.moveChance) {
-    moveAmp = 0.1 + rnd() * (0.1 + depth * 0.005);
+  if (depth > 1 && rnd() < prog.moveChance) {
+    moveAmp = (0.09 + rnd() * (0.08 + depth * 0.007)) * prog.moveAmpMul;
     movePhase = rnd() * TAU;
   }
 
   let spinVel = 0;
-  if (depth > 12 && rnd() < 0.05 + depth * 0.004) {
-    spinVel = (rnd() < 0.5 ? -1 : 1) * (0.25 + rnd() * 0.4);
+  if (depth >= 1 && rnd() < prog.ringSpinChance) {
+    const dir = rnd() < 0.5 ? -1 : 1;
+    const depthBoost = 1 + Math.max(0, depth - 1) * 0.022;
+    spinVel = dir * prog.ringSpinSpeed * depthBoost * (0.75 + rnd() * 0.5);
   }
 
   const colorIndex = (depth + nextRingId) % RING_COLORS.length;

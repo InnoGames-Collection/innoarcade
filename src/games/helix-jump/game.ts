@@ -175,6 +175,8 @@ export class HelixJump {
     const speedMul = prog.simSpeed;
     const capped = Math.min(dt, 1 / 45) * SIM_SPEED * speedMul;
     this.time += capped;
+    this.rotation.setProgression(prog.inputScale, prog.maxVelScale);
+    this.rotation.applyAutoSpin(capped, prog.towerAutoSpin);
     this.rotation.update(capped);
 
     const gravity = gravityForDepth(this.depth, this.fallMul) * prog.gravity;
@@ -184,7 +186,7 @@ export class HelixJump {
     for (let s = 0; s < steps; s++) {
       const subDt = capped / steps;
       integrateBall(this.ball, gravity, subDt, prog.fallCap);
-      this.resolveCollisions(prevY);
+      this.resolveCollisions(prevY, prog.moveFreqMul);
       prevY = this.ball.y;
       if (this.state !== 'playing') return;
     }
@@ -196,7 +198,7 @@ export class HelixJump {
     this.camera.update(capped);
     this.recycleRings();
 
-    const approach = findApproachRing(this.ball, this.rings, this.time, this.cleared);
+    const approach = findApproachRing(this.ball, this.rings, this.time, prog.moveFreqMul, this.cleared);
 
     this.world.setTowerAngle(this.rotation.angle);
     this.world.updateBall(this.ball, this.skin, fever, capped, this.combo);
@@ -207,6 +209,7 @@ export class HelixJump {
       this.time,
       this.rotation.angle,
       approach?.id ?? -1,
+      prog.moveFreqMul,
     );
     this.world.updateEffects(capped);
 
@@ -249,7 +252,7 @@ export class HelixJump {
     }
   }
 
-  private resolveCollisions(prevY: number): void {
+  private resolveCollisions(prevY: number, moveFreqMul: number): void {
     const feverActive = this.feverLeft > 0;
     const hit = findSweepCollision(
       this.ball,
@@ -258,11 +261,12 @@ export class HelixJump {
       this.rotation.angle,
       feverActive,
       this.time,
+      moveFreqMul,
       this.cleared,
     );
     if (!hit) return;
 
-    const wy = ringWorldY(hit.ring, this.time);
+    const wy = ringWorldY(hit.ring, this.time, moveFreqMul);
     const ry = this.world.ringOffset(this.ball.y, wy);
     const px = Math.cos(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
     const pz = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
@@ -404,12 +408,13 @@ export class HelixJump {
     const pz = Math.sin(BALL_CONTACT_ANGLE) * BALL_CONTACT_R;
     this.world.particles.burst(px, 0, pz, THEME.danger, 22, 7);
 
-    const burstY = hitRing ? ringWorldY(hitRing, this.time) : this.ball.y;
+    const moveMul = progressionForDepth(this.depth).moveFreqMul;
+    const burstY = hitRing ? ringWorldY(hitRing, this.time, moveMul) : this.ball.y;
     const radius = this.cfg.spacing * 2.8;
     for (const ring of this.rings) {
       if (ring.broken) continue;
-      if (Math.abs(ringWorldY(ring, this.time) - burstY) > radius) continue;
-      const wy = ringWorldY(ring, this.time);
+      if (Math.abs(ringWorldY(ring, this.time, moveMul) - burstY) > radius) continue;
+      const wy = ringWorldY(ring, this.time, moveMul);
       this.breakRing(ring, wy, px, pz, 5, false, contactAngle);
     }
 
