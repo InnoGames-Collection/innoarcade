@@ -5,7 +5,7 @@ import { cellHash, cellRand } from './cellHash';
 
 type Corner = { x: number; y: number };
 
-export const SLAB_DEPTH = 14;
+export const SLAB_DEPTH = 8;
 
 interface SlabPalette {
   topLight: string;
@@ -93,10 +93,14 @@ export function drawSlabSides(
   corners: [Corner, Corner, Corner, Corner],
   palette: SlabPalette,
   depth = SLAB_DEPTH,
+  col = 0,
+  maxCol = 7,
 ): void {
   const [, ne, se, sw] = corners;
   const drop = (c: Corner): Corner => ({ x: c.x, y: c.y + depth });
-  fillQuad(ctx, ne, se, drop(se), drop(ne), palette.eastFace);
+  if (col < maxCol) {
+    fillQuad(ctx, ne, se, drop(se), drop(ne), palette.eastFace);
+  }
   fillQuad(ctx, se, sw, drop(sw), drop(se), palette.southFace);
 }
 
@@ -262,7 +266,7 @@ export function drawTerrainCell(
   const col = opts.col ?? 0;
   const row = opts.row ?? 0;
   const palette = paletteFor(kind, !!opts.isStart, col, row);
-  if (!opts.topOnly) drawSlabSides(ctx, corners, palette);
+  if (!opts.topOnly) drawSlabSides(ctx, corners, palette, SLAB_DEPTH, col, 7);
   if (!opts.sidesOnly) {
     drawSlabTop(ctx, corners, palette);
     if (kind === 'grass' && opts.animT !== undefined && opts.grassBlades !== false) {

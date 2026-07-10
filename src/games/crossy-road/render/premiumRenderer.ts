@@ -2,6 +2,7 @@
 
 import {
   classicCellCorners,
+  classicEntityY,
   classicGridToScreen,
   classicPaintDepth,
   classicPlayerCenter,
@@ -11,6 +12,7 @@ import {
   COLS,
   hopProgress,
   rowAt,
+  W,
   type WorldSnapshot,
 } from '../types';
 import { hopArcHeight, hopSquash } from './animation';
@@ -28,10 +30,11 @@ import {
   drawVoxelVehicle,
 } from './voxel';
 
-const ENTITY_UNIT = CELL;
+const ENTITY_UNIT = CELL * 0.85;
 
 type DrawItem = { depth: number; draw: () => void };
-const drawQueue: DrawItem[] = [];
+const terrainQueue: DrawItem[] = [];
+const entityQueue: DrawItem[] = [];
 
 export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): void {
   const quality = getRenderQuality();
@@ -41,7 +44,8 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
   const bob = s.camBob;
   const t = hopProgress(s.hopT);
 
-  drawQueue.length = 0;
+  terrainQueue.length = 0;
+  entityQueue.length = 0;
 
   const zMin = s.pz - quality.rowsBehind;
   const zMax = s.pz + quality.rowsAhead;
@@ -51,84 +55,71 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
     riverDetails: quality.riverDetails,
   };
 
+  // Pass 1 — terrain (sorted by screen Y)
   for (let z = zMin; z <= zMax; z++) {
     const row = rowAt(s.rows, z);
     const isStart = z <= 0;
+    const rowY = classicEntityY(z, camZ, bob);
     for (let col = 0; col < COLS; col++) {
       const corners = classicCellCorners(col, z, camZ, bob);
-      const depth = classicPaintDepth(z, col);
+      const depth = classicPaintDepth(rowY, col);
       const opts = { isStart, animT: s.animT, col, row: z, ...terrainDetail };
 
       if (quality.splitTerrainPasses) {
-        drawQueue.push({
+        terrainQueue.push({
           depth,
           draw: () => drawTerrainCell(ctx, corners, row.kind, { ...opts, sidesOnly: true }),
         });
-        drawQueue.push({
-          depth: depth + 0.02,
+        terrainQueue.push({
+          depth: depth + 0.01,
           draw: () => drawTerrainCell(ctx, corners, row.kind, { ...opts, topOnly: true }),
         });
       } else {
-        drawQueue.push({
+        terrainQueue.push({
           depth,
           draw: () => drawTerrainCell(ctx, corners, row.kind, opts),
         });
       }
 
       if (quality.grassDecor && row.kind === 'grass') {
-        drawQueue.push({
-          depth: depth + 0.03,
+        terrainQueue.push({
+          depth: depth + 0.02,
           draw: () => drawGrassDecor(ctx, col, z, camZ, bob, s.animT, isStart),
         });
       }
     }
   }
 
+  terrainQueue.sort((a, b) => a.depth - b.depth);
+  for (let i = 0; i < terrainQueue.length; i++) terrainQueue[i]!.draw();
+
+  // Pass 2 — entities always above terrain
+  const simpleVoxels = quality.simpleVoxels;
+  const shadows = quality.entityShadows;
+
   for (const coin of s.coins) {
     if (coin.row < zMin || coin.row > zMax) continue;
     const center = classicGridToScreen(coin.col + 0.5, coin.row + 0.5, camZ, bob);
-    const depth = classicPaintDepth(coin.row, coin.col) + 0.45;
-    drawQueue.push({
-      depth,
+    entityQueue.push({
+      depth: classicPaintDepth(center.y, coin.col),
       draw: () => drawVoxelCoin(ctx, center.x, center.y, ENTITY_UNIT, s.animT, coin.col),
     });
   }
 
-  const simpleVoxels = quality.simpleVoxels;
-  const shadows = quality.entityShadows;
-
   for (const c of s.cars) {
     if (c.row < zMin || c.row > zMax) continue;
-    const gridCx = (c.x + c.w * 0.5) / CELL;
-    const center = {
-      x: c.x + c.w * 0.5,
-      y: classicGridToScreen(gridCx, c.row + 0.5, camZ, bob).y,
-    };
-    const depth = classicPaintDepth(c.row, gridCx) + 0.5;
+    const cx = c.x + c.w * 0.5;
+    const cy = classicEntityY(c.row, camZ, bob);
     const gridSpan = c.w / CELL;
     const facingRight = c.speed > 0;
-    drawQueue.push({
-      depth,
+    entityQueue.push({
+      depth: classicPaintDepth(cy, cx),
       draw: () => {
         if (shadows) {
-          drawDropShadow(
-            ctx,
-            center.x,
-            center.y + CELL * 0.14,
-            gridSpan * ENTITY_UNIT * 0.42,
-            CELL * 0.07,
-          );
+          drawDropShadow(ctx, cx, cy + CELL * 0.22, gridSpan * CELL * 0.38, CELL * 0.08);
         }
         drawVoxelVehicle(
-          ctx,
-          center.x,
-          center.y,
-          gridSpan,
-          c.kind,
-          facingRight,
-          ENTITY_UNIT,
-          s.animT,
-          simpleVoxels,
+          ctx, cx, cy, gridSpan, c.kind, facingRight, ENTITY_UNIT, s.animT, simpleVoxels,
         );
       },
     });
@@ -136,63 +127,57 @@ export function renderPremium(ctx: CanvasRenderingContext2D, s: WorldSnapshot): 
 
   for (const l of s.logs) {
     if (l.row < zMin || l.row > zMax) continue;
-    const gridCx = (l.x + l.w * 0.5) / CELL;
-    const center = {
-      x: l.x + l.w * 0.5,
-      y: classicGridToScreen(gridCx, l.row + 0.5, camZ, bob).y,
-    };
-    const depth = classicPaintDepth(l.row, gridCx) + 0.5;
+    const cx = l.x + l.w * 0.5;
+    const cy = classicEntityY(l.row, camZ, bob);
     const gridSpan = l.w / CELL;
-    drawQueue.push({
-      depth,
+    const gridCx = cx / CELL;
+    entityQueue.push({
+      depth: classicPaintDepth(cy, cx),
       draw: () => {
         if (shadows) {
-          drawDropShadow(ctx, center.x, center.y + CELL * 0.12, gridSpan * ENTITY_UNIT * 0.4, CELL * 0.06);
+          drawDropShadow(ctx, cx, cy + CELL * 0.2, gridSpan * CELL * 0.36, CELL * 0.07);
         }
-        drawVoxelLog(ctx, center.x, center.y, gridSpan, ENTITY_UNIT, s.animT, gridCx);
+        drawVoxelLog(ctx, cx, cy, gridSpan, ENTITY_UNIT, s.animT, gridCx);
       },
     });
   }
 
   const playerCenter = classicPlayerCenter(s);
-  const arcZ = hopArcHeight(t, CELL * 0.45);
+  const arcZ = hopArcHeight(t, CELL * 0.5);
   const squash = hopSquash(t);
-  const shadowAlpha = s.hopT > 0 ? 0.1 + (1 - t) * 0.08 : 0.22;
+  const shadowAlpha = s.hopT > 0 ? 0.12 + (1 - t) * 0.1 : 0.28;
 
   if (shadows) {
-    drawQueue.push({
-      depth: classicPaintDepth(s.pz, s.px) + 0.8,
+    entityQueue.push({
+      depth: classicPaintDepth(playerCenter.y, playerCenter.x) - 0.01,
       draw: () => drawDropShadow(
         ctx,
         playerCenter.x,
-        playerCenter.y + CELL * 0.18,
-        CELL * 0.2,
-        CELL * 0.09,
+        playerCenter.y + CELL * 0.24,
+        CELL * 0.24,
+        CELL * 0.1,
         shadowAlpha,
       ),
     });
   }
-  drawQueue.push({
-    depth: classicPaintDepth(s.pz, s.px) + 0.85,
-    draw: () => {
-      if (s.eagleT <= 0) {
-        drawVoxelChicken(
-          ctx,
-          playerCenter.x,
-          playerCenter.y,
-          ENTITY_UNIT,
-          arcZ,
-          squash,
-          s.animT,
-        );
-      }
-    },
-  });
 
-  drawQueue.sort((a, b) => a.depth - b.depth);
-  for (let i = 0; i < drawQueue.length; i++) {
-    drawQueue[i]!.draw();
+  if (s.eagleT <= 0) {
+    entityQueue.push({
+      depth: classicPaintDepth(playerCenter.y, playerCenter.x),
+      draw: () => drawVoxelChicken(
+        ctx,
+        playerCenter.x,
+        playerCenter.y,
+        ENTITY_UNIT,
+        arcZ,
+        squash,
+        s.animT,
+      ),
+    });
   }
+
+  entityQueue.sort((a, b) => a.depth - b.depth);
+  for (let i = 0; i < entityQueue.length; i++) entityQueue[i]!.draw();
 
   drawPremiumHud(ctx, s);
 

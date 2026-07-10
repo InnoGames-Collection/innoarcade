@@ -51,8 +51,12 @@ export function classicPlayerCenter(s: WorldSnapshot): ClassicPoint {
   return classicGridToScreen(gx, gz, s.camZ, s.camBob);
 }
 
-export function classicPaintDepth(row: number, col: number): number {
-  return row + col * 0.001;
+export function classicPaintDepth(screenY: number, col = 0): number {
+  return screenY + col * 0.001;
+}
+
+export function classicEntityY(row: number, camZ: number, camBob = 0): number {
+  return classicGridToScreen(0.5, row + 0.5, camZ, camBob).y;
 }
 
 export function classicCamTarget(gz: number): number {
