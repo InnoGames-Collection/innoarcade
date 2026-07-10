@@ -5,12 +5,12 @@ export const H = 720;
 export const CX = W / 2;
 
 /** World units — Y increases downward in gameplay space. */
-export const BALL_R = 0.38;
+export const BALL_R = 0.55;
 export const RING_R = 4.05;
 export const RING_INNER = 0.55;
 export const RING_THICKNESS = 0.62;
 export const RING_HEIGHT = 0.34;
-export const PILLAR_R = 0.42;
+export const PILLAR_R = 0.24;
 export const GAP_ARC = 1.12;
 
 export const GRAVITY_BASE = 26;

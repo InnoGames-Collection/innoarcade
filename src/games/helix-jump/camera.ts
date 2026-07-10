@@ -67,4 +67,9 @@ export class CameraController {
     this.shakeX = 0;
     this.shakeY = 0;
   }
+
+  snapTo(ballY: number): void {
+    this.y = ballY - H * CAM_OFFSET * WORLD_PER_PX;
+    this.vel = 0;
+  }
 }

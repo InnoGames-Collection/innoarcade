@@ -30,6 +30,7 @@ export class HelixWorld {
 
   private readonly tower = new THREE.Group();
   private readonly ball: THREE.Mesh;
+  private readonly ballOutline: THREE.Mesh;
   private readonly ballMat: THREE.MeshStandardMaterial;
   private readonly ballGlow: THREE.PointLight;
   private readonly pillar: THREE.Mesh;
@@ -57,7 +58,7 @@ export class HelixWorld {
 
     this.scene = new THREE.Scene();
     this.scene.background = makeGradientBackground();
-    this.scene.fog = new THREE.Fog(0xe8d4ff, 18, 55);
+    this.scene.fog = new THREE.Fog(0xe8d4ff, 28, 70);
 
     this.cameraCtrl = new CameraController(W / H);
 
@@ -114,19 +115,35 @@ export class HelixWorld {
 
     this.scene.add(this.tower);
 
-    const ballGeo = new THREE.SphereGeometry(BALL_R, 28, 28);
+    const ballGeo = new THREE.SphereGeometry(BALL_R, 32, 32);
     this.ballMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.22,
-      metalness: 0.18,
-      emissive: 0x222244,
-      emissiveIntensity: 0.15,
+      color: 0xff5c8a,
+      roughness: 0.18,
+      metalness: 0.15,
+      emissive: 0x441133,
+      emissiveIntensity: 0.35,
     });
     this.ball = new THREE.Mesh(ballGeo, this.ballMat);
     this.ball.castShadow = true;
+    this.ball.renderOrder = 20;
+    this.ball.position.z = 0.12;
     this.scene.add(this.ball);
 
-    this.ballGlow = new THREE.PointLight(0xffffff, 0.6, 6);
+    this.ballOutline = new THREE.Mesh(
+      new THREE.SphereGeometry(BALL_R * 1.12, 24, 24),
+      new THREE.MeshBasicMaterial({
+        color: 0x2a2a44,
+        side: THREE.BackSide,
+        transparent: true,
+        opacity: 0.35,
+      }),
+    );
+    this.ballOutline.renderOrder = 19;
+    this.ballOutline.position.z = 0.12;
+    this.scene.add(this.ballOutline);
+
+    this.ballGlow = new THREE.PointLight(0xffffff, 1.1, 8);
+    this.ballGlow.position.z = 0.2;
     this.ball.add(this.ballGlow);
 
     this.particles = new ParticleSystem(this.scene);
@@ -229,28 +246,28 @@ export class HelixWorld {
 
   updateBall(ball: BallState, skin: BallSkin, fever: boolean, dt: number): void {
     const wy = ball.y;
-    this.ball.position.y = -wy;
+    this.ball.position.set(0, -wy, 0.12);
+    this.ballOutline.position.set(0, -wy, 0.12);
     const sy = ball.squash;
     const stretch = 1 - sy;
-    this.ball.scale.set(
-      1 - stretch * 0.14,
-      1 + stretch * 0.22,
-      1 - stretch * 0.14,
-    );
+    const sx = 1 - stretch * 0.14;
+    const syScale = 1 + stretch * 0.22;
+    this.ball.scale.set(sx, syScale, sx);
+    this.ballOutline.scale.set(sx * 1.12, syScale * 1.12, sx * 1.12);
 
     this.ballMat.color.set(skin.color);
     if (fever) {
       this.feverLight = Math.min(1, this.feverLight + dt * 3);
       this.ballMat.emissive.set(THEME.fever);
-      this.ballMat.emissiveIntensity = 0.55 + Math.sin(performance.now() * 0.012) * 0.15;
+      this.ballMat.emissiveIntensity = 0.65 + Math.sin(performance.now() * 0.012) * 0.15;
       this.ballGlow.color.set(THEME.fever);
-      this.ballGlow.intensity = 1.4;
+      this.ballGlow.intensity = 1.8;
     } else {
       this.feverLight = Math.max(0, this.feverLight - dt * 4);
-      this.ballMat.emissive.set(0x334466);
-      this.ballMat.emissiveIntensity = 0.12;
+      this.ballMat.emissive.set(0x442244);
+      this.ballMat.emissiveIntensity = 0.3;
       this.ballGlow.color.set(skin.color);
-      this.ballGlow.intensity = 0.55;
+      this.ballGlow.intensity = 1;
     }
 
     this.pillar.position.y = -wy;

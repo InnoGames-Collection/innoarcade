@@ -117,7 +117,6 @@ const bindPointer = (el: HTMLElement) => {
   });
 };
 bindPointer(canvas);
-bindPointer(hudCanvas);
 
 const scoreEl = $('#scoreVal');
 let lastScore = 0;

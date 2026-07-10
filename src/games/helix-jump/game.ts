@@ -88,6 +88,7 @@ export class HelixJump {
     };
     this.rotation.reset();
     this.camera.reset();
+    this.camera.snapTo(this.ball.y);
     this.rnd = mulberry32((Math.random() * 1e9) | 0);
     resetRingIds();
     this.rings = [];
@@ -101,6 +102,7 @@ export class HelixJump {
       prev = ring;
     }
     this.world.syncRings(this.rings, this.cfg.gapArc);
+    this.world.updateBall(this.ball, this.skin, false, 0);
     this.setState('playing');
     vibrate(8);
   }
