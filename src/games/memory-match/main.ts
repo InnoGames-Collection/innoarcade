@@ -3,8 +3,7 @@
 import '../../styles/base.css';
 import '../../styles/game-shell.css';
 import './style.css';
-import { applyTranslations, getLang } from '../../i18n';
-import { sfx } from '../../engine/audio';
+import { applyTranslations, getLang, t } from '../../i18n';
 import { createHost } from '../../platform/gameHost';
 import {
   applyTournamentPlayLabels, promptTournamentEntry, refreshTournamentMenuPanel,
@@ -20,6 +19,10 @@ import mesobIcon from './icons/mesob.png';
 import jebenaIcon from './icons/jebena.png';
 import nexsusIcon from './icons/nexsus.png';
 import teleconnectIcon from './icons/teleconnect.png';
+import { mmSfx } from './mm-sfx';
+import {
+  animateCountUp, burstConfetti, renderStars, showScorePopup, spawnMatchVfx,
+} from './mm-vfx';
 
 const GAME_ID = 'memory-match';
 const host = createHost(GAME_ID);
@@ -104,15 +107,16 @@ function showMenu(): void {
 function showGame(): void {
   $('#menuOverlay').classList.add('hidden');
   $('#memory-match-wrapper').classList.remove('hidden');
-  $('#mmBackdrop').classList.add('hidden');
 }
 
 function playSfx(type: 'flip' | 'match' | 'nomatch' | 'win' | 'lose' | 'click'): void {
   switch (type) {
-    case 'flip': case 'click': sfx.click(); break;
-    case 'match': case 'win': sfx.coin(); break;
-    case 'nomatch': sfx.slide(); break;
-    case 'lose': sfx.crash(); break;
+    case 'flip': mmSfx.flip(); break;
+    case 'click': mmSfx.click(); break;
+    case 'match': mmSfx.match(); break;
+    case 'nomatch': mmSfx.nomatch(); break;
+    case 'win': mmSfx.win(); break;
+    case 'lose': mmSfx.lose(); break;
   }
 }
 
@@ -151,8 +155,19 @@ function setPhase(next: Phase): void {
 
 function showOverOverlay(final: number): void {
   const overlay = $('#mmOverOverlay');
-  $('#mmFinalScore').textContent = final.toLocaleString();
+  const panel = overlay.querySelector<HTMLElement>('.mm-over-panel')!;
+  const cleared = pairs === PAIR_COUNT;
+  const titleEl = $('#mmOverTitle');
+  titleEl.textContent = cleared ? t('mm.victory') : t('td.gameOver');
+  panel.classList.toggle('mm-victory', cleared);
+
+  const finalEl = $('#mmFinalScore');
+  finalEl.textContent = '0';
   $('#mmFinalBest').textContent = SCORE_PLACEHOLDER;
+  const accuracy = moves > 0 ? Math.round((pairs * 2 / moves) * 100) : 0;
+  $('#mmFinalAccuracy').textContent = `${accuracy}%`;
+  $('#mmFinalTime').textContent = fmtTime(spentSeconds());
+  renderStars($('#mmStars'), displayStars(cleared));
   $('#mmNewBest').classList.add('hidden');
   $('#mmRunReward').innerHTML = `<span class="mm-rr-pending">…</span>`;
   $('#mmBoardOver').innerHTML = '';
@@ -160,6 +175,8 @@ function showOverOverlay(final: number): void {
   syncAttemptsUi();
   overlay.classList.remove('hidden');
   overlay.setAttribute('aria-hidden', 'false');
+  animateCountUp(finalEl, final);
+  burstConfetti(cleared);
 }
 
 function hideOverOverlay(): void {
@@ -210,11 +227,33 @@ function fmtTime(s: number): string {
   return `${m}:${ss.toString().padStart(2, '0')}`;
 }
 
+function popStat(id: string): void {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('mm-stat-pop');
+  void el.offsetWidth;
+  el.classList.add('mm-stat-pop');
+}
+
 function refreshStats(): void {
-  timeEl.textContent = fmtTime(Math.max(0, secondsLeft));
+  const secs = Math.max(0, secondsLeft);
+  timeEl.textContent = fmtTime(secs);
   movesEl.textContent = String(moves);
   pairsEl.textContent = `${pairs}/${PAIR_COUNT}`;
   scoreEl.textContent = scoreDisplayText();
+
+  const fill = $('#mm-timer-fill');
+  fill.style.width = `${(secs / ROUND_SECONDS) * 100}%`;
+  const bar = fill.parentElement!;
+  bar.classList.toggle('mm-timer-low', secs > 0 && secs <= 30);
+  bar.classList.toggle('mm-timer-critical', secs > 0 && secs <= 10);
+}
+
+function displayStars(cleared: boolean): number {
+  if (!cleared) return 0;
+  if (moves <= 12) return 3;
+  if (moves <= 18) return 2;
+  return 1;
 }
 
 function bumpScoreStat(): void {
@@ -232,13 +271,16 @@ function shuffle<T>(a: T[]): T[] {
 }
 
 function setCardBack(card: HTMLElement): void {
-  card.innerHTML = '<span class="mm-card-back" aria-hidden="true">?</span>';
+  const front = card.querySelector<HTMLElement>('.mm-card-front');
+  if (front) front.innerHTML = '';
+  card.classList.remove('flipped', 'mm-match-fail');
 }
 
 function setCardFace(card: HTMLElement, iconId: string): void {
   const icon = ICON_BY_ID.get(iconId);
-  if (!icon) return;
-  card.innerHTML = `<img class="mm-card-img" src="${icon.src}" alt="${icon.alt}" draggable="false" />`;
+  const front = card.querySelector<HTMLElement>('.mm-card-front');
+  if (!icon || !front) return;
+  front.innerHTML = `<img class="mm-card-img" src="${icon.src}" alt="${icon.alt}" draggable="false" />`;
 }
 
 function revealCard(card: HTMLElement): void {
@@ -262,6 +304,11 @@ function buildBoard(): void {
     card.className = 'mm-card';
     card.dataset.i = String(i);
     card.dataset.e = iconId;
+    card.innerHTML = `
+      <div class="mm-card-inner">
+        <div class="mm-card-face mm-card-front"></div>
+        <div class="mm-card-face mm-card-back"><span class="mm-card-back-mark" aria-hidden="true">?</span></div>
+      </div>`;
     setCardBack(card);
     card.addEventListener('click', () => flipCard(card));
     grid.appendChild(card);
@@ -358,6 +405,7 @@ function tick(seq: number): void {
   if (seq !== roundSeq || phase !== 'playing') return;
   secondsLeft -= 1;
   refreshStats();
+  if (secondsLeft === 10 || secondsLeft === 5) mmSfx.timeWarning();
   if (secondsLeft <= 0) endRound();
 }
 
@@ -383,6 +431,7 @@ function flipCard(card: HTMLElement): void {
   if (flipped.length === 2) {
     moves++;
     canFlip = false;
+    popStat('mm-stat-moves');
     checkMatch();
   }
   refreshStats();
@@ -391,20 +440,28 @@ function flipCard(card: HTMLElement): void {
 function checkMatch(): void {
   const [c1, c2] = flipped;
   if (c1.dataset.e === c2.dataset.e) {
-    c1.classList.add('matched');
-    c2.classList.add('matched');
+    c1.classList.add('matched', 'mm-match-success');
+    c2.classList.add('matched', 'mm-match-success');
+    spawnMatchVfx(c1);
+    spawnMatchVfx(c2);
+    showScorePopup(`+${PAIR_GAIN}`, grid);
     pairs++;
     flipped = [];
     canFlip = true;
     playSfx('match');
+    popStat('mm-stat-pairs');
     refreshStats();
     if (pairs === PAIR_COUNT) { playSfx('win'); endRound(); }
   } else {
     playSfx('nomatch');
+    c1.classList.add('mm-match-fail');
+    c2.classList.add('mm-match-fail');
     setTimeout(() => {
       if (phase !== 'playing') return;
       hideCard(c1);
       hideCard(c2);
+      c1.classList.remove('mm-match-fail');
+      c2.classList.remove('mm-match-fail');
       flipped = [];
       canFlip = true;
       refreshStats();
@@ -423,6 +480,15 @@ pauseBtn.addEventListener('click', () => { playSfx('click'); pauseRound(); });
 resumeBtn.addEventListener('click', () => { playSfx('click'); resumeRound(); });
 restartBtn.addEventListener('click', () => { playSfx('click'); void restartRoundMM(); });
 
+const muteBtn = $('#mmMuteBtn') as HTMLButtonElement;
+function syncMuteBtn(): void {
+  muteBtn.textContent = mmSfx.isMuted() ? '🔇' : '🔊';
+  muteBtn.classList.toggle('muted', mmSfx.isMuted());
+  muteBtn.setAttribute('aria-label', mmSfx.isMuted() ? 'Unmute' : 'Mute');
+}
+muteBtn.addEventListener('click', () => { mmSfx.toggleMute(); syncMuteBtn(); });
+$('#mmHomeBtn').addEventListener('click', () => { playSfx('click'); goMenuMM(); });
+
 const stage = document.getElementById('stage');
 if (stage) {
   wireFreeShellCloseButtons(stage, navHandlers);
@@ -431,6 +497,7 @@ if (stage) {
 
 document.documentElement.lang = getLang();
 applyTranslations();
+syncMuteBtn();
 setPhase('menu');
 
 void refreshTournamentPanel();
