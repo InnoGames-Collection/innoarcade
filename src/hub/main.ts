@@ -572,6 +572,34 @@ function renderGamesToolbar(): void {
       if (selStart != null) search.setSelectionRange(selStart, selStart);
     }
   }
+  wirePillTabsIndicator();
+}
+
+let pillTabsResizeObserver: ResizeObserver | undefined;
+let pillTabsWindowResizeWired = false;
+
+function updatePillIndicator(): void {
+  const seg = document.querySelector<HTMLElement>('#gameSeg');
+  const indicator = seg?.querySelector<HTMLElement>('.pill-tabs-indicator');
+  const active = seg?.querySelector<HTMLElement>('.pill-tab.active');
+  if (!indicator || !active) return;
+  indicator.style.width = `${active.offsetWidth}px`;
+  indicator.style.transform = `translateX(${active.offsetLeft}px)`;
+}
+
+function wirePillTabsIndicator(): void {
+  requestAnimationFrame(() => {
+    updatePillIndicator();
+    const seg = document.querySelector('#gameSeg');
+    if (!seg) return;
+    pillTabsResizeObserver?.disconnect();
+    pillTabsResizeObserver = new ResizeObserver(() => updatePillIndicator());
+    pillTabsResizeObserver.observe(seg);
+    if (!pillTabsWindowResizeWired) {
+      pillTabsWindowResizeWired = true;
+      window.addEventListener('resize', () => updatePillIndicator(), { passive: true });
+    }
+  });
 }
 
 // --- Portal sections (Phase 1) ----------------------------------------------
@@ -1101,7 +1129,7 @@ function setupBrowse(): void {
     searchPersistTimer = setTimeout(() => persistBrowseState(), 150);
   });
   gamesSection?.addEventListener('click', (e) => {
-    const seg = (e.target as HTMLElement).closest<HTMLButtonElement>('#gameSeg .seg-btn');
+    const seg = (e.target as HTMLElement).closest<HTMLButtonElement>('#gameSeg .pill-tab');
     if (seg) {
       gameFilter = (seg.dataset.filter as typeof gameFilter) ?? 'tournament';
       if (gameFilter === 'tournament') categoryFilter = 'all';

@@ -74,11 +74,16 @@ export function gamesToolbarHtml(opts: {
     }),
   ].join('');
   const q = opts.searchQuery ?? '';
+  const tourOn = opts.gameFilter === 'tournament';
+  const freeOn = opts.gameFilter === 'free';
   return `
     <div class="games-head" id="gamesToolbar">
-      <div class="seg" id="gameSeg" role="tablist" aria-label="Game modes">
-        <button type="button" class="seg-btn${opts.gameFilter === 'tournament' ? ' active' : ''}" data-filter="tournament" data-i18n="hub.tournament">${t('hub.tournament')}</button>
-        <button type="button" class="seg-btn${opts.gameFilter === 'free' ? ' active' : ''}" data-filter="free" data-i18n="hub.freeGames">${t('hub.freeGames')}</button>
+      <div class="pill-tabs" id="gameSeg" role="tablist" aria-label="Game modes">
+        <span class="pill-tabs-indicator" aria-hidden="true"></span>
+        <button type="button" class="pill-tab${tourOn ? ' active' : ''}" data-filter="tournament" role="tab"
+          aria-selected="${tourOn}" data-i18n="hub.tournament">${t('hub.tournament')}</button>
+        <button type="button" class="pill-tab${freeOn ? ' active' : ''}" data-filter="free" role="tab"
+          aria-selected="${freeOn}" data-i18n="hub.freeGames">${t('hub.freeGames')}</button>
       </div>
       <div class="cat-dropdown${catDisabled ? ' is-disabled' : ''}" id="catDropdown">
         <button type="button" class="cat-dropdown-btn" id="catDropdownBtn" aria-haspopup="listbox" ${catDisabled ? 'disabled' : ''}>
