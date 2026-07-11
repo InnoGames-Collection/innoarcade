@@ -65,10 +65,16 @@ function promosFromConfig(): PromoSlide[] {
 let promoIdx = 0;
 const PROMO_INTERVAL_MS = 4500;
 
+function promoBannerSrcset(img: string): string {
+  if (!img.includes('ad-banner-2.png')) return '';
+  const hi = img.replace('ad-banner-2.png', 'ad-banner-2@2x.png');
+  return ` srcset="${escapeHtml(img)} 1x, ${escapeHtml(hi)} 2x"`;
+}
+
 function promoSlideHtml(p: PromoSlide, extraClass = ''): string {
   const bright = p.img.includes('ad-banner-2') ? ' promo-slide--bright' : '';
   const cls = `promo-slide promo-slide-img${bright}${extraClass ? ` ${extraClass}` : ''}`;
-  const img = `<img src="${escapeHtml(p.img)}" alt="" class="promo-banner-img" loading="lazy" decoding="async" />`;
+  const img = `<img src="${escapeHtml(p.img)}"${promoBannerSrcset(p.img)} alt="" class="promo-banner-img" loading="lazy" decoding="async" />`;
   const overlay = p.href
     ? `<div class="promo-slide-overlay">
         <p class="promo-slide-caption">${escapeHtml(p.alt)}</p>
