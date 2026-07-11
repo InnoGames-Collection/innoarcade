@@ -28,7 +28,7 @@
             <summary data-i18n="td.howto">How to play</summary>
             <p data-i18n="mm.howtoHint">Flip cards to find matching pairs. Clear all 6 pairs before time runs out for the best score!</p>
           </details>
-          <button type="button" id="mmStartBtn" class="mm-btn mm-btn-primary mm-btn-pulse mm-btn-block" data-i18n="hub.play">Play</button>
+          <button type="button" id="mmStartBtn" class="mm-btn mm-btn-primary mm-btn-pulse mm-btn-compact" data-i18n="hub.play">Play</button>
         </div>
       </div>
 
@@ -102,7 +102,7 @@
             <span class="mm-over-meta-chip"><span data-i18n="mm.timeUsed">Time</span> <strong id="mmFinalTime">—</strong></span>
           </div>
 
-          <div class="mm-run-reward" id="mmRunReward"></div>
+          <div class="mm-run-reward hidden" id="mmRunReward" aria-hidden="true"></div>
 
           <div class="mm-over-board-wrap">
             <h3 data-i18n="td.leaderboard">Leaderboard</h3>
@@ -110,8 +110,8 @@
           </div>
 
           <div class="mm-over-actions">
-            <button type="button" class="mm-btn mm-btn-primary mm-btn-block" id="mmAgainBtn" data-i18n="td.restart">Play again</button>
-            <button type="button" class="mm-btn mm-btn-primary mm-btn-block" id="mmHomeBtn" data-i18n="mm.home">Home</button>
+            <button type="button" class="mm-btn mm-btn-primary mm-btn-compact" id="mmAgainBtn" data-i18n="td.restart">Play again</button>
+            <button type="button" class="mm-btn mm-btn-primary mm-btn-compact" id="mmHomeBtn" data-i18n="mm.home">Home</button>
           </div>
         </div>
       </div>

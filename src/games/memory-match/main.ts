@@ -135,6 +135,7 @@ function scoreDisplayText(): string {
 function goMenuMM(): void {
   abortRound();
   setPhase('menu');
+  void refreshTournamentPanel();
 }
 
 function setPhase(next: Phase): void {
@@ -170,6 +171,8 @@ function showOverOverlay(final: number): void {
   renderStars($('#mmStars'), displayStars(cleared));
   $('#mmNewBest').classList.add('hidden');
   $('#mmRunReward').innerHTML = `<span class="mm-rr-pending">…</span>`;
+  $('#mmRunReward').classList.remove('hidden');
+  $('#mm-over-meta-row').querySelectorAll('.mm-meta-dynamic').forEach((n) => n.remove());
   $('#mmBoardOver').innerHTML = '';
   $('#mmCloseBtn').classList.add('hidden');
   syncAttemptsUi();
@@ -203,7 +206,7 @@ const navHandlers: FreeShellNavHandlers = {
 };
 
 async function refreshTournamentPanel(): Promise<void> {
-  await refreshTournamentMenuPanel(GAME_ID, $('#mmTourney'));
+  await refreshTournamentMenuPanel(GAME_ID, $('#mmTourney'), { boardLimit: 3 });
   syncAttemptsUi();
 }
 
@@ -212,6 +215,7 @@ async function submitRound(score: number, cleared: boolean, durationMs: number):
     rewardEl: $('#mmRunReward'),
     boardEl: $('#mmBoardOver'),
     cssPrefix: 'mm-rr',
+    boardLimit: 3,
     showToast,
     onBest: (best, isRecord) => {
       $('#mmFinalBest').textContent = best.toLocaleString();
@@ -359,6 +363,8 @@ async function beginRankedRound(): Promise<void> {
     scoreEl.closest('.mm-stat-score')?.classList.remove('mm-score-bump');
     abortRound();
     startRoundWithBlink();
+    syncAttemptsUi();
+    void refreshTournamentPanel();
   } finally {
     starting = false;
   }
@@ -487,30 +493,45 @@ restartBtn.addEventListener('click', () => { playSfx('click'); void restartRound
 const muteBtn = $('#mmMuteBtn') as HTMLButtonElement;
 
 function formatOverReward(): void {
-  const el = $('#mmRunReward');
-  el.classList.remove('mm-run-reward-ready');
-  const pending = el.querySelector('.mm-rr-pending');
-  if (pending) return;
+  const rewardEl = $('#mmRunReward');
+  const metaEl = $('#mm-over-meta-row');
+  rewardEl.classList.remove('mm-run-reward-ready', 'hidden');
+  metaEl.querySelectorAll('.mm-meta-dynamic').forEach((n) => n.remove());
 
-  const stats = [...el.querySelectorAll<HTMLElement>('.mm-rr-stat')];
-  if (stats.length === 0) return;
+  if (rewardEl.querySelector('.mm-rr-pending')) return;
+
+  const stats = [...rewardEl.querySelectorAll<HTMLElement>('.mm-rr-stat')];
+  if (stats.length === 0) {
+    rewardEl.classList.add('hidden');
+    return;
+  }
 
   const bestLabel = t('td.best').toLowerCase();
   const rankLabel = t('td.rank').toLowerCase();
-  stats.forEach((stat) => {
-    const label = stat.querySelector('b')?.textContent?.trim().toLowerCase() ?? '';
-    if (label === bestLabel || label.startsWith(`${bestLabel} `)) stat.remove();
-  });
 
-  const remaining = [...el.querySelectorAll<HTMLElement>('.mm-rr-stat')];
-  remaining.forEach((stat) => {
-    if (stat.classList.contains('xp') || stat.classList.contains('coins')) return;
+  for (const stat of stats) {
     const label = stat.querySelector('b')?.textContent?.trim().toLowerCase() ?? '';
-    if (label === rankLabel || label.startsWith(`${rankLabel} `)) stat.classList.add('mm-rr-rank');
-    else stat.classList.add('mm-rr-attempts');
-  });
+    if (label === bestLabel || label.startsWith(`${bestLabel} `)) continue;
 
-  if (remaining.length > 0) el.classList.add('mm-run-reward-ready');
+    const chip = document.createElement('span');
+    chip.className = 'mm-over-meta-chip mm-meta-dynamic';
+
+    if (stat.classList.contains('xp')) {
+      chip.classList.add('mm-chip-reward', 'mm-chip-xp');
+      chip.textContent = stat.textContent?.trim() ?? '';
+    } else if (stat.classList.contains('coins')) {
+      chip.classList.add('mm-chip-reward', 'mm-chip-coins');
+      chip.textContent = stat.textContent?.trim() ?? '';
+    } else if (label === rankLabel || label.startsWith(`${rankLabel} `)) {
+      const val = stat.textContent?.replace(stat.querySelector('b')?.textContent ?? '', '').trim() ?? '—';
+      chip.innerHTML = `${t('td.rank')} <strong>${val}</strong>`;
+    } else {
+      chip.innerHTML = stat.innerHTML;
+    }
+    metaEl.appendChild(chip);
+  }
+
+  rewardEl.classList.add('hidden');
 }
 
 function syncMuteBtn(): void {

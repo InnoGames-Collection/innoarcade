@@ -367,9 +367,22 @@ export function isEntered(tournamentId: string): boolean {
   return enteredCache.has(tournamentId);
 }
 
+/** Map a client/derived tournament id to the server row id when the entry cache knows it. */
+export function resolveTournamentId(tournamentId: string): string {
+  if (entryCache[tournamentId]) return tournamentId;
+  const gameId = tournamentId.replace(/-(daily|weekly|monthly)(-[0-9-]+)?$/, '');
+  const keyed = Object.keys(entryCache).find(
+    (id) => id === tournamentId || id.startsWith(`${gameId}-`),
+  );
+  if (keyed) return keyed;
+  const tour = activeTournaments().find((t) => t.gameId === gameId);
+  if (tour && entryCache[tour.id]) return tour.id;
+  return tournamentId;
+}
+
 /** The player's attempt bank for a tournament (sync; from loadMyEntries). */
 export function myEntry(tournamentId: string): MyEntry | undefined {
-  return entryCache[tournamentId];
+  return entryCache[resolveTournamentId(tournamentId)];
 }
 
 export class InsufficientCoinsError extends Error {
@@ -433,9 +446,10 @@ export async function myEntries(): Promise<TournamentEntry[]> {
 
 /** Update the local attempt cache after a ranked run consumes one (from finish). */
 export function noteAttemptsLeft(tournamentId: string, left: number): void {
-  const cur = entryCache[tournamentId];
-  if (cur) { cur.left = left; cur.used = cur.purchased - left; }
-  else entryCache[tournamentId] = { purchased: left, used: 0, left };
+  const id = resolveTournamentId(tournamentId);
+  const cur = entryCache[id];
+  if (cur) { cur.left = left; cur.used = Math.max(0, cur.purchased - left); }
+  else entryCache[id] = { purchased: left, used: 0, left };
 }
 
 /** Convenience: pre-warm the entered-set so cards render correctly. */

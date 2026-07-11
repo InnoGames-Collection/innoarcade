@@ -34,7 +34,7 @@ export interface MenuPanelSnapshot {
 export async function refreshTournamentMenuPanel(
   gameId: string,
   mount: HTMLElement,
-  opts?: ShellMenuTournamentOpts & { icon?: string },
+  opts?: ShellMenuTournamentOpts & { icon?: string; boardLimit?: number },
 ): Promise<MenuPanelSnapshot | null> {
   if (!isConfigured()) {
     mount.innerHTML = '';
@@ -54,7 +54,7 @@ export async function refreshTournamentMenuPanel(
   const [walletCoins, standing, board] = await Promise.all([
     balance(),
     playerStandingRemote(tourney.id),
-    leaderboardRemote(tourney.id, 5),
+    leaderboardRemote(tourney.id, opts?.boardLimit ?? 5),
   ]);
   const attemptsLeft = myEntry(tourney.id)?.left ?? 0;
   const serverBest = standing?.score ?? 0;
@@ -122,6 +122,7 @@ export interface SubmitRoundUi {
   rewardEl: HTMLElement;
   boardEl: HTMLElement;
   cssPrefix?: string;
+  boardLimit?: number;
   showToast: (msg: string) => void;
   onBest: (best: number, isRecord: boolean) => void;
   onSync?: () => void;
@@ -168,7 +169,7 @@ export async function submitTournamentRound(
   const tour = getTournamentForGame(gameId);
   if (tour) {
     const [board, standing] = await Promise.all([
-      leaderboardRemote(tour.id, 5),
+      leaderboardRemote(tour.id, ui.boardLimit ?? 5),
       playerStandingRemote(tour.id),
     ]);
     ui.boardEl.innerHTML = tournamentBoardHtml(board, standing);
