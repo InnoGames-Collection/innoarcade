@@ -140,7 +140,7 @@ export class GameHost {
   async startRound(ranked = true): Promise<number | undefined> {
     const res = await startRoundRemote(this.meta.id, ranked);
     this.roundToken = res.token;
-    if (this.isTournament && ranked && (res.blocked || (res.token === '' && typeof res.attemptsLeft === 'number'))) {
+    if (this.isTournament && ranked && res.blocked) {
       throw new Error(res.attemptsLeft === 0 ? 'no attempts left' : 'start-round failed');
     }
     if (this.isTournament && typeof res.attemptsLeft === 'number') {

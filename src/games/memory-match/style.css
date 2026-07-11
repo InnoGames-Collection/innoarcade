@@ -61,19 +61,6 @@ body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)
   overflow: hidden;
 }
 
-body.game-shell[data-game="memory-match"]:has(#menuOverlay:not(.hidden)) {
-  background: linear-gradient(
-    180deg,
-    #3d8010 0%,
-    #4f9e16 10%,
-    #d4edc8 28%,
-    #eef8e8 50%,
-    #d4edc8 72%,
-    #4f9e16 90%,
-    #3d8010 100%
-  );
-}
-
 .mm-stage:has(#menuOverlay:not(.hidden)) .mm-bg-gradient {
   background: linear-gradient(
     180deg,
@@ -529,7 +516,6 @@ body.game-shell[data-game="memory-match"]:has(#menuOverlay:not(.hidden)) {
 }
 
 body.game-shell[data-game="memory-match"] .mm-btn-primary,
-body.game-shell[data-game="memory-match"] #mmStartBtn,
 body.game-shell[data-game="memory-match"] #mmAgainBtn,
 body.game-shell[data-game="memory-match"] #mmHomeBtn {
   color: #fff !important;
@@ -539,9 +525,11 @@ body.game-shell[data-game="memory-match"] #mmHomeBtn {
 }
 
 .mm-btn-compact {
-  padding: 9px 16px;
-  font-size: 0.82rem;
-  flex: 0 1 auto;
+  padding: 10px 18px;
+  font-size: 0.86rem;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
 }
 
 .mm-btn-wide {
@@ -632,9 +620,14 @@ body.game-shell[data-game="memory-match"] .mm-shell-card.game-panel {
 }
 
 .mm-menu-panel {
-  align-items: stretch;
+  align-items: center;
   gap: 10px;
   width: min(380px, 94vw);
+}
+
+.mm-menu-panel .mm-tourney-card {
+  align-self: stretch;
+  width: 100%;
 }
 
 body.game-shell[data-game="memory-match"] .mm-menu-panel.mm-shell-card {
@@ -734,21 +727,24 @@ body.game-shell[data-game="memory-match"] .mm-tourney-card .gt-row.me {
   font-weight: 700;
 }
 
-body.game-shell[data-game="memory-match"] #mmStartBtn {
+body.game-shell[data-game="memory-match"] #mmStartBtn.mm-btn-play {
   margin-top: 4px;
-  background: linear-gradient(135deg, #6ab82e 0%, #4f9e16 55%, #3d7d12 100%) !important;
+  width: auto;
+  max-width: 100%;
+  align-self: center;
   color: #fff !important;
   -webkit-text-fill-color: #fff !important;
-  border: 2px solid rgba(255, 255, 255, 0.3) !important;
-  box-shadow: 0 4px 14px rgba(79, 158, 22, 0.4) !important;
+  background: linear-gradient(135deg, #4fc3f7 0%, #1f74e0 55%, #1558b8 100%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(31, 116, 224, 0.38) !important;
+}
+
+body.game-shell[data-game="memory-match"] #mmStartBtn.mm-btn-play:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 /* End screen — stats + grid only */
 .mm-playframe.mm-ended .mm-actions {
-  display: none !important;
-}
-
-.mm-toast {
   display: none !important;
 }
 
