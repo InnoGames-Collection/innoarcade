@@ -232,6 +232,23 @@ body[data-game='tap-game'] .tg-menu-hero {
   margin-bottom: 12px;
 }
 
+body[data-game='tap-game'] .tg-menu-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 12px rgba(79, 158, 22, 0.35));
+  animation: tg-icon-float 3s ease-in-out infinite;
+}
+
+@keyframes tg-icon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+body[data-game='tap-game'] .shell-free-head {
+  display: none;
+}
+
 body[data-game='tap-game'] .tg-menu-title {
   font-size: clamp(1.6rem, 6vw, 2rem);
   font-weight: 800;
