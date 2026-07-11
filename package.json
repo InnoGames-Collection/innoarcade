@@ -20,7 +20,8 @@
     "lint:games": "node scripts/lint-game-shell.mjs",
     "icons:validate": "node scripts/validate-memory-match-icons.mjs",
     "icons:process": "node scripts/process-memory-match-icons.mjs",
-    "icons:deploy": "node scripts/process-memory-match-icons.mjs --deploy"
+    "icons:deploy": "node scripts/process-memory-match-icons.mjs --deploy",
+    "fruits:compress": "node scripts/compress-fruit-slice-fruits.mjs"
   },
   "devDependencies": {
     "sharp": "^0.34.5",

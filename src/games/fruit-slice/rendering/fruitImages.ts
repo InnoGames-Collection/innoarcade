@@ -1,11 +1,11 @@
 // Real fruit photo assets — preloaded for canvas rendering.
 
 import type { FruitType } from './types';
-import appleUrl from '../fruits/apple.jpg';
-import bananaUrl from '../fruits/banana.png';
-import cherryUrl from '../fruits/cherry.jpg';
-import orangeUrl from '../fruits/orange.jpg';
-import peachUrl from '../fruits/peach.jpg';
+import appleUrl from '../fruits/apple.webp';
+import bananaUrl from '../fruits/banana.webp';
+import cherryUrl from '../fruits/cherry.webp';
+import orangeUrl from '../fruits/orange.webp';
+import peachUrl from '../fruits/peach.webp';
 
 const SOURCES: Record<FruitType, string> = {
   apple: appleUrl,
