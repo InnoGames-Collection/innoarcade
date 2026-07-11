@@ -4,8 +4,13 @@ import '../../styles/game-shell.css';
 import '../_casual/style.css';
 import '../_lq/lq.css';
 import './style.css';
+import './modes.css';
+import './polish.css';
 import { mountLQ } from '../_lq/lq';
 import { runTubeSortGame, BALL_SORT_THEME } from '../_shared/tubeSort/runGame';
+import { installBallSortAudio } from './audio';
+
+installBallSortAudio();
 
 mountLQ('ball-sort', (mount) => runTubeSortGame(mount, BALL_SORT_THEME), {
   headerSlots: [

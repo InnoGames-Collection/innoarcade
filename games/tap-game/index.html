@@ -8,7 +8,15 @@
   </head>
   <body class="game-shell casual-shell" data-game="tap-game">
     <div id="stage" class="fc-stage game-shell-stage">
-      <div id="fcBackdrop" class="fc-backdrop" aria-hidden="true"></div>
+      <div id="fcBackdrop" class="fc-backdrop" aria-hidden="true">
+        <div class="tg-bg-layer">
+          <div class="tg-bg-orb tg-bg-orb--1"></div>
+          <div class="tg-bg-orb tg-bg-orb--2"></div>
+          <div class="tg-bg-orb tg-bg-orb--3"></div>
+          <div class="tg-bg-shape tg-bg-shape--1"></div>
+          <div class="tg-bg-shape tg-bg-shape--2"></div>
+        </div>
+      </div>
 
       <div id="fcPlayFrame" class="fc-playframe hidden">
         <button id="closeBtn" class="gp-close gp-close-corner hidden" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
@@ -24,6 +32,10 @@
       <div id="menuOverlay" class="game-overlay">
         <div class="game-panel panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
+          <div class="tg-menu-hero">
+            <div class="tg-menu-title" data-i18n="tg.title">Tap Rush</div>
+            <div class="tg-menu-sub" data-i18n="tg.subtitle">Test your reflexes!</div>
+          </div>
           <div class="shell-free-menu" id="freeMenu"></div>
           <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
         </div>
@@ -38,6 +50,12 @@
           <div class="shell-over-final">
             <div class="shell-over-stat"><span data-i18n="td.score">Score</span><strong id="finalScore">0</strong></div>
             <div class="shell-over-stat"><span data-i18n="td.best">Best</span><strong id="finalBest">—</strong></div>
+          </div>
+          <div class="tg-over-stats">
+            <div class="tg-over-stat"><span data-i18n="tg.statTaps">Taps</span><strong id="tgStatTaps">0</strong></div>
+            <div class="tg-over-stat"><span data-i18n="tg.statStreak">Best Streak</span><strong id="tgStatStreak">×0</strong></div>
+            <div class="tg-over-stat"><span data-i18n="tg.statAccuracy">Accuracy</span><strong id="tgStatAccuracy">—</strong></div>
+            <div class="tg-over-stat"><span data-i18n="tg.statReaction">Avg Reaction</span><strong id="tgStatReaction">—</strong></div>
           </div>
           <div class="shell-run-reward" id="runReward"></div>
           <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>

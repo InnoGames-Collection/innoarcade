@@ -3,6 +3,7 @@
 import './liquidPour.css';
 import { sfx } from '../../engine/audio';
 import { gemClassesByIndex } from './premiumGems';
+import { ballSortPourSound, isBallSortPage } from '../ball-sort/audio';
 import {
   clearStreamCanvas,
   drawLiquidStream,
@@ -110,6 +111,10 @@ function relRect(el: HTMLElement, board: HTMLElement): DOMRect {
 }
 
 export function playPourSound(kind: 'start' | 'land' | 'complete'): void {
+  if (isBallSortPage()) {
+    ballSortPourSound(kind);
+    return;
+  }
   if (sfx.muted) return;
   try {
     const Ctor = window.AudioContext
@@ -498,7 +503,8 @@ export function shakeTube(tubeEl: HTMLElement, prefix = 'ws'): void {
 
 export function spawnTubeSparkles(tubeEl: HTMLElement): void {
   if (prefersReducedMotion()) return;
-  tubeEl.classList.add('ws-tube--sparkle');
+  const prefix = tubeEl.classList.contains('bs-tube') ? 'bs' : 'ws';
+  tubeEl.classList.add(`${prefix}-tube--sparkle`);
   for (let i = 0; i < 8; i++) {
     const spark = document.createElement('span');
     spark.className = 'lpour-spark';
@@ -508,7 +514,7 @@ export function spawnTubeSparkles(tubeEl: HTMLElement): void {
     tubeEl.appendChild(spark);
     window.setTimeout(() => spark.remove(), 800);
   }
-  window.setTimeout(() => tubeEl.classList.remove('ws-tube--sparkle'), 1200);
+  window.setTimeout(() => tubeEl.classList.remove(`${prefix}-tube--sparkle`), 1200);
 }
 
 /** Confetti + sparkle victory burst. */
@@ -518,7 +524,9 @@ export function spawnVictoryBurst(board: HTMLElement): void {
   layer.className = 'lpour-victory';
   board.appendChild(layer);
   const rect = board.getBoundingClientRect();
-  const colors = ['#5b8cff', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6', '#1abc9c'];
+  const colors = isBallSortPage()
+    ? ['#4f9e16', '#1f74e0', '#6cc52f', '#ffffff', '#3d8010', '#2aa9d6']
+    : ['#5b8cff', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6', '#1abc9c'];
   for (let i = 0; i < 36; i++) {
     const piece = document.createElement('span');
     const isRect = i % 3 === 0;
@@ -549,8 +557,9 @@ export function spawnVictoryBurst(board: HTMLElement): void {
 export function animateScorePop(): void {
   const el = document.getElementById('fpStat-score');
   if (!el) return;
-  el.classList.remove('ws-score-pop');
+  const popCls = isBallSortPage() ? 'bs-score-pop' : 'ws-score-pop';
+  el.classList.remove(popCls);
   void el.offsetWidth;
-  el.classList.add('ws-score-pop');
-  window.setTimeout(() => el.classList.remove('ws-score-pop'), 700);
+  el.classList.add(popCls);
+  window.setTimeout(() => el.classList.remove(popCls), 700);
 }

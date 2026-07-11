@@ -55,6 +55,12 @@ import {
 import { WaterBottleManager } from './waterFluid';
 import { renderModeMenu } from './modeMenu';
 import { t } from '../../../i18n';
+import {
+  bumpStat,
+  mountBoardBubbles,
+  showLevelCompleteCelebration,
+} from '../../ball-sort/levelComplete';
+import { ballSortSound } from '../../ball-sort/audio';
 
 export interface TubeSortTheme {
   gameId: string;
@@ -138,6 +144,12 @@ function cx(theme: TubeSortTheme, base: string): string {
 
 export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void {
   const host = createHost(theme.gameId);
+  const isBall = theme.gameId === 'ball-sort';
+
+  function playSound(name: 'click' | 'good' | 'bad' | 'win'): void {
+    if (isBall) ballSortSound(name);
+    else sound(name);
+  }
 
   function showMenu(): void {
     mount.innerHTML = '';
@@ -272,6 +284,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
       board.appendChild(row);
       mount.appendChild(board);
       if (pauseOverlay) board.appendChild(pauseOverlay);
+      let removeBubbles: (() => void) | null = isBall ? mountBoardBubbles(board) : null;
 
       if (levelIdx === 0) showFirstRunHint(theme.firstRunKey, toast);
 
@@ -319,7 +332,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         completedTubes.clear();
         timerSec = 0;
         setLQHeader({ moves: '0', time: '0:00' });
-        sound('click');
+        playSound('click');
         paint();
       }
 
@@ -439,6 +452,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
           applyHeldPieces(row, selected, held, theme.pourTheme);
         }
         setLQHeader({ moves: String(moves) });
+        if (isBall) bumpStat('fpStat-moves');
         undoBtn.toggleAttribute('disabled', undoStack.length === 0);
         hintBtn.toggleAttribute('disabled', hintsLeft <= 0 || locked);
       }
@@ -452,7 +466,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         }
         hintsLeft--;
         hintFlash = move;
-        sound('click');
+        playSound('click');
         paint();
         window.setTimeout(() => {
           hintFlash = null;
@@ -470,7 +484,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         tubes = undoStack.pop()!;
         moves = Math.max(0, moves - 1);
         selected = null;
-        sound('click');
+        playSound('click');
         if (isWater && fluidManager) {
           paint();
           await animateUndoRipple(board, fluidManager, tubes.length);
@@ -502,14 +516,14 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
             return;
           }
           if (isPourSourceLocked(mods, idx, tubes)) {
-            sound('bad');
+            playSound('bad');
             toast('Complete a tube to unlock this one');
             return;
           }
           selected = idx;
-          sound('click');
+          playSound('click');
           paint();
-          if (isWater) {
+          if (isWater || isBall) {
             const tubeEl = row.children[idx] as HTMLElement | undefined;
             if (tubeEl) pulseTubeSelect(tubeEl, p);
           }
@@ -521,8 +535,8 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
           return;
         }
         if (!canPour(tubes[selected], tubes[idx], selected, idx, tubes, mods)) {
-          sound('bad');
-          if (isWater) {
+          playSound('bad');
+          if (isWater || isBall) {
             const srcEl = row.children[selected] as HTMLElement | undefined;
             if (srcEl) shakeTube(srcEl, p);
             paint();
@@ -585,7 +599,7 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         checkTubeComplete(toIdx);
         checkTubeComplete(fromIdx);
 
-        sound('good');
+        playSound('good');
         locked = false;
 
         if (isSolved(tubes, mods)) finishLevel();
@@ -595,8 +609,8 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         locked = true;
         stopTimer();
         board.classList.add(`${p}-win-flash`);
-        if (isWater) spawnVictoryBurst(board);
-        sound('win');
+        if (isWater || isBall) spawnVictoryBurst(board);
+        playSound('win');
         const elapsedMs = Date.now() - levelStart;
         const stars = starRating(moves, parMoves);
         const moveBonus = Math.max(0, parMoves - moves) * 12;
@@ -604,14 +618,19 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
         const levelScore = puzzleCompletionScore(elapsedMs, 0, { budgetSec: 360, base: theme.scoreBase })
           + moveBonus + starBonus;
         totalScore += levelScore;
-        if (stars > 0) toast(`${renderStars(stars)} · +${starBonus} star bonus`, 1400);
+        if (isBall) {
+          showLevelCompleteCelebration(board, { stars, levelScore, starBonus });
+        } else if (stars > 0) {
+          toast(`${renderStars(stars)} · +${starBonus} star bonus`, 1400);
+        }
         levelIdx++;
         emitLQLevelComplete(levelIdx, totalScore);
         setLQHeader({
           round: roundLabel(levelIdx, mode),
           score: String(totalScore),
         });
-        if (isWater) animateScorePop();
+        if (isWater || isBall) animateScorePop();
+        if (isBall) bumpStat('fpStat-score');
 
         const sessionDone = mode !== 'endless' && levelIdx >= LEVEL_COUNT;
         if (sessionDone) {
@@ -634,6 +653,8 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
       levelCleanup = () => {
         stopTimer();
         stopFluidAnim();
+        removeBubbles?.();
+        removeBubbles = null;
       };
     }
 

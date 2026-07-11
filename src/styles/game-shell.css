@@ -41,7 +41,7 @@
 .game-shell[data-game="brick-blitz"] { --game-accent: #f0a832; }
 .game-shell[data-game="sky-hopper"] { --game-accent: #56b8e8; }
 .game-shell[data-game="bubble-pop"] { --game-accent: #7b6cf0; }
-.game-shell[data-game="tap-game"] { --game-accent: #ff6b35; }
+.game-shell[data-game="tap-game"] { --game-accent: #4f9e16; }
 .game-shell[data-game="popblast"] { --game-accent: #e85b9c; }
 .game-shell[data-game="sudoku"] { --game-accent: #34b38a; }
 .game-shell[data-game="spell"] { --game-accent: #6a4cff; }
@@ -51,6 +51,7 @@
 .game-shell[data-game="crosssum"] { --game-accent: #5b8cff; }
 .game-shell[data-game="logic"] { --game-accent: #ff7a59; }
 .game-shell[data-game="sequence"] { --game-accent: #7a6cff; }
+.game-shell[data-game="ball-sort"] { --game-accent: #4f9e16; --shell-blue: #1f74e0; }
 
 /* --- Free-game menu block (no tournament) -------------------------------- */
 .game-shell .shell-free-menu {

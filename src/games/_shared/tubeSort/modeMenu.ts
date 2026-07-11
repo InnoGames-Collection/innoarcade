@@ -6,12 +6,20 @@ import { GEM_IDS, gemClassesByIndex } from '../premiumGems';
 import { t } from '../../../i18n';
 import { collectedGems, gemCatalogProgress, type SessionMode } from './meta';
 
+const BALL_MODE_ICONS: Record<string, string> = {
+  classic: '🎯',
+  daily: '📅',
+  endless: '♾️',
+  tournament: '🏆',
+};
+
 export function renderModeMenu(
   mount: HTMLElement,
   gameId: string,
   gemVariant: 'liquid' | 'sphere',
   onStart: (mode: SessionMode) => void,
 ): void {
+  const isBallSort = gameId === 'ball-sort';
   const { collected, total } = gemCatalogProgress(gameId);
   const owned = new Set(collectedGems(gameId));
 
@@ -31,10 +39,37 @@ export function renderModeMenu(
       class: `ts-mode-card ts-mode-card--${m.id}`,
       onclick: () => onStart(m.id),
     });
-    btn.appendChild(el('span', { class: 'ts-mode-card__label', text: m.label }));
-    btn.appendChild(el('span', { class: 'ts-mode-card__desc', text: m.desc }));
+    if (isBallSort) {
+      btn.appendChild(el('span', { class: 'ts-mode-card__icon', text: BALL_MODE_ICONS[m.id] ?? '⚪' }));
+      const body = el('div', { class: 'ts-mode-card__body' });
+      body.appendChild(el('span', { class: 'ts-mode-card__label', text: m.label }));
+      body.appendChild(el('span', { class: 'ts-mode-card__desc', text: m.desc }));
+      btn.appendChild(body);
+      btn.appendChild(el('span', { class: 'ts-mode-card__arrow', text: '›' }));
+    } else {
+      btn.appendChild(el('span', { class: 'ts-mode-card__label', text: m.label }));
+      btn.appendChild(el('span', { class: 'ts-mode-card__desc', text: m.desc }));
+    }
     grid.appendChild(btn);
   }
+
+  if (isBallSort) {
+    const tourney = el('div', {
+      class: 'ts-mode-card ts-mode-card--tournament ts-mode-card--locked',
+      'aria-disabled': 'true',
+    });
+    tourney.appendChild(el('span', { class: 'ts-mode-card__icon', text: BALL_MODE_ICONS.tournament }));
+    const tBody = el('div', { class: 'ts-mode-card__body' });
+    tBody.appendChild(el('span', { class: 'ts-mode-card__label', text: 'Tournament' }));
+    tBody.appendChild(el('span', {
+      class: 'ts-mode-card__desc',
+      text: 'Compete with players nationwide. Coming soon.',
+    }));
+    tourney.appendChild(tBody);
+    tourney.appendChild(el('span', { class: 'ts-mode-card__badge', text: 'Locked' }));
+    grid.appendChild(tourney);
+  }
+
   wrap.appendChild(grid);
 
   const catalog = el('div', { class: 'ts-gem-catalog' });

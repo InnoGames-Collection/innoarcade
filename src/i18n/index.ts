@@ -356,7 +356,8 @@ const en = {
   'arc.yourRank': 'Your rank',
   'arc.endsIn': 'Ends in',
   // Tap Game (ported)
-  'tg.title': 'Tap Game',
+  'tg.title': 'Tap Rush',
+  'tg.subtitle': 'Test your reflexes!',
   'tg.score': 'Score',
   'tg.time': 'Time',
   'tg.hint': 'Tap the circles as fast as you can!',
@@ -364,6 +365,10 @@ const en = {
   'tg.go': 'Go! Go! Go!',
   'tg.win': 'Amazing! Score: {s}',
   'tg.lose': 'Score: {s} (need {n}+)',
+  'tg.statTaps': 'Taps',
+  'tg.statStreak': 'Best Streak',
+  'tg.statAccuracy': 'Accuracy',
+  'tg.statReaction': 'Avg Reaction',
   // Dice Roll (ported · tournament)
   'dr.title': 'Dice Roll',
   'dr.tapRoll': 'Tap ROLL to play!',
@@ -869,7 +874,8 @@ const am: Dict = {
   'arc.yourRank': 'ደረጃዎ',
   'arc.endsIn': 'ይጠናቀቃል በ',
   // Tap Game (ported)
-  'tg.title': 'ታፕ ጨዋታ',
+  'tg.title': 'ታፕ ራሽ',
+  'tg.subtitle': 'ቅልጥፍናዎን ይሞክሩ!',
   'tg.score': 'ነጥብ',
   'tg.time': 'ጊዜ',
   'tg.hint': 'ክቦቹን በተቻለ ፍጥነት ይምቱ!',
@@ -877,6 +883,10 @@ const am: Dict = {
   'tg.go': 'ቀጥል! ቀጥል!',
   'tg.win': 'በጣም ጥሩ! ነጥብ: {s}',
   'tg.lose': 'ነጥብ: {s} ({n}+ ያስፈልጋል)',
+  'tg.statTaps': 'ንካቶች',
+  'tg.statStreak': 'ምርጥ ተከታታይ',
+  'tg.statAccuracy': 'ትክክለኛነት',
+  'tg.statReaction': 'አማካይ ምላሽ',
   // Dice Roll (ported · tournament)
   'dr.title': 'ዳይስ ጨዋታ',
   'dr.tapRoll': 'ROLL ይጫኑ ለመጫወት!',

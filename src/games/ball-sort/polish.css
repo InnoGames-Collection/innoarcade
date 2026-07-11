@@ -1,0 +1,214 @@
+/* Ball Sort — shell, HUD, typography & button polish */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+body[data-game='ball-sort'] {
+  --game-accent: #4f9e16;
+  --bs-brand-green: #4f9e16;
+  --bs-brand-blue: #1f74e0;
+  font-family: 'Plus Jakarta Sans', 'Avenir Next', 'Segoe UI', Roboto, system-ui, sans-serif;
+}
+
+body[data-game='ball-sort'].game-shell {
+  --game-accent: #4f9e16;
+  --grad-brand: linear-gradient(135deg, #6cc52f 0%, #4f9e16 55%, #3a8a12 100%);
+}
+
+/* Play frame backdrop */
+body[data-game='ball-sort'] .fc-backdrop,
+body[data-game='ball-sort'] .fc-playframe {
+  background:
+    radial-gradient(ellipse 100% 70% at 50% -5%, rgba(31, 116, 224, 0.1) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 50% at 80% 90%, rgba(79, 158, 22, 0.08) 0%, transparent 50%),
+    linear-gradient(175deg, #f8fcff 0%, #f2f9f4 45%, #f6f8fc 100%);
+}
+
+body[data-game='ball-sort'] .fc-playframe {
+  border-color: rgba(31, 116, 224, 0.12);
+  box-shadow:
+    0 12px 40px rgba(31, 74, 140, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Premium glass HUD stats */
+body[data-game='ball-sort'] .fp-stats {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.78) 100%);
+  border: 1px solid rgba(31, 116, 224, 0.1);
+  border-radius: 18px;
+  box-shadow:
+    0 6px 20px rgba(31, 74, 140, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-game='ball-sort'] .fp-stat {
+  padding: 10px 8px;
+  border-right-color: rgba(31, 116, 224, 0.08);
+  transition: background 0.2s ease;
+}
+
+body[data-game='ball-sort'] .fp-stat-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #7a8a96;
+}
+
+body[data-game='ball-sort'] .fp-stat-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-brand-green);
+  transition: transform 0.3s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+body[data-game='ball-sort'] .fp-stat-value.bs-stat-bump {
+  animation: bs-stat-bump 0.45s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+@keyframes bs-stat-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+body[data-game='ball-sort'] .fp-stat-score .fp-stat-value {
+  color: var(--bs-brand-blue);
+}
+
+body[data-game='ball-sort'] .fp-stat-icon {
+  width: 20px;
+  height: 20px;
+}
+
+body[data-game='ball-sort'] .fp-stat-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Shell menu overlay */
+body[data-game='ball-sort'] #menuOverlay .game-panel {
+  background: linear-gradient(168deg, rgba(255, 255, 255, 0.98) 0%, rgba(242, 249, 244, 0.95) 100%);
+  border: 1px solid rgba(31, 116, 224, 0.1);
+  box-shadow: 0 20px 60px rgba(31, 74, 140, 0.14);
+}
+
+body[data-game='ball-sort'] #startBtn {
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-radius: 16px;
+  border: none;
+  background: var(--grad-brand);
+  color: #fff;
+  box-shadow:
+    0 6px 20px rgba(79, 158, 22, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.18s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.18s ease;
+}
+
+body[data-game='ball-sort'] #startBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(79, 158, 22, 0.38);
+}
+
+body[data-game='ball-sort'] #startBtn:active {
+  transform: scale(0.97);
+}
+
+/* Game over overlay */
+body[data-game='ball-sort'] #overOverlay .game-panel {
+  background: linear-gradient(168deg, #ffffff 0%, #f0f7fc 100%);
+  border-radius: 22px;
+  border: 1px solid rgba(31, 116, 224, 0.1);
+  box-shadow: 0 24px 64px rgba(31, 74, 140, 0.16);
+}
+
+body[data-game='ball-sort'] #overOverlay h2 {
+  font-weight: 800;
+  background: linear-gradient(135deg, #3d8010, #1f74e0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+body[data-game='ball-sort'] .shell-over-stat strong {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--bs-brand-blue);
+}
+
+body[data-game='ball-sort'] #againBtn {
+  border-radius: 16px;
+  font-weight: 800;
+  padding: 14px 28px;
+  box-shadow: 0 6px 20px rgba(79, 158, 22, 0.28);
+}
+
+/* Toast */
+body[data-game='ball-sort'] #toast {
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 14px;
+  background: linear-gradient(135deg, #2d5a10 0%, #1a5a9e 100%);
+  box-shadow: 0 8px 24px rgba(31, 74, 140, 0.2);
+  top: 72px;
+}
+
+/* Mode badges in-game */
+body[data-game='ball-sort'] .ts-mode-badge {
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 14px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(31, 116, 224, 0.1);
+  box-shadow: 0 2px 8px rgba(31, 74, 140, 0.08);
+}
+
+body[data-game='ball-sort'] .ts-mode-badge--daily {
+  color: #b8780a;
+  background: linear-gradient(145deg, rgba(255, 248, 237, 0.95), rgba(255, 255, 255, 0.85));
+}
+
+body[data-game='ball-sort'] .ts-mode-badge--endless {
+  color: #1f5ab8;
+  background: linear-gradient(145deg, rgba(238, 242, 255, 0.95), rgba(255, 255, 255, 0.85));
+}
+
+/* Victory confetti — Ethio Telecom palette */
+body[data-game='ball-sort'] .lpour-confetti {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+body[data-game='ball-sort'] .lpour-spark {
+  background: radial-gradient(circle, #fff 0%, color-mix(in srgb, var(--bs-brand-blue) 75%, #fff) 55%, transparent 100%);
+}
+
+/* Override shared .btn on in-game toolbar */
+body[data-game='ball-sort'] .btn.bs-hint-btn,
+body[data-game='ball-sort'] .btn.bs-undo {
+  border: none;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.8) 100%);
+  color: color-mix(in srgb, var(--bs-brand-green) 78%, #1a3a10);
+  border-radius: 14px;
+  font-weight: 700;
+  padding: 10px 20px;
+  min-height: 44px;
+  box-shadow: 0 4px 14px rgba(31, 74, 140, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 0.15s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.15s ease;
+}
+
+body[data-game='ball-sort'] .btn.bs-hint-btn:hover:not([disabled]),
+body[data-game='ball-sort'] .btn.bs-undo:hover:not([disabled]) {
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(31, 74, 140, 0.14);
+}
+
+body[data-game='ball-sort'] .btn.bs-hint-btn:active:not([disabled]),
+body[data-game='ball-sort'] .btn.bs-undo:active:not([disabled]) {
+  transform: scale(0.96);
+}
