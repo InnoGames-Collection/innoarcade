@@ -151,6 +151,27 @@ export function labelForMatch(combo: number, elapsedSinceLast: number): string {
   return 'Perfect';
 }
 
+export function spawnMatchBurst(
+  area: HTMLElement,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  color: string,
+): void {
+  spawnParticles(area, x1, y1, color, 6);
+  spawnParticles(area, x2, y2, color, 6);
+  spawnSparkles(area, x1, y1);
+  spawnSparkles(area, x2, y2);
+}
+
+export function boardScaleForRemaining(remaining: number, initial: number): number {
+  const ratio = initial > 0 ? remaining / initial : 1;
+  const base = 1.15;
+  const boost = (1 - ratio) * 0.14;
+  return Math.min(base + boost, 1.32);
+}
+
 export function spawnParticles(
   area: HTMLElement,
   x: number,

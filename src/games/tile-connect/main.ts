@@ -16,6 +16,7 @@ import { tcSfx } from './sounds';
 import {
   animateCountUp,
   animateHudValue,
+  boardScaleForRemaining,
   centerOf,
   drawConnectionLine,
   findConnectionPath,
@@ -24,9 +25,8 @@ import {
   launchConfetti,
   pulseBoard,
   shakeWrap,
-  spawnParticles,
+  spawnMatchBurst,
   spawnScorePopup,
-  spawnSparkles,
 } from './fx';
 
 const ROWS = 6;
@@ -35,6 +35,8 @@ const ICONS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🌸', '⭐', '💎', '�
 const ICON_COLORS = ['#6cc52f', '#3d8ef0', '#f39c12', '#9b59b6', '#e74c3c', '#1abc9c'];
 const LEVELS = 5;
 const host = createHost('tile-connect');
+
+let pauseHintFn: (() => void) | null = null;
 
 function remaining(board: (string | null)[][]): number {
   let n = 0;
@@ -95,6 +97,7 @@ function render(mount: HTMLElement): void {
     mount.innerHTML = '';
     const rnd = mulberry32((Math.random() * 1e9) | 0);
     const pairs = 8 + levelIdx * 2;
+    const initialTiles = pairs * 2;
     const board: (string | null)[][] = buildSolvableTileBoard(ROWS, COLS, ICONS, pairs, rnd);
     let sel: [number, number] | null = null;
     let hintPair: [number, number, number, number] | null = null;
@@ -105,15 +108,6 @@ function render(mount: HTMLElement): void {
 
     const wrap = el('div', { class: 'tc-wrap' });
     const fxLayer = el('div', { class: 'tc-fx-layer' });
-    const toolbar = el('div', { class: 'tc-toolbar' });
-    const hintBtn = el('button', {
-      type: 'button',
-      class: 'btn tc-hint-btn',
-      text: '💡 Hint',
-      onclick: () => showHint(),
-    });
-    toolbar.appendChild(hintBtn);
-
     const boardWrap = el('div', { class: 'tc-board-wrap' });
     const lineSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     lineSvg.setAttribute('class', 'tc-line-layer');
@@ -132,7 +126,6 @@ function render(mount: HTMLElement): void {
     boardWrap.appendChild(lineSvg);
     boardWrap.appendChild(grid);
 
-    wrap.appendChild(toolbar);
     wrap.appendChild(boardWrap);
     wrap.appendChild(fxLayer);
     mount.appendChild(wrap);
@@ -160,6 +153,14 @@ function render(mount: HTMLElement): void {
       toast('Highlighted pair can connect');
     }
 
+    pauseHintFn = showHint;
+
+    function updateBoardLayout(): void {
+      const rem = remaining(board);
+      const scale = boardScaleForRemaining(rem, initialTiles);
+      boardWrap.style.setProperty('--tc-board-scale', scale.toFixed(3));
+    }
+
     function paint(): void {
       grid.innerHTML = '';
       for (let r = 0; r < ROWS; r++) {
@@ -170,17 +171,19 @@ function render(mount: HTMLElement): void {
             && ((hintPair[0] === r && hintPair[1] === c) || (hintPair[2] === r && hintPair[3] === c));
           const isMatch = matching
             && ((matching[0] === r && matching[1] === c) || (matching[2] === r && matching[3] === c));
-          grid.appendChild(el('div', {
+          const tile = el('div', {
             class: 'tc-tile'
               + (!v ? ' tc-empty' : iconClass(v))
               + (isSel ? ' tc-tile--sel' : '')
               + (isHint ? ' tc-tile--hint' : '')
               + (isMatch ? ' tc-tile--match' : ''),
-            text: v ?? '',
             onclick: () => onTap(r, c),
-          }));
+          });
+          if (v) tile.appendChild(el('span', { class: 'tc-tile-emoji', text: v }));
+          grid.appendChild(tile);
         }
       }
+      updateBoardLayout();
       setLQHeader({ moves: String(moves) });
       animateHudValue(hudEl('moves'), String(moves));
     }
@@ -195,8 +198,7 @@ function render(mount: HTMLElement): void {
       const elapsed = lastMatchAt ? Date.now() - lastMatchAt : 9999;
       const label = labelForMatch(combo, elapsed);
       spawnScorePopup(fxLayer, mx, my, label);
-      spawnParticles(fxLayer, mx, my, iconColor(icon), combo >= 2 ? 14 : 9);
-      if (combo >= 2) spawnSparkles(fxLayer, mx, my);
+      spawnMatchBurst(fxLayer, c1pos.x, c1pos.y, c2pos.x, c2pos.y, iconColor(icon));
       pulseBoard(grid);
     }
 
@@ -251,10 +253,8 @@ function render(mount: HTMLElement): void {
         animating = false;
         lineSvg.innerHTML = lineSvg.querySelector('defs')?.outerHTML ?? '';
         paint();
-        setLQHeader({ score: String(totalScore) });
-        animateHudValue(hudEl('score'), String(totalScore));
         if (remaining(board) === 0) finishLevel();
-      }, 480);
+      }, 520);
     }
 
     function finishLevel(): void {
@@ -293,11 +293,11 @@ function render(mount: HTMLElement): void {
 function initBgParticles(): void {
   const layer = document.querySelector('.tc-bg-layer');
   if (!layer) return;
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 18; i++) {
     const p = document.createElement('div');
     p.className = 'tc-bg-particle';
     p.style.left = `${Math.random() * 100}%`;
-    p.style.bottom = `${Math.random() * 30}%`;
+    p.style.bottom = `${Math.random() * 40}%`;
     p.style.animationDelay = `${Math.random() * 8}s`;
     p.style.animationDuration = `${6 + Math.random() * 6}s`;
     layer.appendChild(p);
@@ -346,7 +346,15 @@ function wireSettings(): void {
   });
 }
 
+function wirePauseHint(): void {
+  document.getElementById('tcPauseHintBtn')?.addEventListener('click', () => {
+    pauseHintFn?.();
+    document.getElementById('resumeBtn')?.click();
+  });
+}
+
 mountLQ('tile-connect', render, {
+  pauseable: true,
   headerSlots: [
     { id: 'round', labelKey: 'shell.puzzle', icon: 'round' },
     { id: 'moves', labelKey: 'ws.moves', icon: 'moves' },
@@ -359,3 +367,4 @@ initBgParticles();
 wireMenu();
 wireHudRow();
 wireSettings();
+wirePauseHint();

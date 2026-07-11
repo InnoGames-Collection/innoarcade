@@ -81,6 +81,11 @@ export interface TubeSortTheme {
   scoreBase: number;
 }
 
+export interface TubeSortRunOptions {
+  /** Skip in-game mode picker and start this mode (shell menu selection). */
+  initialMode?: SessionMode;
+}
+
 export const WATER_SORT_THEME: TubeSortTheme = {
   gameId: 'water-sort',
   classPrefix: 'ws',
@@ -164,7 +169,11 @@ function cx(theme: TubeSortTheme, base: string): string {
   return `${theme.classPrefix}-${base}`;
 }
 
-export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void {
+export function runTubeSortGame(
+  mount: HTMLElement,
+  theme: TubeSortTheme,
+  options: TubeSortRunOptions = {},
+): void {
   const host = createHost(theme.gameId);
   const isBall = theme.gameId === 'ball-sort';
   const isWater = theme.gameId === 'water-sort';
@@ -691,5 +700,9 @@ export function runTubeSortGame(mount: HTMLElement, theme: TubeSortTheme): void 
     loadLevel();
   }
 
-  showMenu();
+  if (options.initialMode) {
+    startSession(options.initialMode, sessionSeed(options.initialMode, theme.gameId));
+  } else {
+    showMenu();
+  }
 }

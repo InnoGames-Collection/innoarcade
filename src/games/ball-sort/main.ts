@@ -8,10 +8,13 @@ import './modes.css';
 import './polish.css';
 import { mountLQ } from '../_lq/lq';
 import { runTubeSortGame, BALL_SORT_THEME } from '../_shared/tubeSort/runGame';
+import type { SessionMode } from '../_shared/tubeSort/meta';
 import { installBallSortAudio } from './audio';
 import { ballSortSound } from './audio';
 
 installBallSortAudio();
+
+let shellSelectedMode: SessionMode = 'classic';
 
 function initBgParticles(): void {
   const layer = document.querySelector('body[data-game="ball-sort"] .bb-bg-layer');
@@ -27,10 +30,16 @@ function initBgParticles(): void {
   }
 }
 
+function parseShellMode(raw: string | undefined): SessionMode {
+  if (raw === 'daily' || raw === 'endless' || raw === 'classic') return raw;
+  return 'classic';
+}
+
 function wireShellMenu(): void {
   const startBtn = document.getElementById('startBtn');
-  document.querySelectorAll('.bb-mode-card:not(.bb-mode-card--locked)').forEach((card) => {
+  document.querySelectorAll<HTMLElement>('.bb-mode-card:not(.bb-mode-card--locked)').forEach((card) => {
     card.addEventListener('click', () => {
+      shellSelectedMode = parseShellMode(card.dataset.bsMode);
       ballSortSound('click');
       startBtn?.click();
     });
@@ -42,7 +51,9 @@ function wireShellMenu(): void {
   });
 }
 
-mountLQ('ball-sort', (mount) => runTubeSortGame(mount, BALL_SORT_THEME), {
+mountLQ('ball-sort', (mount) => runTubeSortGame(mount, BALL_SORT_THEME, {
+  initialMode: shellSelectedMode,
+}), {
   headerSlots: [
     { id: 'round', labelKey: 'shell.puzzle', icon: 'round' },
     { id: 'moves', labelKey: 'ws.moves', icon: 'question' },
