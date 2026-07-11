@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#4f9e16" />
     <link rel="manifest" href="../../manifest.webmanifest" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏃</text></svg>" />
     <title>Ethiorunner — GoPlay</title>
@@ -98,18 +98,18 @@ body.game-shell.quiz-shell {
   cursor: pointer;
 }
 
-body.game-shell[data-game="temple-dash"]{--game-accent:#e2563a;--shell-accent:#e2563a;}</style>  <script type="module" crossorigin src="../../assets/templeDash-C0u3WwUE.js"></script>
-  <link rel="modulepreload" crossorigin href="../../assets/index-CqBADFYS.js">
-  <link rel="modulepreload" crossorigin href="../../assets/tournaments-yjgVjj2-.js">
-  <link rel="modulepreload" crossorigin href="../../assets/signInGate-DONOJKLE.js">
-  <link rel="modulepreload" crossorigin href="../../assets/freeShellNav-CuWdvzYc.js">
+body.game-shell[data-game="temple-dash"]{--game-accent:#e2563a;--shell-accent:#e2563a;}</style>  <script type="module" crossorigin src="../../assets/templeDash-1ppaXKvp.js"></script>
+  <link rel="modulepreload" crossorigin href="../../assets/index-BTp2rKqC.js">
+  <link rel="modulepreload" crossorigin href="../../assets/tournaments-B2vmIuU1.js">
+  <link rel="modulepreload" crossorigin href="../../assets/signInGate-vfHr4nw1.js">
+  <link rel="modulepreload" crossorigin href="../../assets/freeShellNav-h2vFWYHl.js">
   <link rel="modulepreload" crossorigin href="../../assets/loop-BDek7L7e.js">
   <link rel="modulepreload" crossorigin href="../../assets/input-DF-0NnhL.js">
-  <link rel="modulepreload" crossorigin href="../../assets/freeGameShell-BquAsIVp.js">
+  <link rel="modulepreload" crossorigin href="../../assets/freeGameShell-CD4LJiW4.js">
   <link rel="modulepreload" crossorigin href="../../assets/fx-ccUjo7Ds.js">
   <link rel="stylesheet" crossorigin href="../../assets/signInGate-CW9ugQCN.css">
-  <link rel="stylesheet" crossorigin href="../../assets/freeShellNav-Dxjbszlz.css">
-  <link rel="stylesheet" crossorigin href="../../assets/templeDash-ChtJdQ6b.css">
+  <link rel="stylesheet" crossorigin href="../../assets/freeShellNav-AJAOiSqF.css">
+  <link rel="stylesheet" crossorigin href="../../assets/templeDash-LIE7gk8l.css">
 </head>
   <body class="game-shell" data-game="temple-dash">
     <div id="stage" class="td-stage game-shell-stage">
@@ -118,19 +118,32 @@ body.game-shell[data-game="temple-dash"]{--game-accent:#e2563a;--shell-accent:#e
       <button id="closeBtn" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
 
       <div id="hud">
-        <div class="hud-top">
-          <div class="hud-stats">
-            <div class="stat"><span data-i18n="td.score">Score</span><strong id="scoreVal">0</strong></div>
-            <div class="stat"><span>💎 <span data-i18n="td.gems">Gems</span></span><strong id="coinsVal">0</strong></div>
-            <div class="stat biome"><span id="biomeVal">Jungle</span></div>
+        <div class="td-hud-row">
+          <div class="td-hud-cards">
+            <div class="td-card td-card--score">
+              <span class="td-card-label" data-i18n="td.score">Score</span>
+              <strong class="td-card-value" id="scoreVal">0</strong>
+            </div>
+            <div class="td-card">
+              <span class="td-card-label" data-i18n="td.distance">Distance</span>
+              <strong class="td-card-value" id="distVal">0m</strong>
+            </div>
+            <div class="td-card td-card--coins">
+              <span class="td-card-label">💎 <span data-i18n="td.gems">Gems</span></span>
+              <strong class="td-card-value" id="coinsVal">0</strong>
+            </div>
+            <div class="td-card td-card--mission">
+              <span class="td-card-label" data-i18n="td.mission">Mission</span>
+              <span class="td-mission-text" id="biomeVal">Highlands</span>
+            </div>
           </div>
-          <div class="hud-buttons">
-            <button id="settingsBtn" aria-label="Settings">⚙</button>
-            <button id="muteBtn" aria-label="Sound">🔊</button>
-            <button id="pauseBtn" aria-label="Pause">⏸</button>
+          <div class="td-hud-btns">
+            <button id="settingsBtn" class="td-btn" aria-label="Settings">⚙</button>
+            <button id="muteBtn" class="td-btn" aria-label="Sound">🔊</button>
+            <button id="pauseBtn" class="td-btn td-btn--pause" aria-label="Pause">⏸</button>
           </div>
         </div>
-        <div class="hud-powerups" id="powerChips"></div>
+        <div class="td-powerups" id="powerChips"></div>
       </div>
 
       <div id="menuOverlay" class="game-overlay">
@@ -155,12 +168,29 @@ body.game-shell[data-game="temple-dash"]{--game-accent:#e2563a;--shell-accent:#e
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
-          <div class="shell-over-final">
-            <div class="shell-over-stat"><span data-i18n="td.score">Score</span><strong id="finalScore">0</strong></div>
-            <div class="shell-over-stat"><span data-i18n="td.best">Best</span><strong id="finalBest">0</strong></div>
+          <div class="td-over-stats">
+            <div class="td-over-stat td-over-stat--hero">
+              <span data-i18n="td.score">Score</span>
+              <strong id="finalScore">0</strong>
+            </div>
+            <div class="td-over-stat">
+              <span data-i18n="td.distance">Distance</span>
+              <strong id="finalDist">0m</strong>
+            </div>
+            <div class="td-over-stat">
+              <span data-i18n="td.gems">Gems</span>
+              <strong id="finalCoins">0</strong>
+            </div>
+            <div class="td-over-stat">
+              <span data-i18n="td.best">Best</span>
+              <strong id="finalBest">0</strong>
+            </div>
           </div>
           <div class="shell-run-reward" id="runReward"></div>
-          <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
+          <div class="td-over-actions">
+            <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
+            <a href="../../" class="btn" data-i18n="td.back">All games</a>
+          </div>
         </div>
       </div>
 

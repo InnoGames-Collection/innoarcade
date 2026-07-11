@@ -1,6 +1,7 @@
 import '../../styles/base.css';
 import '../../styles/game-shell.css';
 import './style.css';
+import './polish.css';
 import { applyTranslations, getLang, t } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
 import { Input } from '../../engine/input';
@@ -13,7 +14,7 @@ import { GameHost } from '../../platform/gameHost';
 import {
   standardStateOverlay, wireFreeEngineMain, wireMutePause,
 } from '../../platform/freeGameShell';
-import { sfx } from '../../engine/audio';
+import { tdSfx } from './sounds';
 import { TempleDash, W, H, GAME_ID, type GameState } from './game';
 import { kenneySheetDefs, skinSheetDefs, DEFAULT_SKIN_ID } from './art';
 
@@ -22,6 +23,17 @@ const host = new GameHost(GAME_ID);
 
 registerPwa();
 void boot();
+
+/** Smooth animated counter for HUD values. */
+function animateCounter(el: HTMLElement, target: number, suffix = ''): void {
+  const current = parseInt(el.dataset.val ?? '0', 10) || 0;
+  if (current === target) return;
+  el.dataset.val = String(target);
+  el.classList.remove('td-pop');
+  void el.offsetWidth;
+  el.classList.add('td-pop');
+  el.textContent = target.toLocaleString() + suffix;
+}
 
 async function boot(): Promise<void> {
   const assets = new AssetStore();
@@ -40,9 +52,12 @@ function run(assets: AssetStore, assetsReady: Promise<void>): void {
   const settingsPanel = new SettingsPanel();
 
   let runStart = 0;
+  let lastCoins = 0;
+  let lastScore = 0;
 
   const scoreVal = $('#scoreVal');
   const coinsVal = $('#coinsVal');
+  const distVal = $('#distVal');
   const biomeVal = $('#biomeVal');
   const powerChips = $('#powerChips');
   let chipSig = '';
@@ -74,6 +89,8 @@ function run(assets: AssetStore, assetsReady: Promise<void>): void {
   game.start = () => {
     void assetsReady.then(() => {
       runStart = Date.now();
+      lastCoins = 0;
+      lastScore = 0;
       origStart();
     });
   };
@@ -85,8 +102,12 @@ function run(assets: AssetStore, assetsReady: Promise<void>): void {
     if (s === 'menu') shell.refreshMenu();
   };
 
-  game.onGameOver = (score, _coins, record) => {
+  game.onGameOver = (score, coins, record) => {
     shell.handleGameOver(score, record);
+    animateCounter($('#finalDist'), game.distance, 'm');
+    animateCounter($('#finalCoins'), coins);
+    animateCounter($('#finalScore'), score);
+    if (record) tdSfx.victory();
   };
 
   const input = new Input(document.body);
@@ -103,9 +124,12 @@ function run(assets: AssetStore, assetsReady: Promise<void>): void {
     if (game.state === 'playing') game.pause();
     else if (game.state === 'paused') game.resume();
   });
-  $('#settingsBtn').addEventListener('click', () => settingsPanel.toggle());
+  $('#settingsBtn').addEventListener('click', () => { tdSfx.click(); settingsPanel.toggle(); });
+  document.querySelectorAll('.btn').forEach((btn) => {
+    btn.addEventListener('click', () => tdSfx.click());
+  });
 
-  wireMutePause($('#muteBtn'), null, game, sfx);
+  wireMutePause($('#muteBtn'), null, game, tdSfx);
   document.addEventListener('visibilitychange', () => { if (document.hidden) game.pause(); });
 
   game.setSkin(DEFAULT_SKIN_ID);
@@ -114,8 +138,13 @@ function run(assets: AssetStore, assetsReady: Promise<void>): void {
   });
 
   function updateHud(): void {
-    scoreVal.textContent = String(game.score);
-    coinsVal.textContent = String(game.coins);
+    animateCounter(scoreVal, game.score);
+    animateCounter(coinsVal, game.coins);
+    animateCounter(distVal, game.distance, 'm');
+
+    if (game.coins > lastCoins) lastCoins = game.coins;
+    if (game.score > lastScore) lastScore = game.score;
+
     if (game.state === 'playing') {
       const tierKeys = { normal: 'td.diffNormal', hard: 'td.diffHard', extreme: 'td.diffExtreme' } as const;
       biomeVal.textContent = `${game.biomeName} · ${t(tierKeys[game.difficultyTier()])}`;
