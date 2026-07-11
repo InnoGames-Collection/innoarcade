@@ -10,7 +10,7 @@ import {
   countdown, type Tournament,
 } from '../platform/tournaments';
 import { etbPrizesForCadence, formatEtbPrize, config, TOURNAMENT_ETB_PRIZES } from '../platform/config';
-import { getChallengeProgress, type ChallengeProgress, type ProgressItem, type ActivityItem, type HubNotification } from '../platform/portalState';
+import { getChallengeProgress, type ChallengeProgress, type ProgressItem, type ActivityItem, type HubNotification, getOnlineCount } from '../platform/portalState';
 import { type LeaderEntry } from '../platform/tournaments';
 
 export function escapeHtml(s: string): string {
@@ -169,6 +169,10 @@ export function featuredTournamentBannerHtml(opts: FeaturedBannerOpts): string {
   const prizes = TOURNAMENT_ETB_PRIZES[opts.gameId] ?? etbPrizesForCadence(opts.cadence);
   const top = prizes[0] ?? 0;
   const pool = prizes.reduce((s, p) => s + p, 0);
+  const online = getOnlineCount();
+  const onlineLabel = online > 0
+    ? t('hub.onlinePlayers').replace('{n}', fmtPlayCount(online))
+    : t('hub.onlinePlayers').replace('{n}', '0');
   const eyebrowKey = opts.cadence === 'weekly' ? 'hub.weeklyChampionship' : 'hub.monthlyChampionship';
   const bannerClass = opts.cadence === 'weekly' ? 'weekly-banner' : 'weekly-banner monthly-banner';
   return `
@@ -189,10 +193,14 @@ export function featuredTournamentBannerHtml(opts: FeaturedBannerOpts): string {
           </div>
           <div class="wb-stat">
             <span class="wb-stat-lbl" data-i18n="hub.endsIn">${t('hub.endsIn')}</span>
-            <strong class="wb-stat-val wb-stat-val--sub" data-ends="${opts.tour.endsAt}">${fmtCountdown(opts.tour.endsAt, opts.lang)}</strong>
+            <strong class="wb-stat-val wb-stat-val--sub wb-countdown" data-ends="${opts.tour.endsAt}">${fmtCountdown(opts.tour.endsAt, opts.lang)}</strong>
+          </div>
+          <div class="wb-stat">
+            <span class="wb-stat-lbl" data-i18n="hub.playersOnline">${t('hub.playersOnline')}</span>
+            <strong class="wb-stat-val wb-stat-val--sub wb-online-count">${escapeHtml(onlineLabel)}</strong>
           </div>
         </div>
-        <a class="btn primary wb-cta" href="${opts.gameRoute}" data-i18n="hub.joinTournament">${t('hub.joinTournament')}</a>
+        <a class="btn primary wb-cta" href="${opts.gameRoute}" data-i18n="hub.joinNow">${t('hub.joinNow')}</a>
       </div>
     </article>`;
 }

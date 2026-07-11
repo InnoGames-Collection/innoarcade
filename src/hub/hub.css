@@ -1497,6 +1497,79 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .gc-stat { display: flex; align-items: center; gap: 0.15rem; }
 .gc-stat-ico { font-size: 0.68rem; }
+
+/* Tournament grid cards — prize pool, countdown, players online */
+.gc-tour-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.55rem;
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(234, 248, 216, 0.65) 0%, rgba(255, 255, 255, 0.9) 100%);
+  border: 1px solid rgba(79, 158, 22, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+.gc-tour-stat { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.gc-tour-stat--online { grid-column: 1 / -1; }
+.gc-tour-lbl {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+.gc-tour-val {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gc-tour-stat--countdown .gc-tour-val { color: var(--accent-2); }
+.gc-tour-stat--online .gc-tour-val { color: var(--accent); }
+.gc-countdown,
+.wb-countdown {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+.gc-countdown.is-ticking,
+.wb-countdown.is-ticking {
+  animation: gc-countdown-tick 0.36s ease;
+}
+@keyframes gc-countdown-tick {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.78; transform: scale(0.98); }
+}
+.game-card--weekly .gc-tour-meta {
+  background: linear-gradient(145deg, rgba(47, 143, 230, 0.1) 0%, rgba(255, 255, 255, 0.92) 100%);
+  border-color: rgba(31, 116, 224, 0.14);
+}
+.game-card--monthly .gc-tour-meta {
+  background: linear-gradient(145deg, rgba(108, 197, 47, 0.12) 0%, rgba(255, 255, 255, 0.92) 100%);
+}
+.game-card--daily .gc-tour-meta {
+  background: linear-gradient(145deg, rgba(107, 76, 255, 0.1) 0%, rgba(255, 255, 255, 0.92) 100%);
+  border-color: rgba(107, 76, 255, 0.14);
+}
+.game-card--compact .gc-tour-meta {
+  padding: 0.45rem 0.5rem;
+  gap: 0.35rem 0.45rem;
+  margin-bottom: 0.35rem;
+}
+.game-card--compact .gc-tour-lbl { font-size: 0.52rem; }
+.game-card--compact .gc-tour-val { font-size: 0.65rem; }
+.game-card--tournament.game-card--weekly,
+.game-card--weekly { border-color: rgba(31, 116, 224, 0.18); }
+.game-card--monthly { border-color: rgba(79, 158, 22, 0.2); }
+@media (prefers-reduced-motion: reduce) {
+  .gc-countdown.is-ticking,
+  .wb-countdown.is-ticking { animation: none; }
+}
+
 .game-card--compact .gc-stats { margin-bottom: 0.35rem; }
 .game-card--compact .gc-title { font-size: 0.88rem; }
 .game-card--compact .gc-play-btn {
@@ -1555,6 +1628,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .wb-stat-lbl { display: block; font-size: 0.72rem; opacity: 0.8; }
 .wb-stat-val { font-size: 1.35rem; font-weight: 900; color: #ffd66b; }
 .wb-stat-val--sub { font-size: 1rem; }
+.wb-online-count { color: #b8f08a; }
 .wb-stat--hero .wb-stat-val { font-size: clamp(1.2rem, 4vw, 1.5rem); }
 @media (max-width: 720px) {
   .featured-tournaments-grid { grid-template-columns: 1fr; }

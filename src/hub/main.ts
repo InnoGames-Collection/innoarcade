@@ -443,6 +443,34 @@ function badgeTag(g: GameMeta): string {
   return '';
 }
 
+function tournamentPoolEtb(g: GameMeta): number {
+  const prizes = TOURNAMENT_ETB_PRIZES[g.id] ?? etbPrizesForCadence(g.tournament ?? 'monthly');
+  return prizes.reduce((s, p) => s + p, 0);
+}
+
+function tournamentCardMeta(g: GameMeta, tour: Tournament | undefined): string {
+  if (g.mode !== 'tournament' || !tour) return gameCardStats(g);
+  const pool = tournamentPoolEtb(g);
+  const poolStr = pool > 0 ? formatEtbPrize(pool, lang()) : '—';
+  const online = getOnlineCount();
+  const onlineStr = t('hub.onlinePlayers').replace('{n}', online > 0 ? fmtPlayCount(online) : '0');
+  return `
+    <div class="gc-tour-meta">
+      <div class="gc-tour-stat">
+        <span class="gc-tour-lbl" data-i18n="td.prizePool">${t('td.prizePool')}</span>
+        <strong class="gc-tour-val">${escapeHtml(poolStr)}</strong>
+      </div>
+      <div class="gc-tour-stat gc-tour-stat--countdown">
+        <span class="gc-tour-lbl" data-i18n="hub.endsIn">${t('hub.endsIn')}</span>
+        <strong class="gc-tour-val gc-countdown" data-ends="${tour.endsAt}">${escapeHtml(fmt(tour.endsAt))}</strong>
+      </div>
+      <div class="gc-tour-stat gc-tour-stat--online">
+        <span class="gc-tour-lbl" data-i18n="hub.playersOnline">${t('hub.playersOnline')}</span>
+        <strong class="gc-tour-val gc-tour-online">${escapeHtml(onlineStr)}</strong>
+      </div>
+    </div>`;
+}
+
 function gameCardStats(g: GameMeta): string {
   const plays = gamePlayCounts[g.id];
   const playStr = plays != null && plays > 0 ? fmtPlayCount(plays) : '—';
@@ -469,6 +497,7 @@ function gameCard(g: GameMeta, opts?: { compact?: boolean; animIndex?: number })
     ? ''
     : ` style="background:linear-gradient(145deg,${g.thumb[0]},${g.thumb[1]})"`;
   const cardStyle = opts?.animIndex != null ? ` style="--card-i:${opts.animIndex}"` : '';
+  const playLabel = g.mode === 'tournament' ? t('hub.joinNow') : t('hub.playNow');
   const thumb = `
       <div class="gc-thumb gc-thumb-cover"${thumbStyle}>
         ${cover
@@ -486,9 +515,9 @@ function gameCard(g: GameMeta, opts?: { compact?: boolean; animIndex?: number })
       <div class="gc-body">
         <h4 class="gc-title">${escapeHtml(name(g))}</h4>
         <p class="gc-sub gc-sub--${cadence}">${cadenceSubtitle(g)}</p>
-        ${gameCardStats(g)}
+        ${tournamentCardMeta(g, tour)}
         <span class="gc-play-btn gc-play-btn--${cadence}">
-          <span class="gc-play-label">${t('hub.playNow')}</span>
+          <span class="gc-play-label">${playLabel}</span>
           <span class="gc-play-arrow" aria-hidden="true">▶</span>
         </span>
       </div>
@@ -1028,6 +1057,11 @@ function tickCountdowns(): void {
   });
   document.querySelectorAll<HTMLElement>('strong[data-ends]').forEach((el) => {
     el.textContent = fmt(Number(el.dataset.ends));
+  });
+  document.querySelectorAll<HTMLElement>('.gc-countdown[data-ends], .wb-countdown[data-ends]').forEach((el) => {
+    el.textContent = fmt(Number(el.dataset.ends));
+    el.classList.add('is-ticking');
+    window.setTimeout(() => el.classList.remove('is-ticking'), 360);
   });
 }
 
