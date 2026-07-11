@@ -1,66 +1,980 @@
+/* ============================================================
+   Jewel Match — Premium Commercial Polish
+   Ethio Telecom design language: green · blue · white
+   ============================================================ */
+
+/* --- Design tokens --- */
 body.game-shell[data-game="jewel-match"] {
-  padding: 10px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  --jm-green: #1a6b3a;
+  --jm-green-light: #2ecc71;
+  --jm-emerald: #0d4a32;
+  --jm-blue: #1a4fa0;
+  --jm-blue-light: #4a9eff;
+  --jm-royal: #1f3d8f;
+  --jm-gold: #ffd700;
+  --jm-crystal: rgba(180, 230, 255, 0.6);
+  --jm-glass: rgba(255, 255, 255, 0.85);
+  --jm-glass-border: rgba(255, 255, 255, 0.55);
+  --jm-shadow: 0 8px 32px rgba(26, 79, 160, 0.18), 0 2px 8px rgba(26, 107, 58, 0.1);
+  --jm-shadow-lg: 0 16px 48px rgba(26, 79, 160, 0.25), 0 4px 16px rgba(26, 107, 58, 0.12);
+  --jm-radius: 20px;
+  --jm-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --jm-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --game-accent: #2ecc71;
+  padding: 0;
   min-height: 100dvh;
-}
-
-body.game-shell[data-game="jewel-match"]:has(#fcPlayFrame:not(.hidden)) {
+  display: flex;
   align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse 100% 70% at 50% -10%, rgba(46, 204, 113, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 90% 90%, rgba(26, 79, 160, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 5% 70%, rgba(74, 158, 255, 0.2) 0%, transparent 50%),
+    linear-gradient(165deg, #0a1f2e 0%, #0d2a3d 25%, #0a2235 50%, #0d1f30 75%, #081520 100%);
+  background-attachment: fixed;
 }
 
-#jewel-match-game-wrapper {
+body.game-shell[data-game="jewel-match"] .fc-stage {
+  width: min(100%, 480px);
+  min-height: min(calc(100dvh - 16px), 720px);
+  max-height: min(calc(100dvh - 16px), 720px);
+  border-radius: var(--jm-radius);
+  box-shadow: var(--jm-shadow-lg);
+  overflow: hidden;
+  position: relative;
+}
+
+/* --- Animated background layers --- */
+.jm-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.jm-bg-rays {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    rgba(46, 204, 113, 0.05) 15deg,
+    transparent 30deg,
+    rgba(74, 158, 255, 0.04) 50deg,
+    transparent 70deg,
+    rgba(255, 255, 255, 0.03) 90deg,
+    transparent 110deg
+  );
+  animation: jm-rays-spin 80s linear infinite;
+}
+
+@keyframes jm-rays-spin {
+  to { transform: rotate(360deg); }
+}
+
+.jm-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0, 10, 20, 0.55) 100%);
+  pointer-events: none;
+}
+
+.jm-bg-sparkles,
+.jm-bg-crystals {
+  position: absolute;
+  inset: 0;
+}
+
+.jm-sparkle-dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 8px rgba(180, 230, 255, 0.8), 0 0 4px rgba(46, 204, 113, 0.5);
+  animation: jm-sparkle-float var(--jm-dur, 4s) ease-in-out infinite;
+  animation-delay: var(--jm-delay, 0s);
+}
+
+@keyframes jm-sparkle-float {
+  0%, 100% { opacity: 0.15; transform: translateY(0) scale(0.7); }
+  50% { opacity: 1; transform: translateY(-14px) scale(1.3); }
+}
+
+.jm-crystal-particle {
+  position: absolute;
+  border-radius: 3px;
+  background: linear-gradient(135deg, rgba(180, 230, 255, 0.4), rgba(46, 204, 113, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transform: rotate(45deg);
+  animation: jm-crystal-rise var(--jm-dur, 9s) ease-in-out infinite;
+  animation-delay: var(--jm-delay, 0s);
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.3);
+}
+
+@keyframes jm-crystal-rise {
+  0% { transform: rotate(45deg) translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.4; }
+  100% { transform: rotate(45deg) translateY(-140px) translateX(var(--jm-drift, 10px)); opacity: 0; }
+}
+
+.jm-crystal-deco {
+  position: absolute;
+  font-size: 1.2rem;
+  opacity: 0.08;
+  color: rgba(180, 230, 255, 0.8);
+  animation: jm-deco-float 7s ease-in-out infinite;
+  animation-delay: var(--jm-delay, 0s);
+  pointer-events: none;
+}
+
+@keyframes jm-deco-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(8deg); }
+}
+
+/* --- Play frame --- */
+body.game-shell[data-game="jewel-match"] .fc-backdrop {
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(46, 204, 113, 0.15) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(26, 79, 160, 0.2) 0%, transparent 50%),
+    linear-gradient(180deg, #0d2235 0%, #0a1a28 50%, #081420 100%);
+  border-radius: inherit;
+}
+
+body.game-shell[data-game="jewel-match"] .fc-playframe {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding:
+    max(2.8rem, calc(env(safe-area-inset-top, 0px) + 2.8rem))
+    clamp(8px, 2vw, 14px)
+    clamp(10px, 2.5vw, 16px)
+    clamp(8px, 2vw, 14px);
+  gap: 10px;
+}
+
+body.game-shell[data-game="jewel-match"] #jewel-match-game-wrapper {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+body.game-shell[data-game="jewel-match"] #fpStats { display: none !important; }
+
+/* --- Premium HUD --- */
+.jm-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.jm-hud-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.jm-hud-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 6px 7px;
+  background: var(--jm-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--jm-glass-border);
+  border-radius: 14px;
+  box-shadow: var(--jm-shadow);
+  min-width: 0;
+  transition: transform 0.2s var(--jm-ease-out), box-shadow 0.2s;
+}
+
+.jm-hud-card--score { border-top: 2px solid var(--jm-blue-light); }
+.jm-hud-card--target { border-top: 2px solid var(--jm-green-light); }
+.jm-hud-card--moves { border-top: 2px solid var(--jm-gold); }
+.jm-hud-card--level { border-top: 2px solid var(--jm-crystal); }
+.jm-hud-card--best { border-top: 2px solid var(--jm-blue); }
+
+.jm-hud-icon {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  color: var(--jm-blue);
+}
+
+.jm-hud-card--score .jm-hud-icon { color: var(--jm-blue-light); }
+.jm-hud-card--moves .jm-hud-icon { color: var(--jm-gold); }
+.jm-hud-card--level .jm-hud-icon { color: var(--jm-green-light); }
+.jm-hud-card--best .jm-hud-icon { color: var(--jm-green); }
+.jm-hud-card--target .jm-hud-icon { color: var(--jm-green-light); }
+
+.jm-hud-icon svg { width: 100%; height: 100%; }
+
+.jm-hud-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(10, 30, 50, 0.55);
+}
+
+.jm-hud-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--jm-green);
+  line-height: 1.1;
+  transition: transform 0.25s var(--jm-ease);
+}
+
+.jm-hud-card--score .jm-hud-value { color: var(--jm-blue); }
+.jm-hud-card--moves .jm-hud-value { color: var(--jm-royal); }
+
+.jm-hud-value--pulse {
+  animation: jm-value-pulse 0.35s var(--jm-ease);
+}
+
+@keyframes jm-value-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.jm-hud-actions {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.jm-hud-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(255,255,255,0.7));
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--jm-glass-border);
+  box-shadow: var(--jm-shadow);
+  color: var(--jm-blue);
+  cursor: pointer;
+  transition: transform 0.15s var(--jm-ease), box-shadow 0.15s;
+  padding: 0;
+}
+
+.jm-hud-btn svg { width: 18px; height: 18px; }
+.jm-hud-btn:hover { transform: scale(1.06); box-shadow: var(--jm-shadow-lg); }
+.jm-hud-btn:active { transform: scale(0.94); }
+.jm-hud-btn--muted { color: rgba(10, 30, 50, 0.35); }
+
+/* --- Game board frame --- */
+.jm-board-wrap {
+  position: relative;
+  width: 100%;
+  max-width: min(100%, 400px);
+  margin: 0 auto;
+}
+
+.jm-board-frame {
+  position: relative;
+  padding: 14px;
+  border-radius: 22px;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(46, 204, 113, 0.08) 30%,
+    rgba(26, 79, 160, 0.12) 70%,
+    rgba(255, 255, 255, 0.06) 100%);
+  border: 2px solid rgba(180, 230, 255, 0.25);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.35),
+    0 4px 16px rgba(26, 79, 160, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 12px rgba(0, 0, 0, 0.2),
+    0 0 30px rgba(46, 204, 113, 0.08);
+  transform: translateY(-2px);
+}
+
+.jm-board-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 45%, rgba(74, 158, 255, 0.05) 100%);
+  pointer-events: none;
+}
+
+.jm-board-frame::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
 #jewel-match-game-wrapper .board {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 6px;
+  gap: 5px;
   width: 100%;
-  max-width: min(100%, 400px);
   padding: 10px;
-  border-radius: 14px;
-  background: linear-gradient(168deg, #2a3548 0%, #1e2838 45%, #151d2a 100%);
-  border: 2px solid rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 3px 14px rgba(0, 0, 0, 0.45), 0 10px 28px rgba(0, 0, 0, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(168deg, #1a2a3d 0%, #142030 45%, #0e1825 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 4px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   touch-action: none;
   user-select: none;
+  position: relative;
+  z-index: 1;
 }
 
 #jewel-match-game-wrapper .tile {
   width: 100%;
   aspect-ratio: 1;
   border: none;
-  cursor: pointer;
+  cursor: grab;
   position: relative;
+  will-change: transform;
+  transition: transform 0.12s var(--jm-ease-out);
 }
 
-#jewel-match-game-wrapper .tile.empty { background: transparent; box-shadow: none; }
+#jewel-match-game-wrapper .tile:active:not(:disabled) { cursor: grabbing; }
+
+#jewel-match-game-wrapper .tile.empty {
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.3);
+}
+
 #jewel-match-game-wrapper .tile.empty::before,
 #jewel-match-game-wrapper .tile.empty::after { display: none; }
 
-.combo {
-  position: fixed;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.6);
-  font-size: 2rem;
-  font-weight: 800;
-  color: #ffd700;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  z-index: 100;
+.tile.jm-settle {
+  animation: jm-tile-settle 0.3s var(--jm-ease) forwards;
 }
 
-.combo.show {
+@keyframes jm-tile-settle {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* --- FX layer --- */
+.jm-fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.jm-score-pop {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(0.5);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--jm-gold);
+  text-shadow:
+    0 0 10px rgba(255, 215, 0, 0.7),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  white-space: nowrap;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.jm-score-pop--big {
+  font-size: 1.5rem;
+  color: #fff;
+  text-shadow: 0 0 14px var(--jm-green-light), 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.jm-score-pop--active {
+  animation: jm-score-rise 0.85s var(--jm-ease-out) forwards;
+}
+
+@keyframes jm-score-rise {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  20% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(0.9); }
+}
+
+.jm-particle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  pointer-events: none;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.jm-particle--active {
+  animation: jm-particle-fly 0.6s var(--jm-ease-out) forwards;
+}
+
+@keyframes jm-particle-fly {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--jm-px)), calc(-50% + var(--jm-py))) scale(0);
+    opacity: 0;
+  }
+}
+
+.jm-fragment {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  transform: translate(-50%, -50%) rotate(0deg);
+  opacity: 1;
+  pointer-events: none;
+}
+
+.jm-fragment--active {
+  animation: jm-fragment-fly 0.65s var(--jm-ease-out) forwards;
+}
+
+@keyframes jm-fragment-fly {
+  0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--jm-fx)), calc(-50% + var(--jm-fy))) rotate(var(--jm-rot)) scale(0);
+    opacity: 0;
+  }
+}
+
+.jm-sparkle {
+  position: absolute;
+  font-size: 0.9rem;
+  color: var(--jm-gold);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.9);
+  animation: jm-sparkle-burst 0.75s var(--jm-ease-out) forwards;
+}
+
+@keyframes jm-sparkle-burst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+  30% { opacity: 1; transform: translate(-50%, -60%) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -90%) scale(0.6); }
+}
+
+.jm-celebration {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  font-size: clamp(1.4rem, 6vw, 2rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  white-space: nowrap;
+  z-index: 70;
+  text-align: center;
+  pointer-events: none;
+}
+
+.jm-celebration--low {
+  color: var(--jm-green-light);
+  text-shadow: 0 2px 14px rgba(46, 204, 113, 0.5);
+}
+
+.jm-celebration--mid {
+  color: var(--jm-blue-light);
+  text-shadow: 0 0 22px rgba(74, 158, 255, 0.6), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.jm-celebration--high {
+  background: linear-gradient(135deg, var(--jm-gold), var(--jm-green-light), var(--jm-blue-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 10px rgba(46, 204, 113, 0.5));
+  font-size: clamp(1.6rem, 7vw, 2.4rem);
+}
+
+.jm-celebration--active {
+  animation: jm-celebration-pop 1.1s var(--jm-ease) forwards;
+}
+
+@keyframes jm-celebration-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  25% { opacity: 1; transform: translate(-50%, -55%) scale(1.2); }
+  70% { opacity: 1; transform: translate(-50%, -58%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -75%) scale(0.95); }
+}
+
+.jm-light-burst {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(180, 230, 255, 0.45) 0%, transparent 60%);
+  opacity: 0;
+  z-index: 55;
+}
+
+.jm-light-burst--active {
+  animation: jm-light-flash 0.5s ease-out forwards;
+}
+
+@keyframes jm-light-flash {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.jm-confetti {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: jm-confetti-fall 2s var(--jm-ease-out) forwards;
+}
+
+@keyframes jm-confetti-fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% {
+    opacity: 0;
+    transform: translate(var(--jm-cx), var(--jm-cy)) rotate(var(--jm-rot));
+  }
+}
+
+.jm-firework {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 1;
+}
+
+.jm-firework--active {
+  animation: jm-firework-burst 0.8s var(--jm-ease-out) forwards;
+}
+
+@keyframes jm-firework-burst {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--jm-fx)), calc(-50% + var(--jm-fy))) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Screen shake */
+.jm-shake-light { animation: jm-shake 0.3s ease-out; }
+.jm-shake-medium { animation: jm-shake-md 0.35s ease-out; }
+.jm-shake-heavy { animation: jm-shake-hv 0.4s ease-out; }
+
+@keyframes jm-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  75% { transform: translate(2px, -1px); }
+}
+
+@keyframes jm-shake-md {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-3px, -1px); }
+  80% { transform: translate(3px, 1px); }
+}
+
+@keyframes jm-shake-hv {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-6px, 3px); }
+  30% { transform: translate(6px, -3px); }
+  45% { transform: translate(-5px, -2px); }
+  60% { transform: translate(5px, 2px); }
+  75% { transform: translate(-3px, 1px); }
+}
+
+.jm-camera-pulse {
+  animation: jm-camera-pulse 0.4s var(--jm-ease-out);
+}
+
+@keyframes jm-camera-pulse {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.015); }
+}
+
+/* Legacy combo element hidden */
+.combo { display: none !important; }
+
+/* --- Start screen --- */
+body.game-shell[data-game="jewel-match"] #menuOverlay {
+  background: rgba(4, 15, 25, 0.6);
+  backdrop-filter: blur(10px);
+}
+
+body.game-shell[data-game="jewel-match"] #menuOverlay .game-panel {
+  background: var(--jm-glass);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--jm-glass-border);
+  border-radius: 24px;
+  box-shadow: var(--jm-shadow-lg);
+  padding: 32px 28px 28px;
+  width: min(360px, 94%);
+  gap: 16px;
+}
+
+.jm-menu-title {
+  font-size: clamp(1.8rem, 7vw, 2.4rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--jm-green-light) 0%, var(--jm-blue-light) 50%, var(--jm-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  animation: jm-title-glow 3s ease-in-out infinite;
+}
+
+@keyframes jm-title-glow {
+  0%, 100% { filter: drop-shadow(0 2px 10px rgba(46, 204, 113, 0.4)); }
+  50% { filter: drop-shadow(0 4px 18px rgba(74, 158, 255, 0.5)); }
+}
+
+.jm-menu-icon {
+  font-size: 3.5rem;
+  display: block;
+  animation: jm-icon-bounce 2s var(--jm-ease) infinite;
+  filter: drop-shadow(0 4px 16px rgba(46, 204, 113, 0.4));
+}
+
+@keyframes jm-icon-bounce {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
+}
+
+.jm-menu-best {
+  font-size: 0.88rem;
+  color: rgba(10, 30, 50, 0.65);
+  font-weight: 600;
+}
+
+.jm-menu-best strong {
+  color: var(--jm-blue);
+  font-weight: 800;
+}
+
+.jm-menu-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.jm-menu-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1px solid var(--jm-glass-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--jm-blue);
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s var(--jm-ease), box-shadow 0.15s, background 0.15s;
+  box-shadow: 0 2px 8px rgba(26, 79, 160, 0.08);
+}
+
+.jm-menu-nav-btn:hover {
+  transform: scale(1.04);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--jm-shadow);
+}
+
+.jm-menu-nav-btn:active { transform: scale(0.96); }
+
+body.game-shell[data-game="jewel-match"] #startBtn,
+body.game-shell[data-game="jewel-match"] #againBtn,
+body.game-shell[data-game="jewel-match"] .jm-btn-primary {
+  width: 100%;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 16px;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(145deg, var(--jm-green-light) 0%, var(--jm-green) 45%, var(--jm-blue) 100%);
+  box-shadow:
+    0 6px 22px rgba(26, 107, 58, 0.4),
+    0 2px 8px rgba(26, 79, 160, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s var(--jm-ease), box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+body.game-shell[data-game="jewel-match"] #startBtn::after,
+body.game-shell[data-game="jewel-match"] #againBtn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+body.game-shell[data-game="jewel-match"] #startBtn:hover,
+body.game-shell[data-game="jewel-match"] #againBtn:hover {
+  transform: scale(1.03) translateY(-1px);
+  box-shadow:
+    0 8px 30px rgba(26, 107, 58, 0.45),
+    0 4px 12px rgba(26, 79, 160, 0.3);
+}
+
+body.game-shell[data-game="jewel-match"] #startBtn:active,
+body.game-shell[data-game="jewel-match"] #againBtn:active {
+  transform: scale(0.97);
+}
+
+body.game-shell[data-game="jewel-match"] .jm-btn-secondary {
+  width: 100%;
+  padding: 12px 20px;
+  border: 2px solid var(--jm-blue);
+  border-radius: 14px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--jm-blue);
+  background: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: transform 0.15s var(--jm-ease), background 0.15s;
+  display: block;
+  box-sizing: border-box;
+}
+
+body.game-shell[data-game="jewel-match"] .jm-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.02);
+}
+
+body.game-shell[data-game="jewel-match"] .jm-btn-secondary:active {
+  transform: scale(0.97);
+}
+
+/* --- Game over / Victory screens --- */
+body.game-shell[data-game="jewel-match"] #overOverlay {
+  background: rgba(4, 15, 25, 0.65);
+  backdrop-filter: blur(12px);
+}
+
+body.game-shell[data-game="jewel-match"] #overOverlay .game-panel {
+  background: var(--jm-glass);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--jm-glass-border);
+  border-radius: 24px;
+  box-shadow: var(--jm-shadow-lg);
+  padding: 28px 24px 24px;
+  width: min(360px, 94%);
+  gap: 12px;
+}
+
+body.game-shell[data-game="jewel-match"] #overOverlay.jm-victory .game-panel {
+  border-color: rgba(255, 215, 0, 0.45);
+  box-shadow: var(--jm-shadow-lg), 0 0 50px rgba(46, 204, 113, 0.2);
+}
+
+.jm-over-trophy {
+  font-size: 3.5rem;
+  animation: jm-trophy-bounce 1s var(--jm-ease) infinite;
+  filter: drop-shadow(0 4px 14px rgba(255, 215, 0, 0.55));
+}
+
+@keyframes jm-trophy-bounce {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-6px) rotate(5deg); }
+}
+
+.jm-over-title {
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  font-weight: 900;
+  margin: 0;
+  color: var(--jm-green);
+}
+
+.jm-over-title--win {
+  background: linear-gradient(135deg, var(--jm-gold), var(--jm-green-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.jm-over-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.jm-over-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  border: 1px solid var(--jm-glass-border);
+}
+
+.jm-over-stat span {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(10, 30, 50, 0.55);
+}
+
+.jm-over-stat strong {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--jm-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.jm-over-stat--highlight strong {
+  color: var(--jm-green);
+  font-size: 1.35rem;
+}
+
+.jm-stars {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  font-size: 1.8rem;
+}
+
+.jm-star {
+  opacity: 0.25;
+  transform: scale(0.7);
+  transition: opacity 0.3s, transform 0.4s var(--jm-ease);
+}
+
+.jm-star--lit {
+  opacity: 1;
+  transform: scale(1);
+  animation: jm-star-pop 0.5s var(--jm-ease);
+}
+
+@keyframes jm-star-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.jm-over-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Toast */
+body.game-shell[data-game="jewel-match"] .shell-toast,
+body.game-shell[data-game="jewel-match"] #toast {
+  background: rgba(26, 79, 160, 0.92);
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: var(--jm-shadow);
+}
+
+/* Close button polish */
+body.game-shell[data-game="jewel-match"] .gp-close-corner {
+  background: var(--jm-glass);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--jm-glass-border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  box-shadow: var(--jm-shadow);
+  transition: transform 0.15s var(--jm-ease);
+}
+
+body.game-shell[data-game="jewel-match"] .gp-close-corner:hover {
+  transform: scale(1.08);
+}
+
+body.game-shell[data-game="jewel-match"] .gp-close-corner:active {
+  transform: scale(0.92);
+}
+
+/* Pause overlay */
+body.game-shell[data-game="jewel-match"] #pauseOverlay .game-panel {
+  background: var(--jm-glass);
+  backdrop-filter: blur(24px);
+  border-radius: 24px;
+  border: 1px solid var(--jm-glass-border);
+}
+
+/* Shell reward strip */
+body.game-shell[data-game="jewel-match"] .shell-run-reward {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+body.game-shell[data-game="jewel-match"] .shell-rr-stat {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.65);
+  font-weight: 700;
+  font-size: 0.88rem;
+  animation: jm-reward-pop 0.5s var(--jm-ease);
+}
+
+@keyframes jm-reward-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 380px) {
+  .jm-hud-value { font-size: 0.92rem; }
+  .jm-hud-label { font-size: 0.52rem; }
+  #jewel-match-game-wrapper .board { gap: 4px; padding: 7px; }
+  .jm-board-frame { padding: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jm-bg-rays,
+  .jm-sparkle-dot,
+  .jm-crystal-particle,
+  .jm-crystal-deco,
+  .jm-menu-icon,
+  .jm-menu-title,
+  .jm-over-trophy {
+    animation: none;
+  }
 }

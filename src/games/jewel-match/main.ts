@@ -1,14 +1,37 @@
+// Jewel Match — match-3 with hub casual shell.
+// Gameplay logic is FINAL — this file only adds presentation polish.
+
 import '../../styles/base.css';
 import '../../styles/game-shell.css';
 import '../_casual/style.css';
 import '../_shared/premiumGems.css';
 import './style.css';
 import { applyTranslations, getLang } from '../../i18n';
-import { sfx } from '../../engine/audio';
 import { createHost } from '../../platform/gameHost';
 import { wireFreeCasualShell } from '../../platform/freeGameShell';
 import { finalizeArcadeScore, match3Score, scaleArcadeScore } from '../../platform/arcadeScore';
 import { showFirstRunHint } from '../_shared/firstRun';
+import { jmSfx } from './audio';
+import {
+  initFx,
+  spawnScorePopup,
+  spawnParticles,
+  spawnGemFragments,
+  spawnSparkles,
+  showCelebration,
+  screenShake,
+  cameraPulse,
+  tileCenter,
+  GEM_COLORS,
+  celebrationText,
+  celebrationTier,
+  scoreLabel,
+  animateCounter,
+  fireworks,
+  burstConfetti,
+  boardFlash,
+} from './fx';
+import { createHud, updateHud, resetHudDisplay, getPauseBtn, setBest } from './hud';
 
 const host = createHost('jewel-match');
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
@@ -30,15 +53,23 @@ let gameEnded = false;
 let runStart = 0;
 let dragPointerId: number | null = null;
 let drag: { from: number; startX: number; startY: number; dx: number; dy: number } | null = null;
+let maxCombo = 0;
+let totalCleared = 0;
+let serverBest = 0;
 
 const SWAP_PX = 28;
 const board = $('#board');
-const comboEl = $('#combo');
+const stage = $('#stage');
 
 function idx(r: number, c: number): number { return r * SIZE + c; }
 
 function randColor(): Color {
   return COLORS[Math.floor(Math.random() * COLORS.length)];
+}
+
+function gemClass(color: Color): string {
+  const mapped = color === 'topaz' ? 'amber' : color === 'diamond' ? 'aquamarine' : color;
+  return `pgem--${mapped}`;
 }
 
 function findMatches(g: (Color | null)[]): Set<number> {
@@ -69,7 +100,7 @@ function paintBoard(): void {
   grid.forEach((color, i) => {
     const tile = document.createElement('button');
     tile.type = 'button';
-    tile.className = 'tile pgem pgem--block' + (color ? ` pgem--${color === 'topaz' ? 'amber' : color === 'diamond' ? 'aquamarine' : color}` : ' empty');
+    tile.className = 'tile pgem pgem--block' + (color ? ` ${gemClass(color)}` : ' empty');
     tile.dataset.i = String(i);
     tile.disabled = busy || gameEnded || !color;
     board.appendChild(tile);
@@ -82,7 +113,11 @@ function tileEl(i: number): HTMLElement | null {
 }
 
 function clearDragVisuals(): void {
-  board.querySelectorAll<HTMLElement>('.tile').forEach((t) => { t.style.transform = ''; t.style.zIndex = ''; });
+  board.querySelectorAll<HTMLElement>('.tile').forEach((t) => {
+    t.style.transform = '';
+    t.style.zIndex = '';
+    t.style.transition = '';
+  });
 }
 
 function applyDragVisuals(): void {
@@ -90,45 +125,126 @@ function applyDragVisuals(): void {
   if (!drag) return;
   const from = tileEl(drag.from);
   if (!from) return;
+  from.style.transition = 'transform 0.08s cubic-bezier(0.22, 1, 0.36, 1)';
   from.style.transform = `translate(${drag.dx}px, ${drag.dy}px)`;
   from.style.zIndex = '2';
+
+  const row = Math.floor(drag.from / SIZE);
+  const col = drag.from % SIZE;
+  let neighbor = -1;
+  if (drag.dx > SWAP_PX && col < SIZE - 1) neighbor = drag.from + 1;
+  else if (drag.dx < -SWAP_PX && col > 0) neighbor = drag.from - 1;
+  else if (drag.dy > SWAP_PX && row < SIZE - 1) neighbor = drag.from + SIZE;
+  else if (drag.dy < -SWAP_PX && row > 0) neighbor = drag.from - SIZE;
+
+  if (neighbor >= 0) {
+    const n = tileEl(neighbor);
+    if (n) {
+      n.style.transition = 'transform 0.08s cubic-bezier(0.22, 1, 0.36, 1)';
+      n.style.transform = `translate(${-drag.dx * 0.35}px, ${-drag.dy * 0.35}px)`;
+      n.style.zIndex = '1';
+    }
+  }
 }
 
-function updateHud(): void {
-  shell.setHeader({
-    score: String(scaleArcadeScore(score)),
-    moves: String(moves),
-    round: `${levelIdx + 1}/${LEVELS}`,
+function refreshHud(animate = true): void {
+  updateHud({
+    score: scaleArcadeScore(score),
+    target: scaleArcadeScore(LEVEL_TARGETS[levelIdx]),
+    moves,
+    level: levelIdx + 1,
+    best: Math.max(serverBest, scaleArcadeScore(score)),
+  }, animate);
+}
+
+function applySettleAnimation(): void {
+  board.querySelectorAll<HTMLElement>('.tile:not(.empty)').forEach((tile, i) => {
+    tile.classList.add('jm-settle');
+    tile.style.animationDelay = `${(i % 8) * 0.02}s`;
+    window.setTimeout(() => tile.classList.remove('jm-settle'), 350);
   });
-}
-
-function showCombo(): void {
-  comboEl.classList.add('show');
-  window.setTimeout(() => comboEl.classList.remove('show'), 700);
 }
 
 async function clearMatches(): Promise<boolean> {
   const matched = findMatches(grid);
   if (!matched.size) return false;
   combo++;
-  score += match3Score(matched.size, combo);
-  updateHud();
-  showCombo();
-  sfx.coin();
+  const matchSize = matched.size;
+  const points = match3Score(matchSize, combo);
+  score += points;
+  totalCleared += matchSize;
+  if (combo > maxCombo) maxCombo = combo;
+  refreshHud();
+
+  let cx = 0;
+  let cy = 0;
+  let n = 0;
+  matched.forEach((i) => {
+    const tile = tileEl(i);
+    const color = grid[i];
+    if (tile) {
+      tile.classList.add('pgem--pop');
+      const pos = tileCenter(tile);
+      cx += pos.x;
+      cy += pos.y;
+      n++;
+      if (color) {
+        const gemColor = GEM_COLORS[color];
+        spawnParticles(pos.x, pos.y, gemColor, matchSize >= 4 ? 12 : 7);
+        spawnGemFragments(pos.x, pos.y, gemColor, matchSize >= 4 ? 6 : 4);
+        if (combo >= 2) spawnSparkles(pos.x, pos.y, 3);
+      }
+    }
+  });
+
+  if (n > 0) {
+    cx /= n;
+    cy /= n;
+    spawnScorePopup(cx, cy, scoreLabel(points));
+    if (combo >= 2) {
+      const comboLabel = combo >= 5 ? `Combo x${combo}` : `Combo x${combo}`;
+      window.setTimeout(() => spawnScorePopup(cx, cy - 28, comboLabel, true), 80);
+    }
+  }
+
+  const celeb = celebrationText(combo, matchSize);
+  if (celeb) {
+    const tier = celebrationTier(combo, matchSize);
+    showCelebration(celeb, tier);
+    boardFlash();
+    if (tier === 'high') { cameraPulse(); screenShake('heavy'); }
+    else if (tier === 'mid') screenShake('medium');
+    else screenShake('light');
+  }
+
+  if (combo >= 2) jmSfx.combo(combo);
+  else if (matchSize >= 4) jmSfx.crystalBreak();
+  else jmSfx.match(matchSize);
+
+  await wait(180);
   matched.forEach((i) => { grid[i] = null; });
   paintBoard();
-  await wait(180);
+  await wait(20);
+  applyGravity();
+  refill();
+  paintBoard();
+  applySettleAnimation();
+  await wait(120);
+  if (findMatches(grid).size) await clearMatches();
+  else combo = 0;
+  return true;
+}
+
+function applyGravity(): void {
   for (let c = 0; c < SIZE; c++) {
     const col: (Color | null)[] = [];
     for (let r = SIZE - 1; r >= 0; r--) { const v = grid[idx(r, c)]; if (v) col.push(v); }
     for (let r = SIZE - 1; r >= 0; r--) grid[idx(r, c)] = col[SIZE - 1 - r] ?? null;
   }
+}
+
+function refill(): void {
   for (let i = 0; i < SIZE * SIZE; i++) if (!grid[i]) grid[i] = randColor();
-  paintBoard();
-  await wait(120);
-  if (findMatches(grid).size) await clearMatches();
-  else combo = 0;
-  return true;
 }
 
 function wait(ms: number): Promise<void> {
@@ -140,16 +256,16 @@ async function trySwap(a: number, b: number): Promise<void> {
   busy = true;
   const tmp = grid[a]; grid[a] = grid[b]; grid[b] = tmp;
   paintBoard();
-  sfx.click();
+  jmSfx.swap();
   if (findMatches(grid).size) {
     moves--;
-    updateHud();
+    refreshHud();
     await clearMatches();
     checkLevelAdvance();
     if (moves <= 0 && score < LEVEL_TARGETS[levelIdx]) endGame();
   } else {
     grid[b] = grid[a]; grid[a] = tmp;
-    sfx.slide();
+    jmSfx.invalidSwap();
     paintBoard();
   }
   busy = false;
@@ -180,10 +296,13 @@ function resetGame(): void {
   levelIdx = 0;
   moves = LEVEL_MOVES[0];
   combo = 0;
+  maxCombo = 0;
+  totalCleared = 0;
   drag = null; dragPointerId = null; busy = false; gameEnded = false;
   fillNoMatches();
   paintBoard();
-  updateHud();
+  resetHudDisplay();
+  refreshHud(false);
 }
 
 function checkLevelAdvance(): void {
@@ -194,31 +313,161 @@ function checkLevelAdvance(): void {
   }
   levelIdx++;
   moves = LEVEL_MOVES[levelIdx];
-  sfx.coin();
-  updateHud();
+  jmSfx.levelComplete();
+  refreshHud();
+}
+
+function starsForScore(finalScore: number): number {
+  const ratio = finalScore / host.winScore;
+  if (ratio >= 1.5) return 3;
+  if (ratio >= 1) return 2;
+  if (ratio >= 0.5) return 1;
+  return 0;
+}
+
+function paintResultScreen(isWin: boolean, finalScore: number): void {
+  const overOverlay = $('#overOverlay');
+  const titleEl = $('#fcOverTitle');
+  const trophyEl = $('#jmOverTrophy');
+  const comboEl = $('#jmFinalCombo');
+  const clearedEl = $('#jmFinalCleared');
+  const starsEl = $('#jmStars');
+
+  overOverlay.classList.toggle('jm-victory', isWin);
+  trophyEl.classList.toggle('hidden', !isWin);
+
+  if (titleEl) {
+    titleEl.textContent = isWin ? 'Victory!' : 'Game Over';
+    titleEl.classList.toggle('jm-over-title--win', isWin);
+  }
+
+  if (comboEl) comboEl.textContent = String(maxCombo);
+  if (clearedEl) clearedEl.textContent = String(totalCleared);
+
+  const stars = starsForScore(finalScore);
+  starsEl.querySelectorAll('.jm-star').forEach((star, i) => {
+    star.classList.toggle('jm-star--lit', i < stars);
+    if (i < stars) {
+      (star as HTMLElement).style.animationDelay = `${i * 0.2}s`;
+    }
+  });
+
+  const finalScoreEl = $('#finalScore');
+  if (finalScoreEl) {
+    finalScoreEl.textContent = '0';
+    window.setTimeout(() => animateCounter(finalScoreEl, 0, finalScore, 1200), 300);
+  }
+
+  if (isWin) {
+    window.setTimeout(() => {
+      fireworks();
+      burstConfetti(35);
+      jmSfx.levelComplete();
+    }, 400);
+  } else {
+    jmSfx.gameOver();
+  }
 }
 
 function endGame(): void {
   if (gameEnded) return;
   gameEnded = true;
   busy = true;
+  jmSfx.stopMusic();
   const finalScore = finalizeArcadeScore(score, Date.now() - runStart, { budgetSec: 90 });
-  shell.finishPlay(finalScore, finalScore >= host.winScore, '', Date.now() - runStart);
+  const isWin = finalScore >= host.winScore;
+  paintResultScreen(isWin, finalScore);
+  shell.finishPlay(finalScore, isWin, '', Date.now() - runStart);
 }
 
 const shell = wireFreeCasualShell(host, beginPlay, {
-  headerSlots: [
-    { id: 'round', labelKey: 'shell.puzzle', icon: 'round' },
-    { id: 'score', labelKey: 'td.score', icon: 'score', score: true },
-    { id: 'moves', labelKey: 'shell.moves', icon: 'moves' },
-  ],
+  headerSlots: [],
+  pauseable: true,
   onAbandon: resetGame,
 });
 
 async function beginPlay(): Promise<void> {
   runStart = Date.now();
   resetGame();
+  jmSfx.startMusic();
   showFirstRunHint('jewel-match', shell.toast);
+}
+
+function initBackground(): void {
+  const sparkles = document.getElementById('jmSparkles');
+  const crystals = document.getElementById('jmCrystals');
+  if (sparkles) {
+    for (let i = 0; i < 28; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'jm-sparkle-dot';
+      dot.style.left = `${Math.random() * 100}%`;
+      dot.style.top = `${Math.random() * 100}%`;
+      dot.style.setProperty('--jm-dur', `${3 + Math.random() * 4}s`);
+      dot.style.setProperty('--jm-delay', `${Math.random() * 3}s`);
+      sparkles.appendChild(dot);
+    }
+  }
+  if (crystals) {
+    for (let i = 0; i < 12; i++) {
+      const c = document.createElement('div');
+      c.className = 'jm-crystal-particle';
+      const size = 8 + Math.random() * 20;
+      c.style.width = `${size}px`;
+      c.style.height = `${size}px`;
+      c.style.left = `${Math.random() * 100}%`;
+      c.style.bottom = `${Math.random() * 40}%`;
+      c.style.setProperty('--jm-dur', `${7 + Math.random() * 8}s`);
+      c.style.setProperty('--jm-delay', `${Math.random() * 6}s`);
+      c.style.setProperty('--jm-drift', `${-25 + Math.random() * 50}px`);
+      crystals.appendChild(c);
+    }
+    const decos = ['💎', '✦', '◇', '◆'];
+    for (let i = 0; i < 5; i++) {
+      const deco = document.createElement('span');
+      deco.className = 'jm-crystal-deco';
+      deco.textContent = decos[i % decos.length];
+      deco.style.left = `${8 + Math.random() * 84}%`;
+      deco.style.top = `${10 + Math.random() * 80}%`;
+      deco.style.setProperty('--jm-delay', `${Math.random() * 4}s`);
+      sparkles?.appendChild(deco);
+    }
+  }
+}
+
+function wirePresentation(): void {
+  const playFrame = $('#fcPlayFrame');
+  initFx(stage, playFrame);
+  initBackground();
+  createHud(playFrame, scaleArcadeScore(LEVEL_TARGETS[0]), serverBest);
+
+  getPauseBtn()?.addEventListener('click', () => {
+    jmSfx.buttonClick();
+    shell.pause();
+  });
+
+  document.getElementById('jmHomeBtn')?.addEventListener('click', () => {
+    jmSfx.buttonClick();
+    shell.goMenu();
+  });
+
+  document.getElementById('startBtn')?.addEventListener('click', () => jmSfx.menuOpen());
+  document.getElementById('againBtn')?.addEventListener('click', () => jmSfx.buttonClick());
+
+  const origRefresh = shell.refreshMenu;
+  shell.refreshMenu = () => {
+    origRefresh();
+    const menu = document.getElementById('freeMenu');
+    if (menu) {
+      const bestEl = menu.querySelector('.shell-free-best');
+      if (bestEl) {
+        menu.innerHTML = '';
+        bestEl.className = 'jm-menu-best';
+        menu.appendChild(bestEl);
+      } else {
+        menu.innerHTML = '';
+      }
+    }
+  };
 }
 
 board.addEventListener('pointerdown', (e) => {
@@ -258,4 +507,12 @@ board.addEventListener('pointercancel', () => { dragPointerId = null; drag = nul
 
 document.documentElement.lang = getLang();
 applyTranslations();
+wirePresentation();
 shell.refreshMenu();
+
+import { freeGameBestRemote } from '../../platform/backend';
+void freeGameBestRemote('jewel-match').then((best) => {
+  serverBest = best;
+  setBest(best);
+  shell.refreshMenu();
+});
