@@ -23,6 +23,13 @@ export function fmtPlayCount(n: number): string {
   return String(n);
 }
 
+/** Consistent online-player count for stat cells (number only, not a full sentence). */
+export function formatOnlineCount(n: number): string {
+  const v = Math.max(0, Math.floor(n));
+  if (v >= 10_000) return fmtPlayCount(v);
+  return v.toLocaleString();
+}
+
 export function starsHtml(rating: number): string {
   const full = Math.round(rating);
   return '★'.repeat(Math.min(5, full)) + '☆'.repeat(Math.max(0, 5 - full));
@@ -170,9 +177,7 @@ export function featuredTournamentBannerHtml(opts: FeaturedBannerOpts): string {
   const top = prizes[0] ?? 0;
   const pool = prizes.reduce((s, p) => s + p, 0);
   const online = getOnlineCount();
-  const onlineLabel = online > 0
-    ? t('hub.onlinePlayers').replace('{n}', fmtPlayCount(online))
-    : t('hub.onlinePlayers').replace('{n}', '0');
+  const onlineLabel = formatOnlineCount(online);
   const eyebrowKey = opts.cadence === 'weekly' ? 'hub.weeklyChampionship' : 'hub.monthlyChampionship';
   const bannerClass = opts.cadence === 'weekly' ? 'weekly-banner' : 'weekly-banner monthly-banner';
   return `
@@ -197,7 +202,7 @@ export function featuredTournamentBannerHtml(opts: FeaturedBannerOpts): string {
           </div>
           <div class="wb-stat">
             <span class="wb-stat-lbl" data-i18n="hub.playersOnline">${t('hub.playersOnline')}</span>
-            <strong class="wb-stat-val wb-stat-val--sub wb-online-count">${escapeHtml(onlineLabel)}</strong>
+            <strong class="wb-stat-val wb-stat-val--sub wb-online-count" data-online-count>${escapeHtml(onlineLabel)}</strong>
           </div>
         </div>
         <a class="btn primary wb-cta" href="${opts.gameRoute}" data-i18n="hub.joinNow">${t('hub.joinNow')}</a>
@@ -378,13 +383,13 @@ export function activityTickerHtml(
   const templates = config().portal?.tickerMessages ?? [];
   const promoChunks = templates.map((m) => {
     const raw = langCode === 'am' ? m.am : m.en;
-    const text = raw.replace(/\{online\}/g, onlineCount.toLocaleString());
+    const text = raw.replace(/\{online\}/g, formatOnlineCount(onlineCount));
     return `<span class="ticker-item ticker-item--promo">${escapeHtml(text)}</span>`;
   });
   const playChunks = items.map((item) => formatActivityLine(item, langCode));
   const chunks = [...promoChunks, ...playChunks];
   if (!chunks.length) {
-    const fallback = t('hub.onlinePlayers').replace('{n}', onlineCount.toLocaleString());
+    const fallback = t('hub.onlinePlayers').replace('{n}', formatOnlineCount(onlineCount));
     chunks.push(`<span class="ticker-item ticker-item--promo">${escapeHtml(fallback)}</span>`);
   }
   const track = [...chunks, ...chunks].join('<span class="ticker-sep">•</span>');

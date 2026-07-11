@@ -4,11 +4,11 @@ import { applyTranslations, getLang, setLang, t, type Lang } from '../i18n';
 import { mountSignInGate } from '../platform/signInGate';
 import { openAccount } from './account';
 import { mountWallet } from './wallet';
-import { onAuthChange, currentUser, signOut } from '../platform/auth';
+import { onAuthChange, currentUser, signOut, isSignedIn } from '../platform/auth';
 import { sfx } from '../engine/audio';
 import { levelFor, LEVEL_THRESHOLDS, etbPrizesForCadence, formatEtbPrize, TOURNAMENT_ETB_PRIZES, loadConfig, config, type WinnerCadence } from '../platform/config';
-import { getRecentGames, getChallengeProgress, getGamesPlayedToday, setChallengeProgress, getActivityFeed, applyActivityRaw, getNotifications, setNotifications, unreadNotifCount, getWeeklyRank, setWeeklyRank, getOnlineCount, getAnalyticsTrendingIds, type ChallengeProgress } from '../platform/portalState';
-import { leaderboardRemote, fetchWallets, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote, fetchGameStats, claimChallengeRemote, fetchActivityFeed, markNotificationsRead, refreshPortalRemote } from '../platform/backend';
+import { getRecentGames, getChallengeProgress, getGamesPlayedToday, setChallengeProgress, getActivityFeed, applyActivityRaw, getNotifications, setNotifications, unreadNotifCount, getWeeklyRank, setWeeklyRank, getOnlineCount, setOnlineCount, getAnalyticsTrendingIds, type ChallengeProgress } from '../platform/portalState';
+import { leaderboardRemote, fetchWallets, fetchTournamentPeriodWinners, claimDailyLogin, playerStandingRemote, fetchGameStats, claimChallengeRemote, fetchActivityFeed, markNotificationsRead, refreshPortalRemote, sendHubPresenceHeartbeat, fetchOnlinePlayerCount } from '../platform/backend';
 import {
   activeTournaments, tournamentGame, getTournamentForGame, getLiveTournamentByCadence,
   countdown, loadTournaments, loadMyEntries,
@@ -26,7 +26,7 @@ import {
   dailyMissionsHtml, nextRewardHtml, newsFeedHtml, sidebarNewsHtml,
   lbPreviewRow, hScrollShelf, comingSoonShelfHtml, continuePlayingHtml,
   activityTickerHtml, notificationsPanelHtml, shelfSkeletonHtml, lbSkeletonHtml,
-  gridSkeletonHtml, cpSkeletonHtml, bannerSkeletonHtml,
+  gridSkeletonHtml, cpSkeletonHtml, bannerSkeletonHtml, formatOnlineCount,
 } from './portalSections';
 import { getHowToGuide } from './howToGuides';
 import {
@@ -453,8 +453,7 @@ function tournamentCardMeta(g: GameMeta, tour: Tournament | undefined): string {
   if (g.mode !== 'tournament' || !tour) return gameCardStats(g);
   const pool = tournamentPoolEtb(g);
   const poolStr = pool > 0 ? formatEtbPrize(pool, lang()) : '—';
-  const online = getOnlineCount();
-  const onlineStr = t('hub.onlinePlayers').replace('{n}', online > 0 ? fmtPlayCount(online) : '0');
+  const onlineStr = formatOnlineCount(getOnlineCount());
   return `
     <div class="gc-tour-meta">
       <div class="gc-tour-stat">
@@ -467,7 +466,7 @@ function tournamentCardMeta(g: GameMeta, tour: Tournament | undefined): string {
       </div>
       <div class="gc-tour-stat gc-tour-stat--online">
         <span class="gc-tour-lbl" data-i18n="hub.playersOnline">${t('hub.playersOnline')}</span>
-        <strong class="gc-tour-val gc-tour-online">${escapeHtml(onlineStr)}</strong>
+        <strong class="gc-tour-val gc-tour-online" data-online-count>${escapeHtml(onlineStr)}</strong>
       </div>
     </div>`;
 }
@@ -921,6 +920,23 @@ function renderActivityTicker(): void {
   }
 }
 
+function updateOnlineCountDisplays(): void {
+  const label = formatOnlineCount(getOnlineCount());
+  document.querySelectorAll<HTMLElement>('[data-online-count]').forEach((el) => {
+    el.textContent = label;
+  });
+}
+
+async function refreshOnlinePresence(): Promise<void> {
+  if (!isConfigured()) return;
+  if (isSignedIn()) await sendHubPresenceHeartbeat();
+  const count = await fetchOnlinePlayerCount();
+  if (count == null) return;
+  setOnlineCount(count);
+  updateOnlineCountDisplays();
+  renderActivityTicker();
+}
+
 function renderNotifBadge(): void {
   const bell = document.querySelector<HTMLButtonElement>('#notifBell');
   const badge = document.querySelector<HTMLElement>('#notifBadge');
@@ -1234,11 +1250,13 @@ function mountNotifications(): void {
 let tickerPollTimer: number | undefined;
 function startActivityPolling(): void {
   if (tickerPollTimer != null) return;
+  void refreshOnlinePresence();
   tickerPollTimer = window.setInterval(() => {
     void fetchActivityFeed(20).then((raw) => {
       applyActivityRaw(raw);
       renderActivityTicker();
     });
+    void refreshOnlinePresence();
   }, 45_000);
 }
 
@@ -1487,6 +1505,7 @@ async function runBackendHydration(): Promise<void> {
     renderFeaturedTournaments();
     renderContinuePlaying();
     renderLiveBoard({ fetch: liveBoardSeen });
+    void refreshOnlinePresence();
     hydratePointsAfterBootstrap(boot);
   } finally {
     hubHydrating = false;
@@ -1520,18 +1539,21 @@ onAuthChange(() => {
       renderLiveBoard({ fetch: liveBoardSeen });
     }
     await refreshPlayerRp();
+    void refreshOnlinePresence();
     hydratePointsAfterBootstrap(boot);
   })();
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && isConfigured()) {
     void refreshPlayerRp();
+    void refreshOnlinePresence();
     void refreshPortalRemote().then((ok) => {
       if (!ok) return;
       renderContinuePlaying();
       renderSidebar();
       renderActivityTicker();
       renderMyStats();
+      updateOnlineCountDisplays();
     });
   }
 });

@@ -460,6 +460,30 @@ export async function fetchGameStats(): Promise<Record<string, number>> {
   }
 }
 
+/** Keep the signed-in player in hub_presence while browsing (5-minute window). */
+export async function sendHubPresenceHeartbeat(): Promise<void> {
+  if (!isConfigured()) return;
+  try {
+    const sb = await getSupabase();
+    await sb.rpc('heartbeat_my_hub_presence');
+  } catch { /* migration may not be applied yet */ }
+}
+
+/** Real count of players with a hub heartbeat in the last N seconds. */
+export async function fetchOnlinePlayerCount(withinSeconds = 300): Promise<number | null> {
+  if (!isConfigured()) return null;
+  try {
+    const sb = await getSupabase();
+    const { data, error } = await sb.rpc('get_online_player_count', {
+      p_within_seconds: withinSeconds,
+    });
+    if (error) return null;
+    return Math.max(0, Number(data ?? 0));
+  } catch {
+    return null;
+  }
+}
+
 /** Live activity feed for the hub ticker (public, anonymized). */
 export async function fetchActivityFeed(limit = 20): Promise<unknown[]> {
   if (!isConfigured()) return [];
