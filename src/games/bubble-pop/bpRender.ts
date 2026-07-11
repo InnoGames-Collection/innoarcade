@@ -1,7 +1,5 @@
 // Bubble Pop — premium canvas rendering (presentation only).
 
-import type { FxParticle } from './bpEffects';
-
 export const VISUAL_SCALE = 1.18;
 
 const BRAND = {

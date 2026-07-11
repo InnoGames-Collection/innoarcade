@@ -9,8 +9,8 @@ import {
 import './style.css';
 import { applyTranslations, getLang } from '../../i18n';
 import { GameLoop } from '../../engine/loop';
-import { sfx } from '../../engine/audio';
 import { BubblePop, W, H } from './game';
+import { bpSfx } from './bpAudio';
 import {
   bindHubCanvasChrome, scaleArcadeScore, submitArcadeScore, trackArcadeRunStart,
 } from '../_arcade/hubCanvas';
@@ -32,6 +32,16 @@ const game = new BubblePop();
 const run = trackArcadeRunStart();
 
 const scoreVal = $('#scoreVal');
+const levelVal = $('#levelVal');
+const comboVal = $('#comboVal');
+const comboCard = $('#comboCard');
+const bestVal = $('#bestVal');
+const scoreCard = scoreVal.closest('.bp-hud-card') as HTMLElement;
+
+let displayedScore = 0;
+let lastCombo = 0;
+
+bestVal.textContent = String(scaleArcadeScore(game.best));
 
 const shell = wireFreeEngineMain({
   host,
@@ -61,10 +71,50 @@ const syncChrome = bindHubCanvasChrome({
 game.onStateChange = (state) => {
   run.onStateChange(state);
   syncChrome(state);
+  if (state === 'gameOver') {
+    updateGameOverStats();
+    animateFinalScore();
+  }
 };
+
 game.onGameOver = (score) => {
   submitArcadeScore(score, run.getRunStart(), shell, { budgetSec: 120 });
 };
+
+function updateGameOverStats(): void {
+  $('#statCombo').textContent = String(game.statMaxCombo);
+  $('#statAccuracy').textContent = `${game.accuracy}%`;
+  $('#statCleared').textContent = String(game.statBubblesCleared);
+}
+
+function animateFinalScore(): void {
+  const finalEl = $('#finalScore');
+  const target = parseInt(finalEl.textContent?.replace(/,/g, '') || '0', 10);
+  animateCount(finalEl, 0, target, 1200);
+}
+
+function animateCount(el: HTMLElement, from: number, to: number, duration: number): void {
+  const start = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - (1 - t) ** 3;
+    el.textContent = Math.round(from + (to - from) * eased).toLocaleString();
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function popCard(card: HTMLElement): void {
+  card.classList.remove('bp-pop');
+  void card.offsetWidth;
+  card.classList.add('bp-pop');
+  setTimeout(() => card.classList.remove('bp-pop'), 300);
+}
+
+$('#startBtn').addEventListener('click', () => bpSfx.click());
+$('#againBtn').addEventListener('click', () => bpSfx.click());
+$('#resumeBtn').addEventListener('click', () => bpSfx.click());
+$('#restartBtn').addEventListener('click', () => bpSfx.click());
 
 function toCanvas(e: PointerEvent): [number, number] {
   const rect = canvas.getBoundingClientRect();
@@ -98,7 +148,12 @@ canvas.addEventListener('pointercancel', () => {
   game.clearAim();
 });
 
-wireMutePause($('#muteBtn'), $('#pauseBtn'), game, sfx);
+wireMutePause($('#muteBtn'), $('#pauseBtn'), game, bpSfx);
+
+$('#settingsBtn').addEventListener('click', () => {
+  bpSfx.click();
+  if (game.state === 'playing') game.pause();
+});
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) game.pause();
@@ -108,7 +163,28 @@ const loop = new GameLoop(
   (dt) => game.update(dt),
   () => {
     game.render(ctx);
-    scoreVal.textContent = String(scaleArcadeScore(game.score));
+
+    const target = scaleArcadeScore(game.score);
+    if (displayedScore !== target) {
+      const diff = target - displayedScore;
+      const step = Math.max(1, Math.ceil(Math.abs(diff) * 0.15));
+      displayedScore += diff > 0 ? step : -step;
+      if (Math.abs(target - displayedScore) < step) displayedScore = target;
+      scoreVal.textContent = displayedScore.toLocaleString();
+      if (diff > 0) popCard(scoreCard);
+    }
+
+    levelVal.textContent = '1';
+    bestVal.textContent = String(scaleArcadeScore(game.best));
+
+    if (game.displayCombo !== lastCombo) {
+      lastCombo = game.displayCombo;
+      comboVal.textContent = game.displayCombo > 1 ? `${game.displayCombo}×` : '—';
+      comboCard.classList.toggle('bp-combo-hot', game.displayCombo >= 2);
+      comboCard.classList.toggle('bp-combo-fire', game.displayCombo >= 4);
+      comboCard.classList.toggle('bp-combo-gold', game.displayCombo >= 6);
+      if (game.displayCombo > 1) popCard(comboCard);
+    }
   },
 );
 
