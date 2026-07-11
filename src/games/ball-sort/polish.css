@@ -436,44 +436,109 @@ body[data-game='ball-sort'] .btn.bs-undo:active:not([disabled]) {
   transform: scale(0.96);
 }
 
-/* ── Game over ── */
-body[data-game='ball-sort'] #overOverlay .game-panel {
+/* ── Game over — single viewport, no scroll ── */
+body[data-game='ball-sort'] #overOverlay.game-overlay {
+  align-items: center;
+  justify-content: center;
+  padding: max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+
+body[data-game='ball-sort'] #overOverlay .game-panel.bs-over-panel {
   background: var(--bb-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--bb-glass-border);
   box-shadow: 0 20px 60px rgba(31, 74, 140, 0.14);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: min(100%, 360px);
+  max-height: calc(100dvh - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  gap: 0;
+  padding: 26px 12px 10px;
+  margin: 0;
   overflow: hidden;
 }
 
+body[data-game='ball-sort'] .bs-over-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+body[data-game='ball-sort'] .bs-over-actions {
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(31, 116, 224, 0.08);
+}
+
 body[data-game='ball-sort'] #overOverlay h2 {
-  font-size: clamp(1.4rem, 5vw, 1.75rem);
+  font-size: clamp(1.15rem, 4.5vw, 1.5rem);
   font-weight: 800;
+  line-height: 1.15;
   background: var(--grad-hero);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
+body[data-game='ball-sort'] #overOverlay .fc-over-summary {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
 body[data-game='ball-sort'] .shell-over-final {
   background: rgba(255, 255, 255, 0.5);
-  border-radius: 16px;
-  padding: 12px 20px;
+  border-radius: 12px;
+  padding: 8px 14px;
   border: 1px solid rgba(31, 116, 224, 0.08);
+  width: 100%;
+  gap: 12px;
 }
 
 body[data-game='ball-sort'] .shell-over-stat strong {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: var(--bb-green);
+}
+
+body[data-game='ball-sort'] .shell-run-reward {
+  margin: 0;
+  min-height: 0;
+  gap: 4px 10px;
+  font-size: 0.88rem;
+}
+
+body[data-game='ball-sort'] #overOverlay .bs-over-actions .btn {
+  width: 100%;
+  margin: 0;
+  padding: 0.62rem 0.9rem;
+  font-size: 0.88rem;
+}
+
+body[data-game='ball-sort'] #overOverlay #againBtn {
+  padding: 0.68rem 1rem;
+  font-size: 0.92rem;
 }
 
 body[data-game='ball-sort'] .new-best {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05));
   border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 12px;
-  padding: 6px 14px;
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
   font-weight: 800;
   color: #c8960a;
   animation: bb-new-best 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
