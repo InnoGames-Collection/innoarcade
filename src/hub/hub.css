@@ -1479,13 +1479,52 @@ html, body { max-width: 100%; overflow-x: hidden; }
   left: 0.45rem;
   font-size: 0.58rem;
   font-weight: 900;
-  padding: 0.14rem 0.45rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.16rem 0.5rem;
   border-radius: 999px;
   color: #fff;
   z-index: 2;
+  line-height: 1.1;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 2px 8px rgba(20, 39, 26, 0.18);
+  backdrop-filter: blur(4px);
 }
-.gc-badge--hot { background: #e74c3c; }
-.gc-badge--new { background: #1f74e0; }
+.gc-badge--hot {
+  background: linear-gradient(135deg, #ff6b5a 0%, #e74c3c 55%, #c0392b 100%);
+  box-shadow: 0 2px 10px rgba(231, 76, 60, 0.38);
+  animation: gc-badge-pulse 2.4s ease-in-out infinite;
+}
+.gc-badge--new {
+  background: linear-gradient(135deg, var(--accent-2) 0%, #1a5fa8 100%);
+  box-shadow: 0 2px 10px rgba(31, 116, 224, 0.32);
+}
+.gc-badge--tournament {
+  background: var(--grad-cta);
+  box-shadow: 0 2px 10px rgba(31, 95, 196, 0.32);
+}
+.gc-badge--popular {
+  background: linear-gradient(135deg, #ffd45a 0%, var(--gold) 55%, #d49200 100%);
+  color: #3d2e00;
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 2px 10px rgba(242, 178, 26, 0.35);
+}
+.gc-badge--premium {
+  background: linear-gradient(135deg, #b07ce8 0%, #7a4bd0 55%, #5a2fa8 100%);
+  box-shadow: 0 2px 10px rgba(122, 75, 208, 0.34);
+}
+.gc-badge--reward {
+  background: linear-gradient(135deg, #2ecf9a 0%, var(--good) 55%, #0d8a5f 100%);
+  box-shadow: 0 2px 10px rgba(22, 166, 115, 0.32);
+}
+.gc-badge--fast {
+  background: var(--grad-brand);
+  box-shadow: 0 2px 10px rgba(79, 158, 22, 0.32);
+}
+@keyframes gc-badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
 .gc-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;

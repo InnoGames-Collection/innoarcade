@@ -1,6 +1,6 @@
 import '../styles/base.css';
 import './hub.css';
-import { applyTranslations, getLang, setLang, t, type Lang } from '../i18n';
+import { applyTranslations, getLang, setLang, t, type I18nKey, type Lang } from '../i18n';
 import { mountSignInGate } from '../platform/signInGate';
 import { openAccount } from './account';
 import { mountWallet } from './wallet';
@@ -438,10 +438,21 @@ function topPrizeBadge(g: GameMeta): string {
   return `<span class="gc-prize-badge gc-prize-badge--${cadence}">${t('hub.topPrize')} ${escapeHtml(top)}</span>`;
 }
 
+const BADGE_LABEL: Record<NonNullable<GameMeta['badge']>, I18nKey> = {
+  hot: 'hub.badgeHot',
+  new: 'hub.badgeNew',
+  tournament: 'hub.badgeTournament',
+  popular: 'hub.badgePopular',
+  premium: 'hub.badgePremium',
+  reward: 'hub.badgeReward',
+  fast: 'hub.badgeFast',
+};
+
 function badgeTag(g: GameMeta): string {
-  if (g.badge === 'hot') return `<span class="gc-badge gc-badge--hot">HOT</span>`;
-  if (g.badge === 'new') return `<span class="gc-badge gc-badge--new">NEW</span>`;
-  return '';
+  if (!g.badge) return '';
+  const key = BADGE_LABEL[g.badge];
+  if (!key) return '';
+  return `<span class="gc-badge gc-badge--${g.badge}">${t(key)}</span>`;
 }
 
 function tournamentPoolEtb(g: GameMeta): number {

@@ -47,7 +47,7 @@ export interface GameMeta {
   /** Estimated session length shown on catalog cards (minutes). */
   estMinutes?: number;
   /** Manual portal badge until analytics-driven trending ships. */
-  badge?: 'hot' | 'new';
+  badge?: GameBadge;
   /** Display rating (0–5) on catalog cards — static default until player ratings exist. */
   rating?: number;
   /** Frozen release tag — do not change game code unless the operator explicitly requests it. */
@@ -59,6 +59,9 @@ export interface GameMeta {
    *  (`winPoints` retained as a no-op for back-compat with older entries.) */
   play?: { winPoints?: number; winRate?: number; winScore?: number };
 }
+
+/** Hub card corner badge — display metadata only. */
+export type GameBadge = 'hot' | 'new' | 'tournament' | 'popular' | 'premium' | 'reward' | 'fast';
 
 const ALL_GAMES: GameMeta[] = [
   {
@@ -686,10 +689,18 @@ export function gamesInCategory(cat: GameCategory | 'all'): GameMeta[] {
 // Portal card defaults — attached after catalog assembly.
 const BADGE_HOT = new Set(['fruit-slice', 'memory-match', 'temple-dash']);
 const BADGE_NEW = new Set(RECENT_IDS);
+const BADGE_POPULAR = new Set(['orbit-blast', 'bubble-pop', 'popblast', 'merge-2048']);
+const BADGE_REWARD = new Set(['ethiopian-quiz']);
+const BADGE_FAST = new Set(['sky-hopper', 'brick-blitz', 'pipe-connect', 'arrow-shot']);
 for (const g of CATALOG) {
   if (!g.badge) {
     if (BADGE_HOT.has(g.id)) g.badge = 'hot';
     else if (BADGE_NEW.has(g.id)) g.badge = 'new';
+    else if (g.mode === 'tournament') g.badge = 'tournament';
+    else if (BADGE_POPULAR.has(g.id)) g.badge = 'popular';
+    else if (g.featured) g.badge = 'premium';
+    else if (BADGE_REWARD.has(g.id)) g.badge = 'reward';
+    else if (BADGE_FAST.has(g.id)) g.badge = 'fast';
   }
   if (!g.rating) g.rating = ratingFor(g);
   if (!g.estMinutes) g.estMinutes = estMinutesFor(g);
