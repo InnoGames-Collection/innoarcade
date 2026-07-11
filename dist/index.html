@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>" />
     <title>GoPlay — Play & Compete</title>
-    <script type="module" crossorigin src="./assets/hub-BM7cuW4d.js"></script>
+    <script type="module" crossorigin src="./assets/hub-CneUUF0f.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/index-4pbG6stG.js">
     <link rel="modulepreload" crossorigin href="./assets/tournaments-B2vmIuU1.js">
     <link rel="modulepreload" crossorigin href="./assets/signInGate-wTTb9btz.js">
     <link rel="stylesheet" crossorigin href="./assets/signInGate-CW9ugQCN.css">
-    <link rel="stylesheet" crossorigin href="./assets/hub-YQOxixpk.css">
+    <link rel="stylesheet" crossorigin href="./assets/hub-Ct9fwUti.css">
   </head>
   <body>
     <header class="topbar">
@@ -34,8 +34,15 @@
 
     <div class="hub-shell">
       <section id="promo" class="promo-section" aria-label="Promotions">
-        <div class="promo-track" id="promoTrack"></div>
-        <div class="promo-dots" id="promoDots"></div>
+        <div class="promo-carousel">
+          <div class="promo-track" id="promoTrack">
+            <div class="promo-slide-stage" id="promoSlideStage"></div>
+          </div>
+        </div>
+        <div class="promo-controls">
+          <div class="promo-progress" aria-hidden="true"><div class="promo-progress-fill" id="promoProgressFill"></div></div>
+          <div class="promo-dots" id="promoDots"></div>
+        </div>
       </section>
 
       <section id="featuredTournaments" class="featured-tournaments-section portal-section" aria-label="Featured tournaments" hidden>

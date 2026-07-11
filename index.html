@@ -28,8 +28,15 @@
 
     <div class="hub-shell">
       <section id="promo" class="promo-section" aria-label="Promotions">
-        <div class="promo-track" id="promoTrack"></div>
-        <div class="promo-dots" id="promoDots"></div>
+        <div class="promo-carousel">
+          <div class="promo-track" id="promoTrack">
+            <div class="promo-slide-stage" id="promoSlideStage"></div>
+          </div>
+        </div>
+        <div class="promo-controls">
+          <div class="promo-progress" aria-hidden="true"><div class="promo-progress-fill" id="promoProgressFill"></div></div>
+          <div class="promo-dots" id="promoDots"></div>
+        </div>
       </section>
 
       <section id="featuredTournaments" class="featured-tournaments-section portal-section" aria-label="Featured tournaments" hidden>

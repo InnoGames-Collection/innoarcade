@@ -62,48 +62,103 @@ function promosFromConfig(): PromoSlide[] {
   }));
 }
 let promoIdx = 0;
-function renderPromo(): void {
-  const promos = promosFromConfig();
-  const track = document.querySelector('#promoTrack');
-  const dots = document.querySelector('#promoDots');
-  if (!track || !dots || !promos.length) return;
-  const p = promos[promoIdx % promos.length];
-  const inner = p.href
-    ? `<a href="${escapeHtml(p.href)}" class="promo-slide promo-slide-img"><img src="${p.img}" alt="${escapeHtml(p.alt)}" class="promo-banner-img" /></a>`
-    : `<div class="promo-slide promo-slide-img"><img src="${p.img}" alt="${escapeHtml(p.alt)}" class="promo-banner-img" /></div>`;
-  track.innerHTML = inner;
-  dots.innerHTML = promos.map((_, i) => `<span class="promo-dot${i === promoIdx % promos.length ? ' on' : ''}"></span>`).join('');
+const PROMO_INTERVAL_MS = 4500;
+
+function promoSlideHtml(p: PromoSlide, extraClass = ''): string {
+  const cls = `promo-slide promo-slide-img${extraClass ? ` ${extraClass}` : ''}`;
+  const img = `<img src="${escapeHtml(p.img)}" alt="" class="promo-banner-img" loading="lazy" decoding="async" />`;
+  const overlay = p.href
+    ? `<div class="promo-slide-overlay">
+        <p class="promo-slide-caption">${escapeHtml(p.alt)}</p>
+        <span class="promo-slide-cta">${t('hub.playNow')}</span>
+      </div>`
+    : `<div class="promo-slide-overlay promo-slide-overlay--static">
+        <p class="promo-slide-caption">${escapeHtml(p.alt)}</p>
+      </div>`;
+  const media = `<div class="promo-slide-media">${img}${overlay}</div>`;
+  if (p.href) {
+    return `<a href="${escapeHtml(p.href)}" class="${cls}" aria-label="${escapeHtml(p.alt)}">${media}</a>`;
+  }
+  return `<div class="${cls}" role="img" aria-label="${escapeHtml(p.alt)}">${media}</div>`;
 }
+
+function resetPromoProgress(): void {
+  const fill = document.querySelector<HTMLElement>('#promoProgressFill');
+  if (!fill) return;
+  fill.style.animation = 'none';
+  void fill.offsetWidth;
+  fill.style.animation = `promo-progress ${PROMO_INTERVAL_MS}ms linear forwards`;
+}
+
+function renderPromo(animate = false): void {
+  const promos = promosFromConfig();
+  const stage = document.querySelector('#promoSlideStage');
+  const dots = document.querySelector('#promoDots');
+  const section = document.querySelector('#promo');
+  if (!stage || !dots || !promos.length) return;
+
+  const idx = promoIdx % promos.length;
+  const p = promos[idx];
+  const nextHtml = promoSlideHtml(p, animate ? 'promo-slide-enter' : '');
+
+  if (!animate || !stage.firstElementChild) {
+    stage.innerHTML = nextHtml;
+  } else {
+    const current = stage.firstElementChild as HTMLElement;
+    current.classList.add('promo-slide-exit');
+    stage.insertAdjacentHTML('beforeend', nextHtml);
+    const incoming = stage.lastElementChild as HTMLElement;
+    requestAnimationFrame(() => {
+      incoming.classList.add('promo-slide-enter-active');
+    });
+    window.setTimeout(() => {
+      if (current.parentElement === stage) current.remove();
+      incoming.classList.remove('promo-slide-enter', 'promo-slide-enter-active');
+    }, 320);
+  }
+
+  dots.innerHTML = promos.map((_, i) =>
+    `<button type="button" class="promo-dot${i === idx ? ' on' : ''}" aria-label="Slide ${i + 1}"></button>`,
+  ).join('');
+  section?.classList.toggle('promo-section--solo', promos.length <= 1);
+  resetPromoProgress();
+}
+
 function advancePromo(): void {
   const n = promosFromConfig().length || 1;
   promoIdx = (promoIdx + 1) % n;
-  renderPromo();
+  renderPromo(true);
 }
 
 // Auto-advance timer the player can interrupt by swiping/tapping a dot.
 let promoTimer: ReturnType<typeof setInterval> | undefined;
 function restartPromoTimer(): void {
   if (promoTimer) clearInterval(promoTimer);
-  promoTimer = setInterval(advancePromo, 4500);
+  const n = promosFromConfig().length;
+  if (n <= 1) return;
+  promoTimer = setInterval(advancePromo, PROMO_INTERVAL_MS);
 }
 function goToPromo(i: number): void {
   const n = promosFromConfig().length || 1;
-  promoIdx = (i + n) % n;
-  renderPromo();
-  restartPromoTimer(); // a manual move resets the auto cadence
+  const next = (i + n) % n;
+  if (next === promoIdx % n) return;
+  promoIdx = next;
+  renderPromo(true);
+  restartPromoTimer();
 }
 
 // Manual control: swipe left/right on the banner, or tap a dot.
 function setupPromo(): void {
   const track = document.querySelector<HTMLElement>('#promoTrack');
   const dots = document.querySelector<HTMLElement>('#promoDots');
+  const section = document.querySelector<HTMLElement>('#promo');
   dots?.addEventListener('click', (e) => {
     const dot = (e.target as HTMLElement).closest<HTMLElement>('.promo-dot');
     if (!dot || !dot.parentElement) return;
     goToPromo([...dot.parentElement.children].indexOf(dot));
   });
   if (track) {
-    let startX = 0, active = false;
+    let startX = 0; let active = false;
     track.addEventListener('pointerdown', (e) => { active = true; startX = e.clientX; });
     track.addEventListener('pointerup', (e) => {
       if (!active) return;
@@ -112,8 +167,18 @@ function setupPromo(): void {
       if (Math.abs(dx) > 40) goToPromo(promoIdx + (dx < 0 ? 1 : -1));
     });
     track.addEventListener('pointercancel', () => { active = false; });
-    track.style.touchAction = 'pan-y'; // allow vertical scroll, capture horizontal swipe
+    track.style.touchAction = 'pan-y';
   }
+  section?.addEventListener('mouseenter', () => {
+    if (promoTimer) clearInterval(promoTimer);
+    const fill = document.querySelector<HTMLElement>('#promoProgressFill');
+    if (fill) fill.style.animationPlayState = 'paused';
+  });
+  section?.addEventListener('mouseleave', () => {
+    const fill = document.querySelector<HTMLElement>('#promoProgressFill');
+    if (fill) fill.style.animationPlayState = 'running';
+    restartPromoTimer();
+  });
 }
 
 // --- Live tournament leaderboards (weekly / monthly) -------------------------
