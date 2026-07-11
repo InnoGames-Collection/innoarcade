@@ -338,13 +338,14 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
       segmentsApplied++;
       fluidManager.triggerRipple(toIdx, 720);
       const toMouth = tubeMouthOnBoard(board, toTube);
-      splashPool.spawn(toMouth.x, toMouth.y + 4, colorId, 6);
+      splashPool.spawn(toMouth.x, toMouth.y + 3, colorId, 2);
+      splashPool.spawnBubbles(toMouth.x, toMouth.y + 5, colorId, 2);
       lastSplashAt = elapsed;
     }
 
-    if (streamAlpha > 0.5 && elapsed - lastDropletAt > 42) {
+    if (streamAlpha > 0.5 && elapsed - lastDropletAt > 48) {
       const toMouth = tubeMouthOnBoard(board, toTube);
-      splashPool.spawn(toMouth.x, toMouth.y + 2, colorId, 3);
+      splashPool.spawn(toMouth.x, toMouth.y + 2, colorId, 1);
       lastDropletAt = elapsed;
     }
 
@@ -376,19 +377,17 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
       if (streamAlpha > 0) {
         const fromMouth = tubeMouthOnBoard(board, fromTube);
         const toMouth = tubeMouthOnBoard(board, toTube);
-        const fromFill = Math.max(0, fromData.length - fromHidden - drained);
-        const toFill = toData.length - toHidden + drained;
-        const fromSurface = tubeLiquidSurfaceOnBoard(board, fromTube, fromFill, fromCap);
         const pourProgress = amount > 0 ? drained / amount : 1;
-        const streamW = Math.max(14, Math.min(22, fromTube.getBoundingClientRect().width * 0.32));
+        const streamW = Math.max(16, Math.min(24, fromTube.getBoundingClientRect().width * 0.36));
         drawConnectedPourStream(
-          streamCtx, fromSurface, fromMouth, toMouth, colorId, streamW, elapsed * 0.005,
-          Math.min(1, streamAlpha * 1.2), { progress: pourProgress, phase: elapsed * 0.005 },
+          streamCtx, fromMouth, fromMouth, toMouth, colorId, streamW, elapsed * 0.005,
+          Math.min(1, streamAlpha * 1.25), { progress: pourProgress, phase: elapsed * 0.005 },
         );
+        const toFill = toData.length - toHidden + drained;
         const destSurface = tubeLiquidSurfaceOnBoard(board, toTube, toFill, toCap);
         drawLandingRipple(
-          streamCtx, toMouth.x, Math.min(toMouth.y, destSurface.y + 2), streamW, colorId,
-          streamAlpha * pourProgress * 0.85, elapsed * 0.005,
+          streamCtx, toMouth.x, Math.min(toMouth.y + 2, destSurface.y + 3), streamW, colorId,
+          streamAlpha * pourProgress * 0.9, elapsed * 0.005,
         );
       }
       if (splashPool.particles.length) {
