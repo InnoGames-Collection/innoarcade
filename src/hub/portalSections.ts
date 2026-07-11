@@ -93,8 +93,17 @@ export function gamesToolbarHtml(opts: {
         </button>
         <div class="cat-dropdown-menu" id="catDropdownMenu" role="listbox" hidden>${menuItems}</div>
       </div>
-      <input id="gameSearch" class="game-search game-search--toolbar" type="search" value="${escapeHtml(q)}"
-        data-i18n-placeholder="hub.searchGames" placeholder="${t('hub.searchGames')}" aria-label="${t('hub.searchGames')}" />
+      <div class="search-field search-field--toolbar${q ? ' has-value' : ''}" id="gameSearchWrap">
+        <svg class="search-field-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
+        </svg>
+        <input id="gameSearch" class="search-field-input" type="search" value="${escapeHtml(q)}"
+          data-i18n-placeholder="hub.searchGamesPremium" placeholder="${t('hub.searchGamesPremium')}"
+          aria-label="${t('hub.searchGames')}" autocomplete="off" enterkeyhint="search" />
+        <button type="button" class="search-field-clear" id="gameSearchClear"
+          aria-label="${t('hub.searchClear')}"${q ? '' : ' hidden'}>×</button>
+      </div>
     </div>`;
 }
 

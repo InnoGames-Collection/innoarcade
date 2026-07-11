@@ -211,6 +211,17 @@ body {
 @media (min-width: 700px) {
   .cat-shelf { grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
 }
+.cat-shelf.is-filtering .game-card {
+  animation: card-fade-in 0.22s ease both;
+  animation-delay: calc(var(--card-i, 0) * 30ms);
+}
+@keyframes card-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-shelf.is-filtering .game-card { animation: none; }
+}
 .game-card {
   text-decoration: none; color: inherit;
   background: var(--card); border: 1px solid var(--line);
@@ -410,7 +421,7 @@ body {
 }
 .games-head .pill-tabs { flex-shrink: 0; }
 .games-head .cat-dropdown { flex-shrink: 0; }
-.games-head .game-search { margin-left: auto; }
+.games-head .search-field--toolbar { margin-left: auto; }
 
 /* Premium pill tabs — Tournament / Free Games */
 .pill-tabs {
@@ -469,6 +480,79 @@ body {
 .seg { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .seg-btn { border: none; background: none; color: var(--muted); font: inherit; font-size: 0.84rem; font-weight: 700; padding: 0.34rem 0.85rem; border-radius: 999px; cursor: pointer; white-space: nowrap; }
 .seg-btn.active { background: var(--accent); color: #fff; }
+/* Premium search field */
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  height: 44px;
+  padding: 0 0.85rem 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.search-field--toolbar {
+  flex: 0 0 auto;
+  width: min(240px, 42vw);
+  max-width: 260px;
+}
+.search-field-icon {
+  flex-shrink: 0;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.search-field-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0;
+  outline: none;
+}
+.search-field-input::placeholder { color: var(--muted); font-weight: 500; }
+.search-field-input::-webkit-search-cancel-button,
+.search-field-input::-webkit-search-decoration { display: none; }
+.search-field-clear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(95, 114, 98, 0.12);
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease, color 0.15s ease;
+}
+.search-field-clear:hover { background: rgba(79, 158, 22, 0.14); color: var(--accent); }
+.search-field-clear:active { transform: scale(0.92); }
+.search-field-clear[hidden] { display: none; }
+.search-field.is-focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 158, 22, 0.18), var(--shadow-sm);
+}
+.search-field.is-focused .search-field-icon {
+  color: var(--accent);
+  transform: scale(1.08);
+}
+
+/* Legacy search input (topbar fallback) */
 .game-search {
   border: 1px solid var(--line);
   background: #fff;
@@ -919,15 +1003,17 @@ html, body { max-width: 100%; overflow-x: hidden; }
     min-width: 0;
   }
   .cat-dropdown-val { max-width: 2.75rem; overflow: hidden; text-overflow: ellipsis; }
-  .games-head .game-search {
+  .games-head .search-field--toolbar {
     width: 100%;
     max-width: none;
     min-width: 0;
     margin-left: 0;
-    padding: 0.26rem 0.65rem;
-    font-size: 0.72rem;
-    line-height: 1.2;
+    height: 38px;
+    padding: 0 0.65rem 0 0.55rem;
+    border-radius: 14px;
   }
+  .search-field--toolbar .search-field-input { font-size: 0.78rem; }
+  .search-field--toolbar .search-field-icon { width: 0.92rem; height: 0.92rem; }
 }
 
 /* ---- how-to-play ℹ️ button on cards ---- */

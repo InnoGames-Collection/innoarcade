@@ -394,7 +394,7 @@ function gameCardStats(g: GameMeta): string {
     </div>`;
 }
 
-function gameCard(g: GameMeta, opts?: { compact?: boolean }): string {
+function gameCard(g: GameMeta, opts?: { compact?: boolean; animIndex?: number }): string {
   const cadence = cadenceKey(g);
   const cover = gameCover(g);
   const tour = g.mode === 'tournament' ? getTournamentForGame(g.id) : undefined;
@@ -403,6 +403,7 @@ function gameCard(g: GameMeta, opts?: { compact?: boolean }): string {
   const thumbStyle = cover
     ? ''
     : ` style="background:linear-gradient(145deg,${g.thumb[0]},${g.thumb[1]})"`;
+  const cardStyle = opts?.animIndex != null ? ` style="--card-i:${opts.animIndex}"` : '';
   const thumb = `
       <div class="gc-thumb gc-thumb-cover"${thumbStyle}>
         ${cover
@@ -415,7 +416,7 @@ function gameCard(g: GameMeta, opts?: { compact?: boolean }): string {
         <button type="button" class="gc-info" data-howto="${g.id}" aria-label="${t('hub.howToPlay')}">?</button>
       </div>`;
   return `
-    <a class="game-card game-card--poster game-card--${cadence}${opts?.compact ? ' game-card--compact' : ''}" href="${g.route}" data-game-id="${g.id}">
+    <a class="game-card game-card--poster game-card--${cadence}${opts?.compact ? ' game-card--compact' : ''}" href="${g.route}" data-game-id="${g.id}"${cardStyle}>
       ${thumb}
       <div class="gc-body">
         <h4 class="gc-title">${escapeHtml(name(g))}</h4>
@@ -534,6 +535,8 @@ function scheduleBrowseViewportRestore(): void {
 
 // A single flat library (no category sections), ordered by the catalog's
 // preferred order, filtered by the tag menu + search.
+let gamesGridMounted = false;
+
 function renderGames(): void {
   const host = $('#gameGrid');
   const q = gameQuery.trim().toLowerCase();
@@ -546,10 +549,49 @@ function renderGames(): void {
   } else {
     pool = freeGamesInCategory(categoryFilter);
   }
+  const animate = gamesGridMounted;
+  gamesGridMounted = true;
   host.innerHTML = pool.length
-    ? `<div class="cat-shelf">${pool.map((g) => gameCard(g)).join('')}</div>`
+    ? `<div class="cat-shelf${animate ? ' is-filtering' : ''}">${pool.map((g, i) =>
+      gameCard(g, { animIndex: animate ? i : undefined }),
+    ).join('')}</div>`
     : `<p class="cat-empty">${t('hub.noResults')}</p>`;
+  if (animate) {
+    requestAnimationFrame(() => host.querySelector('.cat-shelf')?.classList.remove('is-filtering'));
+  }
   wireHScrollPersistence();
+}
+
+function syncSearchFieldUi(input?: HTMLInputElement | null): void {
+  const search = input ?? document.querySelector<HTMLInputElement>('#gameSearch');
+  const wrap = document.querySelector<HTMLElement>('#gameSearchWrap');
+  const clear = document.querySelector<HTMLButtonElement>('#gameSearchClear');
+  if (!search || !wrap) return;
+  const hasValue = search.value.length > 0;
+  wrap.classList.toggle('has-value', hasValue);
+  if (clear) clear.hidden = !hasValue;
+}
+
+function wireSearchField(): void {
+  const search = document.querySelector<HTMLInputElement>('#gameSearch');
+  const clear = document.querySelector<HTMLButtonElement>('#gameSearchClear');
+  const wrap = document.querySelector<HTMLElement>('#gameSearchWrap');
+  if (!search || !wrap) return;
+
+  search.placeholder = t('hub.searchGamesPremium');
+  syncSearchFieldUi(search);
+
+  search.addEventListener('focus', () => wrap.classList.add('is-focused'));
+  search.addEventListener('blur', () => wrap.classList.remove('is-focused'));
+
+  clear?.addEventListener('click', () => {
+    gameQuery = '';
+    search.value = '';
+    syncSearchFieldUi(search);
+    renderGames();
+    persistBrowseState();
+    search.focus();
+  });
 }
 
 function renderGamesToolbar(): void {
@@ -566,12 +608,12 @@ function renderGamesToolbar(): void {
   });
   const search = host.querySelector<HTMLInputElement>('#gameSearch');
   if (search) {
-    search.placeholder = t('hub.searchGames');
     if (focusSearch) {
       search.focus();
       if (selStart != null) search.setSelectionRange(selStart, selStart);
     }
   }
+  wireSearchField();
   wirePillTabsIndicator();
 }
 
@@ -924,8 +966,7 @@ function renderAll(): void {
   renderLiveBoard({ fetch: liveBoardSeen });
   renderWinners({ fetch: winnersSeen });
   applyTranslations();
-  const search = document.querySelector<HTMLInputElement>('#gameSearch');
-  if (search) search.placeholder = t('hub.searchGames');
+  wireSearchField();
   tickCountdowns();
 }
 
@@ -1124,6 +1165,7 @@ function setupBrowse(): void {
     const search = (e.target as HTMLElement).closest<HTMLInputElement>('#gameSearch');
     if (!search) return;
     gameQuery = search.value;
+    syncSearchFieldUi(search);
     renderGames();
     if (searchPersistTimer) clearTimeout(searchPersistTimer);
     searchPersistTimer = setTimeout(() => persistBrowseState(), 150);
