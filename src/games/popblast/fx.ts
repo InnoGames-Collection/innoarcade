@@ -160,12 +160,12 @@ export function tileCenter(tile: HTMLElement): { x: number; y: number } {
 }
 
 export const CANDY_COLORS: Record<string, string> = {
-  red: '#ff7b9c',
-  blue: '#6ec8ff',
-  green: '#6ddf8a',
-  yellow: '#ffe566',
-  purple: '#d4a0ff',
-  orange: '#ffb86a',
+  red: '#ff1a52',
+  blue: '#2b8cff',
+  green: '#4ee06a',
+  yellow: '#ffe030',
+  purple: '#c878ff',
+  orange: '#ffb040',
 };
 
 export function celebrationTier(combo: number, matchSize: number): 'low' | 'mid' | 'high' {

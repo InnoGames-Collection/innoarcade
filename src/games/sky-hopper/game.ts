@@ -1,9 +1,32 @@
 // Sky Hopper — vertical platform jumper with procedural generation, enemies,
 // progressive difficulty, and satisfying physics. Enterprise-grade arcade action.
 
-import { sfx } from '../../engine/audio';
 import { getHighScore, setHighScore } from '../../engine/storage';
 import type { Action } from '../../engine/input';
+import { Juice } from '../../engine/juice';
+import { skySfx } from './audio';
+import {
+  SkyBackground,
+  drawPlatforms,
+  drawPlayer,
+  updatePlayerVisual,
+  triggerLandSquash,
+  triggerJumpStretch,
+  drawEnemies,
+  updateScorePopups,
+  drawScorePopups,
+  scorePopupText,
+  spawnScorePopup,
+  drawAmbientGlow,
+  drawColorGrade,
+  drawVignette,
+  drawSparkles,
+  spawnSparkles,
+  updateSparkles,
+  type ScorePopup,
+  type PlayerVisual,
+  type Sparkle,
+} from './rendering';
 
 export const W = 480;
 export const H = 720;
@@ -34,23 +57,13 @@ interface Enemy {
   h: number;
 }
 
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  size: number;
-  color: string;
-}
-
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameOver';
 
 export class SkyHopper {
   state: GameState = 'menu';
   score = 0;
   best = getHighScore('sky-hopper');
+  maxCombo = 0;
 
   onStateChange: (s: GameState) => void = () => {};
   onGameOver: (score: number, record: boolean) => void = () => {};
@@ -64,17 +77,37 @@ export class SkyHopper {
   private cameraY = H - 100;
   private platforms: Platform[] = [];
   private enemies: Enemy[] = [];
-  private particles: Particle[] = [];
   private screenShake = 0;
+
+  // Visual-only state — does not affect gameplay
+  private sky = new SkyBackground();
+  private juice = new Juice();
+  private scorePopups: ScorePopup[] = [];
+  private sparkles: Sparkle[] = [];
+  private playerVisual: PlayerVisual = {
+    squashY: 1, stretchX: 1, breathPhase: 0, landBounce: 0, facing: 1,
+  };
+  private platformSquash = new Map<string, number>();
+  private jumpChain = 0;
+  private cameraPulse = 0;
 
   start(): void {
     this.score = 0;
+    this.maxCombo = 0;
     this.time = 0;
     this.playerDir = 0;
     this.platforms = [];
     this.enemies = [];
-    this.particles = [];
     this.screenShake = 0;
+    this.juice = new Juice();
+    this.scorePopups = [];
+    this.sparkles = [];
+    this.platformSquash.clear();
+    this.jumpChain = 0;
+    this.cameraPulse = 0;
+    this.playerVisual = {
+      squashY: 1, stretchX: 1, breathPhase: 0, landBounce: 0, facing: 1,
+    };
     this.generateInitialPlatforms();
 
     const startPlat = this.platforms.reduce((a, b) => (a.y > b.y ? a : b));
@@ -86,11 +119,17 @@ export class SkyHopper {
   }
 
   pause(): void {
-    if (this.state === 'playing') this.setState('paused');
+    if (this.state === 'playing') {
+      skySfx.pause();
+      this.setState('paused');
+    }
   }
 
   resume(): void {
-    if (this.state === 'paused') this.setState('playing');
+    if (this.state === 'paused') {
+      skySfx.resume();
+      this.setState('playing');
+    }
   }
 
   handleAction(a: Action): void {
@@ -104,7 +143,8 @@ export class SkyHopper {
       case 'tap':
         if (this.state === 'playing' && this.playerVy >= -80) {
           this.playerVy = -PLAYER_JUMP_POWER;
-          sfx.click();
+          skySfx.jump();
+          triggerJumpStretch(this.playerVisual);
         }
         break;
       case 'pause':
@@ -155,9 +195,22 @@ export class SkyHopper {
 
   update(dt: number): void {
     this.time += dt;
+    this.sky.update(dt);
+
     if (this.state !== 'playing') return;
 
     this.screenShake = Math.max(0, this.screenShake - dt * 8);
+    this.cameraPulse = Math.max(0, this.cameraPulse - dt * 3);
+    this.juice.update(dt);
+    updateScorePopups(this.scorePopups, dt);
+    this.sparkles = updateSparkles(this.sparkles, dt);
+    updatePlayerVisual(this.playerVisual, this.playerVy, this.playerDir, dt);
+
+    for (const [key, val] of this.platformSquash) {
+      const next = Math.max(0, val - dt * 5);
+      if (next <= 0) this.platformSquash.delete(key);
+      else this.platformSquash.set(key, next);
+    }
 
     this.playerX += this.playerDir * PLAYER_SPEED * dt;
     this.playerX = Math.max(0, Math.min(W - PLAYER_W, this.playerX));
@@ -171,15 +224,15 @@ export class SkyHopper {
       return;
     }
 
-    // Camera follows player upward and when falling
     const targetCam = this.playerY - H * 0.72;
     this.cameraY += (targetCam - this.cameraY) * Math.min(1, dt * 4);
 
-    const landed = this.checkPlatformCollision(dt);
-    if (landed && this.playerVy > 0) {
+    const landedPlat = this.checkPlatformCollision(dt);
+    if (landedPlat && this.playerVy > 0) {
       this.playerVy = -PLAYER_JUMP_POWER;
-      sfx.click();
-      this.burst(this.playerX + PLAYER_W / 2, this.playerY + PLAYER_H);
+      skySfx.land();
+      triggerLandSquash(this.playerVisual);
+      this.onLandFeedback(landedPlat);
     }
 
     for (const enemy of this.enemies) {
@@ -206,18 +259,11 @@ export class SkyHopper {
       if (p.x < 0 || p.x + p.w > W) p.direction *= -1;
     }
 
-    for (const p of this.particles) {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += 500 * dt;
-      p.life += dt;
-    }
-
     const newGap = PLATFORM_SPACING * Math.max(0.65, 1 - Math.floor(this.score / 500) * 0.02);
 
     this.platforms = this.platforms.filter((p) => p.y < this.cameraY + H + 120);
     this.enemies = this.enemies.filter((e) => e.y < this.cameraY + H + 120);
-    this.particles = this.particles.filter((p) => p.life < p.maxLife);
+    this.scorePopups = this.scorePopups.filter((p) => p.life < p.maxLife);
 
     while (this.platforms.length < 10) {
       const topY = Math.min(...this.platforms.map((p) => p.y));
@@ -225,18 +271,54 @@ export class SkyHopper {
     }
   }
 
+  private onLandFeedback(plat: Platform): void {
+    const cx = this.playerX + PLAYER_W / 2;
+    const feet = this.playerY + PLAYER_H;
+    const perfect = Math.abs(cx - (plat.x + plat.w / 2)) < plat.w * 0.15;
+
+    this.jumpChain++;
+    if (this.jumpChain > this.maxCombo) this.maxCombo = this.jumpChain;
+
+    const key = `${plat.x.toFixed(0)}_${plat.y.toFixed(0)}`;
+    this.platformSquash.set(key, 1);
+
+    this.juice.burst(cx, feet, 'rgba(180,220,255,0.8)', 10, 120, 3);
+    this.juice.burst(cx, feet, 'rgba(79,158,22,0.5)', 6, 80, 2);
+
+    if (perfect) {
+      skySfx.perfectJump();
+      spawnSparkles(this.sparkles, cx, feet, 10);
+      this.juice.burst(cx, feet - 8, 'rgba(255,220,100,0.9)', 8, 100, 2.5);
+    }
+
+    if (this.jumpChain >= 5) {
+      this.cameraPulse = 0.6;
+      skySfx.comboReward(Math.min(3, Math.floor(this.jumpChain / 5)));
+    } else {
+      skySfx.coin();
+    }
+
+    const text = scorePopupText(10, this.jumpChain, perfect);
+    spawnScorePopup(this.scorePopups, cx, feet - 20, text);
+  }
+
   private endRun(): void {
     const record = this.score > this.best;
     if (record) {
       setHighScore('sky-hopper', this.score);
       this.best = this.score;
+      skySfx.newHighScore();
+    } else {
+      skySfx.gameOver();
     }
+    this.screenShake = 0.4;
+    this.juice.shake(0.35);
     this.setState('gameOver');
     this.onGameOver(this.score, record);
   }
 
-  private checkPlatformCollision(dt: number): boolean {
-    if (this.playerVy <= 0) return false;
+  private checkPlatformCollision(dt: number): Platform | null {
+    if (this.playerVy <= 0) return null;
     const feet = this.playerY + PLAYER_H;
     const prevFeet = feet - this.playerVy * dt;
 
@@ -249,28 +331,10 @@ export class SkyHopper {
       ) {
         this.playerY = p.y - PLAYER_H;
         this.score += 10;
-        return true;
+        return p;
       }
     }
-    return false;
-  }
-
-  private burst(x: number, y: number): void {
-    const count = 6;
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-      const speed = 100 + Math.random() * 60;
-      this.particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 0,
-        maxLife: 0.4,
-        size: 4 + Math.random() * 2,
-        color: `hsl(${Math.random() * 60 + 200}, 80%, 60%)`,
-      });
-    }
+    return null;
   }
 
   private setState(next: GameState): void {
@@ -280,96 +344,50 @@ export class SkyHopper {
   }
 
   render(ctx: CanvasRenderingContext2D): void {
-    const shake = this.screenShake * 4;
+    const shake = Math.max(this.screenShake, this.juice.screenShake) * 4;
     ctx.save();
+
+    if (this.cameraPulse > 0) {
+      const s = 1 + this.cameraPulse * 0.012;
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(s, s);
+      ctx.translate(-W / 2, -H / 2);
+    }
+
     ctx.translate(
       shake * (Math.random() - 0.5),
       shake * (Math.random() - 0.5),
     );
 
-    // Daytime sky that deepens as you climb
-    const altitude = Math.max(0, -this.cameraY) * 0.0004;
-    const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, `hsl(215, 80%, ${Math.max(28, 58 - altitude * 30)}%)`);
-    sky.addColorStop(1, `hsl(200, 75%, ${Math.max(45, 74 - altitude * 30)}%)`);
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H);
+    this.sky.render(ctx, this.cameraY, this.time);
 
     const offsetY = this.cameraY;
 
-    // Parallax clouds — deterministic positions, scrolled at half camera speed
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    for (let i = 0; i < 12; i++) {
-      const cx = ((i * 137 + 60) % W);
-      const cy = ((i * 263) % 1400) - ((offsetY * 0.5) % 1400);
-      const y = ((cy % 1400) + 1400) % 1400 - 340;
-      const r = 22 + (i % 4) * 9;
-      ctx.beginPath();
-      ctx.arc(cx, y, r, 0, Math.PI * 2);
-      ctx.arc(cx + r * 0.9, y + 6, r * 0.7, 0, Math.PI * 2);
-      ctx.arc(cx - r * 0.9, y + 7, r * 0.65, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0, 30, 70, 0.55)';
-    ctx.shadowBlur = 6;
-    ctx.fillText(`Height: ${Math.max(0, Math.floor(this.score))}`, W / 2, 40);
-    ctx.shadowBlur = 0;
-
-    for (const p of this.platforms) {
-      const y = p.y - offsetY;
-      if (y < -50 || y > H + 50) continue;
-
-      const isMoving = p.moving;
-      // Earthy base with a grass (static) or amber (moving) top
-      ctx.fillStyle = '#7a4a2b';
-      ctx.fillRect(p.x, y + 4, p.w, PLATFORM_H - 4);
-      ctx.fillStyle = isMoving ? '#ffb347' : '#3fa34d';
-      ctx.fillRect(p.x, y, p.w, 6);
-
-      if (isMoving) {
-        ctx.strokeStyle = 'rgba(255, 179, 71, 0.7)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(p.x - 2, y - 2, p.w + 4, PLATFORM_H + 4);
-      } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.fillRect(p.x + 6, y + 1, p.w - 12, 2);
-      }
-    }
-
-    for (const e of this.enemies) {
-      const y = e.y - offsetY;
-      if (y < -50 || y > H + 50) continue;
-
-      ctx.fillStyle = '#ff6b6b';
-      ctx.fillRect(e.x, y, e.w, e.h);
-      ctx.fillStyle = '#333';
-      ctx.font = '14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('💀', e.x + e.w / 2, y + e.h / 2);
-    }
+    drawPlatforms(ctx, this.platforms, offsetY, H, this.platformSquash, this.time);
+    drawEnemies(ctx, this.enemies, offsetY, H, this.time);
 
     const py = this.playerY - offsetY;
-    ctx.fillStyle = '#ffd60a';
-    ctx.fillRect(this.playerX, py, PLAYER_W, PLAYER_H);
-    ctx.fillStyle = '#fff';
-    ctx.font = '16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🐸', this.playerX + PLAYER_W / 2, py + PLAYER_H / 2);
+    drawPlayer(ctx, this.playerX, py, this.playerVisual, this.time);
 
-    for (const p of this.particles) {
+    ctx.save();
+    for (const p of this.juice.particles) {
       const y = p.y - offsetY;
-      const alpha = 1 - p.life / p.maxLife;
-      ctx.fillStyle = p.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+      const t = 1 - p.life / p.maxLife;
+      ctx.globalAlpha = t;
+      ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x, y, p.size * Math.max(0, alpha), 0, Math.PI * 2);
+      ctx.arc(p.x, y, p.size * t, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    drawSparkles(ctx, this.sparkles, offsetY);
+    drawScorePopups(ctx, this.scorePopups, offsetY);
+
+    drawAmbientGlow(ctx);
+    drawColorGrade(ctx);
+    drawVignette(ctx);
 
     ctx.restore();
   }
