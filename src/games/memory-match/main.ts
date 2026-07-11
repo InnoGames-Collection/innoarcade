@@ -21,7 +21,7 @@ import nexsusIcon from './icons/nexsus.png';
 import teleconnectIcon from './icons/teleconnect.png';
 import { mmSfx } from './mm-sfx';
 import {
-  animateCountUp, burstConfetti, renderStars, showScorePopup, spawnMatchVfx,
+  burstConfetti, showScorePopup, spawnMatchVfx,
 } from './mm-vfx';
 
 const GAME_ID = 'memory-match';
@@ -155,31 +155,26 @@ function setPhase(next: Phase): void {
 }
 
 function showOverOverlay(final: number): void {
+  void final;
   const overlay = $('#mmOverOverlay');
   const panel = overlay.querySelector<HTMLElement>('.mm-over-panel')!;
   const cleared = pairs === PAIR_COUNT;
-  const titleEl = $('#mmOverTitle');
-  titleEl.textContent = cleared ? t('mm.victory') : t('td.gameOver');
   panel.classList.toggle('mm-victory', cleared);
 
-  const finalEl = $('#mmFinalScore');
-  finalEl.textContent = '0';
-  $('#mmFinalBest').textContent = SCORE_PLACEHOLDER;
-  const accuracy = moves > 0 ? Math.round((pairs * 2 / moves) * 100) : 0;
-  $('#mmFinalAccuracy').textContent = `${accuracy}%`;
   $('#mmFinalTime').textContent = fmtTime(spentSeconds());
-  renderStars($('#mmStars'), displayStars(cleared));
+  $('#mmFinalBest').textContent = SCORE_PLACEHOLDER;
+  $('#mmOverRank').innerHTML = `${t('td.rank')} <strong>…</strong>`;
+  $('#mmFinalAttempts').textContent = '…';
+  $('#mmOverSummary').querySelectorAll('.mm-sum-reward').forEach((n) => n.remove());
   $('#mmNewBest').classList.add('hidden');
   $('#mmRunReward').innerHTML = `<span class="mm-rr-pending">…</span>`;
   $('#mmRunReward').classList.remove('hidden');
-  $('#mm-over-meta-row').querySelectorAll('.mm-meta-dynamic').forEach((n) => n.remove());
   $('#mmBoardOver').innerHTML = '';
   $('#mmCloseBtn').classList.add('hidden');
   syncAttemptsUi();
   overlay.classList.remove('hidden');
   overlay.setAttribute('aria-hidden', 'false');
-  animateCountUp(finalEl, final);
-  burstConfetti(cleared);
+  if (cleared) burstConfetti(true);
 }
 
 function hideOverOverlay(): void {
@@ -206,7 +201,7 @@ const navHandlers: FreeShellNavHandlers = {
 };
 
 async function refreshTournamentPanel(): Promise<void> {
-  await refreshTournamentMenuPanel(GAME_ID, $('#mmTourney'), { boardLimit: 3 });
+  await refreshTournamentMenuPanel(GAME_ID, $('#mmTourney'), { boardLimit: 5 });
   syncAttemptsUi();
 }
 
@@ -215,7 +210,7 @@ async function submitRound(score: number, cleared: boolean, durationMs: number):
     rewardEl: $('#mmRunReward'),
     boardEl: $('#mmBoardOver'),
     cssPrefix: 'mm-rr',
-    boardLimit: 3,
+    boardLimit: 5,
     showToast,
     onBest: (best, isRecord) => {
       $('#mmFinalBest').textContent = best.toLocaleString();
@@ -257,12 +252,6 @@ function refreshStats(): void {
   bar.classList.toggle('mm-timer-critical', secs > 0 && secs <= 10);
 }
 
-function displayStars(cleared: boolean): number {
-  if (!cleared) return 0;
-  if (moves <= 12) return 3;
-  if (moves <= 18) return 2;
-  return 1;
-}
 
 function bumpScoreStat(): void {
   scoreEl.closest('.mm-stat-score')?.classList.remove('mm-score-bump');
@@ -494,41 +483,39 @@ const muteBtn = $('#mmMuteBtn') as HTMLButtonElement;
 
 function formatOverReward(): void {
   const rewardEl = $('#mmRunReward');
-  const metaEl = $('#mm-over-meta-row');
-  rewardEl.classList.remove('mm-run-reward-ready', 'hidden');
-  metaEl.querySelectorAll('.mm-meta-dynamic').forEach((n) => n.remove());
+  const summaryEl = $('#mmOverSummary');
+  summaryEl.querySelectorAll('.mm-sum-reward').forEach((n) => n.remove());
 
   if (rewardEl.querySelector('.mm-rr-pending')) return;
 
   const stats = [...rewardEl.querySelectorAll<HTMLElement>('.mm-rr-stat')];
-  if (stats.length === 0) {
-    rewardEl.classList.add('hidden');
-    return;
-  }
-
-  const bestLabel = t('td.best').toLowerCase();
   const rankLabel = t('td.rank').toLowerCase();
+  const bestLabel = t('td.best').toLowerCase();
+
+  let rankVal = '—/—';
+  let attemptsVal = String(tournamentAttemptsLeft(GAME_ID));
 
   for (const stat of stats) {
     const label = stat.querySelector('b')?.textContent?.trim().toLowerCase() ?? '';
-    if (label === bestLabel || label.startsWith(`${bestLabel} `)) continue;
-
-    const chip = document.createElement('span');
-    chip.className = 'mm-over-meta-chip mm-meta-dynamic';
-
-    if (stat.classList.contains('xp')) {
-      chip.classList.add('mm-chip-reward', 'mm-chip-xp');
-      chip.textContent = stat.textContent?.trim() ?? '';
-    } else if (stat.classList.contains('coins')) {
-      chip.classList.add('mm-chip-reward', 'mm-chip-coins');
-      chip.textContent = stat.textContent?.trim() ?? '';
-    } else if (label === rankLabel || label.startsWith(`${rankLabel} `)) {
-      const val = stat.textContent?.replace(stat.querySelector('b')?.textContent ?? '', '').trim() ?? '—';
-      chip.innerHTML = `${t('td.rank')} <strong>${val}</strong>`;
-    } else {
-      chip.innerHTML = stat.innerHTML;
+    if (label === rankLabel || label.startsWith(`${rankLabel} `)) {
+      rankVal = stat.textContent?.replace(stat.querySelector('b')?.textContent ?? '', '').trim() ?? '—/—';
+    } else if (label !== bestLabel && !stat.classList.contains('xp') && !stat.classList.contains('coins')) {
+      const strong = stat.querySelector('strong');
+      if (strong) attemptsVal = strong.textContent ?? attemptsVal;
     }
-    metaEl.appendChild(chip);
+  }
+
+  $('#mmOverRank').innerHTML = `${t('td.rank')} <strong>${rankVal}</strong>`;
+  $('#mmFinalAttempts').textContent = attemptsVal;
+
+  for (const stat of stats) {
+    if (!stat.classList.contains('xp') && !stat.classList.contains('coins')) continue;
+    const chip = document.createElement('span');
+    chip.className = 'mm-over-sum-item mm-sum-reward';
+    if (stat.classList.contains('xp')) chip.classList.add('mm-sum-xp');
+    if (stat.classList.contains('coins')) chip.classList.add('mm-sum-coins');
+    chip.textContent = stat.textContent?.trim() ?? '';
+    summaryEl.appendChild(chip);
   }
 
   rewardEl.classList.add('hidden');

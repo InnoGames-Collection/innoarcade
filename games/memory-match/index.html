@@ -17,18 +17,14 @@
       </div>
 
       <div id="menuOverlay" class="game-overlay mm-menu-overlay">
-        <div class="game-panel mm-menu-panel panel-clean">
+        <div class="game-panel mm-menu-panel mm-shell-card panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close">✕</button>
-          <div class="mm-menu-hero">
-            <span class="mm-menu-icon" aria-hidden="true">🧩</span>
-            <h1 class="mm-menu-title" data-i18n="mm.title">Memory Match</h1>
-          </div>
           <div class="shell-tourney mm-tourney-card" id="mmTourney" aria-live="polite"></div>
           <details class="mm-howto">
             <summary data-i18n="td.howto">How to play</summary>
             <p data-i18n="mm.howtoHint">Flip cards to find matching pairs. Clear all 6 pairs before time runs out for the best score!</p>
           </details>
-          <button type="button" id="mmStartBtn" class="mm-btn mm-btn-primary mm-btn-pulse mm-btn-compact" data-i18n="hub.play">Play</button>
+          <button type="button" id="mmStartBtn" class="mm-btn mm-btn-primary mm-btn-wide" data-i18n="hub.play">Play</button>
         </div>
       </div>
 
@@ -85,21 +81,24 @@
       </div>
 
       <div id="mmOverOverlay" class="game-overlay hidden" aria-hidden="true">
-        <div class="game-panel mm-over-panel">
+        <div class="game-panel mm-over-panel mm-shell-card">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close">✕</button>
-          <h2 class="mm-over-title" id="mmOverTitle" data-i18n="td.gameOver">Game over</h2>
-          <div class="mm-stars" id="mmStars" aria-hidden="true"></div>
-          <p id="mmNewBest" class="mm-new-best hidden" data-i18n="td.newBest">New high score!</p>
 
-          <div class="mm-over-score-block">
-            <span class="mm-over-score-label" data-i18n="td.score">Score</span>
-            <strong class="mm-over-score-value" id="mmFinalScore">0</strong>
+          <div class="mm-over-hero">
+            <span class="mm-over-hero-label" data-i18n="mm.timeUsed">Time used</span>
+            <strong class="mm-over-hero-value" id="mmFinalTime">—</strong>
           </div>
 
-          <div class="mm-over-meta-row">
-            <span class="mm-over-meta-chip"><span data-i18n="td.best">Best</span> <strong id="mmFinalBest">0</strong></span>
-            <span class="mm-over-meta-chip"><span data-i18n="mm.accuracy">Accuracy</span> <strong id="mmFinalAccuracy">—</strong></span>
-            <span class="mm-over-meta-chip"><span data-i18n="mm.timeUsed">Time</span> <strong id="mmFinalTime">—</strong></span>
+          <p id="mmNewBest" class="mm-new-best hidden" data-i18n="td.newBest">New high score!</p>
+
+          <div class="mm-over-summary" id="mmOverSummary">
+            <span class="mm-over-sum-item" id="mmOverRank"><span data-i18n="td.rank">Rank</span> <strong>…</strong></span>
+            <span class="mm-over-sum-item"><span data-i18n="td.best">Best</span> <strong id="mmFinalBest">—</strong></span>
+            <span class="mm-over-sum-item mm-over-attempts">
+              <span aria-hidden="true">🎟️</span>
+              <span data-i18n="td.attemptsLeft">Attempts left</span>:
+              <strong id="mmFinalAttempts">…</strong>
+            </span>
           </div>
 
           <div class="mm-run-reward hidden" id="mmRunReward" aria-hidden="true"></div>
@@ -110,8 +109,8 @@
           </div>
 
           <div class="mm-over-actions">
-            <button type="button" class="mm-btn mm-btn-primary mm-btn-compact" id="mmAgainBtn" data-i18n="td.restart">Play again</button>
-            <button type="button" class="mm-btn mm-btn-primary mm-btn-compact" id="mmHomeBtn" data-i18n="mm.home">Home</button>
+            <button type="button" class="mm-btn mm-btn-primary mm-btn-wide" id="mmAgainBtn" data-i18n="td.restart">Play again</button>
+            <button type="button" class="mm-btn mm-btn-primary mm-btn-wide" id="mmHomeBtn" data-i18n="mm.home">Home</button>
           </div>
         </div>
       </div>
