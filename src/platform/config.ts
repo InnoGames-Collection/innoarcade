@@ -132,7 +132,7 @@ export const DEFAULT_CONFIG: AppConfig = {
       { icon: '🔧', textEn: 'Scheduled maintenance notice', textAm: 'የተዘጋጀ የጥገና ማስታወቂያ', ago: '3d' },
     ],
     trendingGameIds: ['temple-dash', 'fruit-slice', 'memory-match', 'bubble-pop', 'popblast', 'orbit-blast', 'ethiopian-quiz', 'merge-2048'],
-    recentlyAddedGameIds: ['race-car', 'slide-puzzle', 'arrow-shot', 'ball-maze', 'pipe-connect', 'rope-rescue'],
+    recentlyAddedGameIds: ['slide-puzzle', 'helix-jump', 'ball-sort', 'jewel-match', 'block-blast', 'tile-connect'],
     dailyChallenge: { rewardCoins: 200 },
     trendingMode: 'analytics',
     missionRewards: { play5: 50, win2: 80, tournament: 100 },

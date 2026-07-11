@@ -323,9 +323,23 @@ const ALL_GAMES: GameMeta[] = [
 // its id here (a one-line change).
 const ENABLED_TOURNAMENT = new Set<string>(['memory-match', 'fruit-slice']);
 /** Hidden from the hub until re-enabled (game code may remain in the repo). */
-const HIDDEN_GAMES = new Set<string>(['candy-crunch']);
+const HIDDEN_GAMES = new Set<string>([
+  'candy-crunch',
+  'spin-wheel',
+  'lucky-box',
+  'luckyslot',
+]);
+/** Live builds held back as hub "Coming soon" teasers (still in ALL_GAMES for routes/build). */
+const COMING_SOON_IDS = new Set<string>([
+  'parking-jam', 'laser-puzzle', 'piano-tiles', 'stack-tower', 'crossy-road',
+  'knife-hit', 'hill-climb', 'tower-defense', 'draw-bridge', 'reflex-tap',
+  'doodle-jump', 'zigzag', 'color-switch', 'rope-rescue', 'pipe-connect',
+  'ball-maze', 'arrow-shot', 'race-car',
+  'traffic-master', 'city-rush', 'mega-match', 'ninja-dash',
+]);
 export const CATALOG: GameMeta[] = ALL_GAMES.filter(
-  (g) => !HIDDEN_GAMES.has(g.id) && (g.mode === 'free' || ENABLED_TOURNAMENT.has(g.id)),
+  (g) => !HIDDEN_GAMES.has(g.id) && !COMING_SOON_IDS.has(g.id)
+    && (g.mode === 'free' || ENABLED_TOURNAMENT.has(g.id)),
 );
 
 // WebP cover art for the catalog cards (files live in /public). Attached to the
@@ -478,30 +492,35 @@ for (const g of CATALOG) {
 //   2. then the rest in catalog order;
 //   3. except BOTTOM games, pinned to the very end.
 const FRONT = [
+  // Tournament (enabled titles) — pinned first
+  'memory-match',
+  'fruit-slice',
   // Free games (hub order)
-  'temple-dash',
   'popblast',
-  'ethiopian-quiz',
-  'orbit-blast',
-  'spell',
-  'spin-wheel',
-  'tap-game',
-  'crosssum',
-  'lucky-box',
+  'temple-dash',
+  'helix-jump',
+  'ball-sort',
   'brick-blitz',
+  'orbit-blast',
+  'ethiopian-quiz',
+  'jewel-match',
+  'bubble-pop',
+  'slide-puzzle',
+  'tile-connect',
+  'tap-game',
+  'block-blast',
   'sky-hopper',
-  'luckyslot',
+  'water-sort',
+  'hexa-block',
   'sudoku',
+  'spell',
+  'crosssum',
   'logic',
   'merge-2048',
   'vocab',
   'rhyme',
   'target24',
   'sequence',
-  'bubble-pop',
-  // Tournament (enabled titles)
-  'memory-match',
-  'fruit-slice',
 ];
 const BOTTOM: string[] = [];
 
@@ -546,18 +565,68 @@ export interface ComingSoonMeta {
 }
 
 export const COMING_SOON_COVERS: Record<string, string> = {
+  'parking-jam': '/parking_jam.webp',
+  'laser-puzzle': '/laser_puzzle.webp',
+  'piano-tiles': '/piano_tiles.webp',
+  'stack-tower': '/stack_tower.webp',
+  'crossy-road': '/crossy_road.webp',
+  'knife-hit': '/knife_hit.webp',
+  'hill-climb': '/hill_climb.webp',
+  'tower-defense': '/tower_defense.webp',
+  'draw-bridge': '/draw_bridge.webp',
+  'reflex-tap': '/reflex_tap.webp',
+  'doodle-jump': '/doodle_jump.webp',
+  'zigzag': '/zigzag.webp',
+  'color-switch': '/color_switch.webp',
+  'rope-rescue': '/rope_rescue.webp',
+  'pipe-connect': '/pipe_connect.webp',
+  'ball-maze': '/ball_maze.webp',
+  'arrow-shot': '/arrow_shot.webp',
+  'race-car': '/race_car.webp',
   'traffic-master': '/traffic_master.webp',
   'city-rush': '/city_rush.webp',
   'mega-match': '/mega_match.webp',
   'ninja-dash': '/ninja_dash.webp',
 };
 
-export const COMING_SOON: ComingSoonMeta[] = [
-  { id: 'traffic-master', nameEn: 'Traffic Master', nameAm: 'Traffic Master', icon: '🚦', thumb: ['#c0392b', '#2a0808'], cover: COMING_SOON_COVERS['traffic-master'], etaEn: 'Coming Q3', etaAm: 'በቅርብ Q3' },
+const COMING_SOON_ORDER = [
+  'parking-jam', 'laser-puzzle', 'piano-tiles', 'stack-tower', 'crossy-road',
+  'knife-hit', 'hill-climb', 'tower-defense', 'draw-bridge', 'reflex-tap',
+  'doodle-jump', 'zigzag', 'color-switch', 'rope-rescue', 'pipe-connect',
+  'ball-maze', 'arrow-shot', 'race-car',
+  'traffic-master', 'city-rush', 'mega-match', 'ninja-dash',
+] as const;
+
+const COMING_SOON_MANUAL: ComingSoonMeta[] = [
+  { id: 'traffic-master', nameEn: 'Traffic Master', nameAm: 'Traffic Master', icon: '🚦', thumb: ['#c0392b', '#2a0808'], cover: COMING_SOON_COVERS['traffic-master'], etaEn: 'Coming soon', etaAm: 'በቅርብ ቀን' },
   { id: 'city-rush', nameEn: 'City Rush', nameAm: 'City Rush', icon: '🏙️', thumb: ['#3498db', '#0c1a2a'], cover: COMING_SOON_COVERS['city-rush'], etaEn: 'Coming soon', etaAm: 'በቅርብ ቀን' },
   { id: 'mega-match', nameEn: 'Mega Match', nameAm: 'Mega Match', icon: '💥', thumb: ['#9b59b6', '#1a0c2a'], cover: COMING_SOON_COVERS['mega-match'], etaEn: 'Coming soon', etaAm: 'በቅርብ ቀን' },
   { id: 'ninja-dash', nameEn: 'Ninja Dash', nameAm: 'Ninja Dash', icon: '🥷', thumb: ['#2c3e50', '#0a1018'], cover: COMING_SOON_COVERS['ninja-dash'], etaEn: 'Coming soon', etaAm: 'በቅርብ ቀን' },
 ];
+
+const allGamesById = new Map(ALL_GAMES.map((g) => [g.id, g]));
+const comingSoonManualById = new Map(COMING_SOON_MANUAL.map((c) => [c.id, c]));
+
+function comingSoonFromGame(g: GameMeta): ComingSoonMeta {
+  return {
+    id: g.id,
+    nameEn: g.nameEn,
+    nameAm: g.nameAm,
+    icon: g.icon,
+    thumb: g.thumb,
+    cover: COMING_SOON_COVERS[g.id],
+    etaEn: 'Coming soon',
+    etaAm: 'በቅርብ ቀን',
+  };
+}
+
+export const COMING_SOON: ComingSoonMeta[] = COMING_SOON_ORDER.map((id) => {
+  const manual = comingSoonManualById.get(id);
+  if (manual) return manual;
+  const g = allGamesById.get(id);
+  if (g) return comingSoonFromGame(g);
+  throw new Error(`Unknown coming soon game: ${id}`);
+});
 
 export const CATEGORY_CHIPS: { id: GameCategory | 'all'; icon: string; labelEn: string; labelAm: string }[] = [
   { id: 'all', icon: '🎮', labelEn: 'All', labelAm: 'ሁሉም' },
@@ -581,7 +650,7 @@ const TRENDING_IDS = [
 ];
 
 const RECENT_IDS = [
-  'race-car', 'slide-puzzle', 'arrow-shot', 'ball-maze', 'pipe-connect', 'rope-rescue',
+  'slide-puzzle', 'helix-jump', 'ball-sort', 'jewel-match', 'block-blast', 'tile-connect',
 ];
 
 const EST_MINUTES: Record<string, number> = {
@@ -691,7 +760,7 @@ const BADGE_HOT = new Set(['fruit-slice', 'memory-match', 'temple-dash']);
 const BADGE_NEW = new Set(RECENT_IDS);
 const BADGE_POPULAR = new Set(['orbit-blast', 'bubble-pop', 'popblast', 'merge-2048']);
 const BADGE_REWARD = new Set(['ethiopian-quiz']);
-const BADGE_FAST = new Set(['sky-hopper', 'brick-blitz', 'pipe-connect', 'arrow-shot']);
+const BADGE_FAST = new Set(['sky-hopper', 'brick-blitz', 'helix-jump', 'tap-game']);
 for (const g of CATALOG) {
   if (!g.badge) {
     if (BADGE_HOT.has(g.id)) g.badge = 'hot';
