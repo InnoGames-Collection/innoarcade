@@ -184,7 +184,8 @@ export async function startTournamentRound(
   showToast: (msg: string) => void,
 ): Promise<boolean> {
   try {
-    await host.startRound();
+    const left = await host.startRound();
+    if (host.isTournament && isConfigured() && typeof left !== 'number') return false;
     return true;
   } catch {
     if (!(await promptIfSessionExpired(showToast))) showToast(t('td.submitFailed'));

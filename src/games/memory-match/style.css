@@ -61,6 +61,42 @@ body.game-shell[data-game="memory-match"]:has(#memory-match-wrapper:not(.hidden)
   overflow: hidden;
 }
 
+body.game-shell[data-game="memory-match"]:has(#menuOverlay:not(.hidden)) {
+  background: linear-gradient(
+    180deg,
+    #3d8010 0%,
+    #4f9e16 10%,
+    #d4edc8 28%,
+    #eef8e8 50%,
+    #d4edc8 72%,
+    #4f9e16 90%,
+    #3d8010 100%
+  );
+}
+
+.mm-stage:has(#menuOverlay:not(.hidden)) .mm-bg-gradient {
+  background: linear-gradient(
+    180deg,
+    #3d8010 0%,
+    #4f9e16 14%,
+    #e8f5e0 35%,
+    #f6fbf2 52%,
+    #e8f5e0 65%,
+    #4f9e16 86%,
+    #3d8010 100%
+  );
+}
+
+.mm-stage:has(#menuOverlay:not(.hidden)) .mm-bg-blob-a {
+  background: rgba(61, 128, 16, 0.45);
+  top: -5%;
+}
+
+.mm-stage:has(#menuOverlay:not(.hidden)) .mm-bg-blob-b {
+  background: rgba(79, 158, 22, 0.4);
+  bottom: -3%;
+}
+
 .mm-bg-gradient {
   position: absolute;
   inset: 0;
@@ -586,6 +622,11 @@ body.game-shell[data-game="memory-match"] .mm-shell-card.game-panel {
 }
 
 /* ── Start menu ── */
+.mm-menu-overlay.game-overlay {
+  background: transparent !important;
+  backdrop-filter: none;
+}
+
 .mm-menu-overlay .game-panel {
   backdrop-filter: none;
 }
@@ -735,22 +776,7 @@ body.game-shell[data-game="memory-match"] .mm-tourney-card .gt-score {
   font-size: 0.76rem;
 }
 
-.mm-howto {
-  width: 100%;
-  font-size: 0.75rem;
-  color: var(--shell-muted, #5f7262);
-}
-
-.mm-howto summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: var(--mm-blue);
-}
-
-.mm-howto p {
-  margin: 8px 0 0;
-  line-height: 1.45;
-}
+.mm-howto { display: none !important; }
 
 /* ── Game over ── */
 body.game-shell[data-game="memory-match"] #mmOverOverlay.game-overlay {

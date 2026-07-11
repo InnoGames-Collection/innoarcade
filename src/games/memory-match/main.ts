@@ -3,7 +3,7 @@
 import '../../styles/base.css';
 import '../../styles/game-shell.css';
 import './style.css';
-import { applyTranslations, getLang, t } from '../../i18n';
+import { applyTranslations, getLang } from '../../i18n';
 import { createHost } from '../../platform/gameHost';
 import {
   applyTournamentPlayLabels, promptTournamentEntry, refreshTournamentMenuPanel,
@@ -96,6 +96,12 @@ function playButtons() {
 
 function syncAttemptsUi(): void {
   applyTournamentPlayLabels(GAME_ID, playButtons());
+  const left = tournamentAttemptsLeft(GAME_ID);
+  const panel = $('#mmTourney');
+  const strong = panel.querySelector('.gt-attempts strong');
+  if (strong) strong.textContent = String(left);
+  const status = panel.querySelector('.gt-status');
+  if (status) status.classList.toggle('hidden', left <= 0);
 }
 
 function showMenu(): void {
