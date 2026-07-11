@@ -10,6 +10,7 @@ import { createHost } from '../../platform/gameHost';
 import { gemClasses } from '../_shared/premiumGems';
 import { sfx } from '../../engine/audio';
 import { hbSfx } from './sounds';
+import { goHub } from '../../platform/freeShellNav';
 import { wireDrag } from './drag';
 import {
   animateCountUp,
@@ -376,8 +377,7 @@ function wireMenu(): void {
   });
   document.getElementById('hbHomeBtn')?.addEventListener('click', () => {
     hbSfx.click();
-    if (history.length > 1) history.back();
-    else location.href = '../../';
+    goHub();
   });
   document.getElementById('hbLeaderBtn')?.addEventListener('click', () => {
     hbSfx.click();

@@ -12,6 +12,7 @@ import { tileConnectCanConnect } from '../_lq/solvable';
 import { buildSolvableTileBoard } from '../_lq/levelGen';
 import { sfx } from '../../engine/audio';
 import { tcSfx } from './sounds';
+import { goHub } from '../../platform/freeShellNav';
 import {
   animateCountUp,
   animateHudValue,
@@ -309,8 +310,7 @@ function wireMenu(): void {
   });
   document.getElementById('tcHomeBtn')?.addEventListener('click', () => {
     tcSfx.click();
-    if (history.length > 1) history.back();
-    else location.href = '../../';
+    goHub();
   });
   document.getElementById('tcLeaderBtn')?.addEventListener('click', () => {
     tcSfx.click();

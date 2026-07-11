@@ -11,6 +11,7 @@ import { runTubeSortGame, BALL_SORT_THEME } from '../_shared/tubeSort/runGame';
 import type { SessionMode } from '../_shared/tubeSort/meta';
 import { installBallSortAudio } from './audio';
 import { ballSortSound } from './audio';
+import { goHub } from '../../platform/freeShellNav';
 
 installBallSortAudio();
 
@@ -46,8 +47,7 @@ function wireShellMenu(): void {
   });
   document.getElementById('bsHomeBtn')?.addEventListener('click', () => {
     ballSortSound('click');
-    if (history.length > 1) history.back();
-    else location.href = '../../';
+    goHub();
   });
 }
 

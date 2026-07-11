@@ -16,7 +16,7 @@ export interface FreeShellNavHandlers {
 }
 
 export function goHub(): void {
-  location.href = HUB_URL;
+  location.href = `${HUB_URL}#games`;
 }
 
 /** Push a history entry so the hardware back button can step in-shell first. */

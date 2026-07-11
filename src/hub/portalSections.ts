@@ -501,7 +501,7 @@ export function continuePlayingHtml(
           <h4 class="cp-title">${escapeHtml(gname)}</h4>
           <div class="mission-bar"><div class="mission-bar-fill" style="width:${progressPct}%"></div></div>
           <span class="cp-pct">${progressPct}%</span>
-          <a class="btn primary cp-btn" href="${game.route}" data-i18n="hub.continue">${t('hub.continue')}</a>
+          <a class="btn primary cp-btn" href="${game.route}" data-game-id="${game.id}" data-i18n="hub.continue">${t('hub.continue')}</a>
         </div>
       </article>`;
   }).join('');

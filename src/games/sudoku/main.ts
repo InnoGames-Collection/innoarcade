@@ -8,6 +8,7 @@ import { escalateTier } from '../../platform/freeDifficulty';
 import { createHost } from '../../platform/gameHost';
 import { sfx } from '../../engine/audio';
 import { sudokuSound } from './audio';
+import { goHub } from '../../platform/freeShellNav';
 import {
   animateCountUp,
   bumpStat,
@@ -178,8 +179,7 @@ function wireShellMenu(): void {
   document.getElementById('sdkLeaderBtn')?.addEventListener('click', openLeaderboardNotice);
   document.getElementById('sdkHomeBtn')?.addEventListener('click', () => {
     sudokuSound('menu');
-    if (history.length > 1) history.back();
-    else location.href = '../../';
+    goHub();
   });
 
   document.getElementById('fcPlayFrame')?.addEventListener('click', (e) => {

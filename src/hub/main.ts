@@ -28,6 +28,10 @@ import {
   activityTickerHtml, notificationsPanelHtml, shelfSkeletonHtml, lbSkeletonHtml,
 } from './portalSections';
 import { getHowToGuide } from './howToGuides';
+import {
+  loadBrowseState, saveBrowseState, collectHScrollPositions,
+  restoreHScrollPositions, restoreFocusedCard, findGameCard, type HubBrowseSnapshot,
+} from './browseState';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 const lang = (): Lang => getLang();
@@ -411,7 +415,7 @@ function gameCard(g: GameMeta, opts?: { compact?: boolean }): string {
         <button type="button" class="gc-info" data-howto="${g.id}" aria-label="${t('hub.howToPlay')}">?</button>
       </div>`;
   return `
-    <a class="game-card game-card--poster game-card--${cadence}${opts?.compact ? ' game-card--compact' : ''}" href="${g.route}">
+    <a class="game-card game-card--poster game-card--${cadence}${opts?.compact ? ' game-card--compact' : ''}" href="${g.route}" data-game-id="${g.id}">
       ${thumb}
       <div class="gc-body">
         <h4 class="gc-title">${escapeHtml(name(g))}</h4>
@@ -464,9 +468,69 @@ function openComingSoonHowTo(id: string): void {
 }
 
 // Browse state: segmented menu filters by tournament / free (default: tournament).
-let gameFilter: 'tournament' | 'free' = 'tournament';
-let categoryFilter: GameCategory | 'all' = 'all';
-let gameQuery = '';
+let browseSnapshot = loadBrowseState();
+let gameFilter: 'tournament' | 'free' = browseSnapshot?.gameFilter ?? 'tournament';
+let categoryFilter: GameCategory | 'all' = browseSnapshot?.categoryFilter ?? 'all';
+let gameQuery = browseSnapshot?.gameQuery ?? '';
+
+function persistBrowseState(opts?: { focusedGameId?: string }): void {
+  const snapshot: HubBrowseSnapshot = {
+    gameFilter,
+    categoryFilter,
+    gameQuery,
+    scrollY: window.scrollY,
+    hScrollPositions: collectHScrollPositions(),
+    focusedGameId: opts?.focusedGameId ?? browseSnapshot?.focusedGameId,
+  };
+  browseSnapshot = snapshot;
+  saveBrowseState(snapshot);
+}
+
+function wireHScrollPersistence(): void {
+  for (const id of ['trendingShelf', 'recentShelf']) {
+    const track = document.getElementById(id)?.querySelector<HTMLElement>('.hscroll-track');
+    if (!track || track.dataset.browseWired) continue;
+    track.dataset.browseWired = '1';
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    track.addEventListener('scroll', () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = undefined;
+        persistBrowseState();
+      }, 100);
+    }, { passive: true });
+  }
+}
+
+function restoreBrowseViewport(): boolean {
+  if (!browseSnapshot?.focusedGameId) return false;
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  const { scrollY, hScrollPositions, focusedGameId } = browseSnapshot;
+  if (!findGameCard(focusedGameId)) return false;
+
+  restoreHScrollPositions(hScrollPositions);
+  if (scrollY > 0) window.scrollTo(0, scrollY);
+  restoreFocusedCard(focusedGameId);
+
+  browseSnapshot = {
+    ...browseSnapshot,
+    focusedGameId: undefined,
+    scrollY: window.scrollY,
+    hScrollPositions: collectHScrollPositions(),
+  };
+  saveBrowseState(browseSnapshot);
+  return true;
+}
+
+function scheduleBrowseViewportRestore(): void {
+  if (!browseSnapshot?.focusedGameId) return;
+  const attempt = (): void => {
+    if (restoreBrowseViewport()) return;
+    window.setTimeout(() => restoreBrowseViewport(), 400);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(attempt));
+}
 
 // A single flat library (no category sections), ordered by the catalog's
 // preferred order, filtered by the tag menu + search.
@@ -485,6 +549,7 @@ function renderGames(): void {
   host.innerHTML = pool.length
     ? `<div class="cat-shelf">${pool.map((g) => gameCard(g)).join('')}</div>`
     : `<p class="cat-empty">${t('hub.noResults')}</p>`;
+  wireHScrollPersistence();
 }
 
 function renderGamesToolbar(): void {
@@ -524,12 +589,14 @@ function renderTrending(): void {
       trendingGames(analyticsIds, undefined, 'curated'),
       (g) => gameCard(g, { compact: true }),
     );
+    wireHScrollPersistence();
     return;
   }
   host.innerHTML = hScrollShelf(
     trendingGames(portal?.trendingGameIds, gamePlayCounts, mode),
     (g) => gameCard(g, { compact: true }),
   );
+  wireHScrollPersistence();
 }
 
 function renderRecentlyAdded(): void {
@@ -537,6 +604,7 @@ function renderRecentlyAdded(): void {
   if (!host) return;
   const ids = config().portal?.recentlyAddedGameIds;
   host.innerHTML = hScrollShelf(recentlyAddedGames(ids), (g) => gameCard(g, { compact: true }));
+  wireHScrollPersistence();
 }
 
 function progressPctForGame(g: GameMeta, score: number): number {
@@ -1020,6 +1088,8 @@ function syncNavActive(): void {
 window.addEventListener('scroll', syncNavActive, { passive: true });
 
 // Browse controls (segmented filter + category dropdown + inline search).
+let searchPersistTimer: ReturnType<typeof setTimeout> | undefined;
+
 function setupBrowse(): void {
   const gamesSection = document.querySelector('#games');
   gamesSection?.addEventListener('input', (e) => {
@@ -1027,6 +1097,8 @@ function setupBrowse(): void {
     if (!search) return;
     gameQuery = search.value;
     renderGames();
+    if (searchPersistTimer) clearTimeout(searchPersistTimer);
+    searchPersistTimer = setTimeout(() => persistBrowseState(), 150);
   });
   gamesSection?.addEventListener('click', (e) => {
     const seg = (e.target as HTMLElement).closest<HTMLButtonElement>('#gameSeg .seg-btn');
@@ -1035,6 +1107,7 @@ function setupBrowse(): void {
       if (gameFilter === 'tournament') categoryFilter = 'all';
       renderGamesToolbar();
       renderGames();
+      persistBrowseState();
       return;
     }
     const ddBtn = (e.target as HTMLElement).closest('#catDropdownBtn');
@@ -1052,6 +1125,7 @@ function setupBrowse(): void {
       renderGamesToolbar();
       renderGames();
       applyTranslations();
+      persistBrowseState();
     }
   });
   document.addEventListener('click', (e) => {
@@ -1083,6 +1157,31 @@ function setupBrowse(): void {
   document.querySelector('#trendingShelf')?.addEventListener('click', howToHost);
   document.querySelector('#recentShelf')?.addEventListener('click', howToHost);
   document.querySelector('#comingSoonShelf')?.addEventListener('click', howToHost);
+  document.querySelector('#continueShelf')?.addEventListener('click', howToHost);
+}
+
+function setupBrowsePersistence(): void {
+  let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+  window.addEventListener('scroll', () => {
+    if (scrollTimer) return;
+    scrollTimer = setTimeout(() => {
+      scrollTimer = undefined;
+      persistBrowseState();
+    }, 100);
+  }, { passive: true });
+
+  document.addEventListener('click', (e) => {
+    const info = (e.target as HTMLElement).closest('.gc-info');
+    if (info) return;
+    const card = (e.target as HTMLElement).closest<HTMLElement>('[data-game-id]');
+    if (!card?.dataset.gameId) return;
+    const link = card.closest('a[href]') ?? (card.matches('a[href]') ? card : null);
+    if (!link) return;
+    persistBrowseState({ focusedGameId: card.dataset.gameId });
+  }, true);
+
+  window.addEventListener('beforeunload', () => persistBrowseState());
+  wireHScrollPersistence();
 }
 
 // One-time cleanup — the economy is now 100% server-sourced, so wipe every
@@ -1108,10 +1207,12 @@ document.documentElement.lang = getLang();
 syncLangButtons();
 paintSkeletons();
 renderAll();
+scheduleBrowseViewportRestore();
 // Keep the top balances strip live as coins/points/gold change.
 onWalletChange(() => { renderMyStats(); renderSidebar(); });
 onCurrencyChange(() => { renderMyStats(); renderSidebar(); });
 setupBrowse();
+setupBrowsePersistence();
 setupLiveBoardTabs();
 setupWinnersTabs();
 setupDeferredSections();
@@ -1154,6 +1255,7 @@ function hydratePointsAfterBootstrap(boot: HubBootstrapResult): void {
   if (winnersSeen) renderWinners({ fetch: true });
   if (lbPreviewSeen) renderLbPreview({ fetch: true });
   renderGames();
+  scheduleBrowseViewportRestore();
 }
 
 async function runBackendHydration(): Promise<void> {

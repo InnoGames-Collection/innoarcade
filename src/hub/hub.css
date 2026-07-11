@@ -646,6 +646,22 @@ body {
 .gc-play-btn--free .gc-play-arrow { color: #1f5fc4; }
 .game-card--poster:hover .gc-play-btn { filter: brightness(1.05); transform: translateY(-1px); }
 
+/* Brief highlight when returning from a game */
+.game-card.is-focused,
+.cp-btn.is-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  animation: browse-focus-pulse 1.2s ease;
+}
+@keyframes browse-focus-pulse {
+  0%, 100% { outline-color: var(--accent); }
+  50% { outline-color: var(--accent-2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-card.is-focused,
+  .cp-btn.is-focused { animation: none; }
+}
+
 /* Legacy card chrome kept for modals / locked states */
 .cat-shelf .game-card { width: auto; background: #f6fcef; }
 .cat-shelf .game-card:hover { box-shadow: 0 14px 30px rgba(47, 124, 14, 0.2); }

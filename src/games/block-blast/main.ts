@@ -9,6 +9,7 @@ import { el, finishLQRound, mulberry32, mountLQ, setLQHeader, toast } from '../_
 import { createHost } from '../../platform/gameHost';
 import { gemClasses } from '../_shared/premiumGems';
 import { bbSfx } from './sounds';
+import { goHub } from '../../platform/freeShellNav';
 import { wireDrag } from './drag';
 import {
   animateCountUp,
@@ -357,8 +358,7 @@ function wireMenu(): void {
   });
   document.getElementById('bbHomeBtn')?.addEventListener('click', () => {
     bbSfx.click();
-    if (history.length > 1) history.back();
-    else location.href = '../../';
+    goHub();
   });
   document.getElementById('bbLeaderBtn')?.addEventListener('click', () => {
     bbSfx.click();
