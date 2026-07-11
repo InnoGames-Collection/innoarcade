@@ -4,11 +4,12 @@
 //  All canvas drawing is delegated to ./rendering/
 // ═══════════════════════════════════════════════════════════════
 
-import { sfx } from '../../engine/audio';
 import type { Action } from '../../engine/input';
+import { fruitSfx } from './audio';
 import {
   SceneRenderer, createJuiceBurst, createBombBurst, updateParticles,
-  type VfxParticle,
+  updateScorePopups, scorePopupText,
+  type VfxParticle, type ScorePopup,
 } from './rendering';
 
 export const W = 480;
@@ -77,8 +78,10 @@ export class FruitSlice {
   private particles: VfxParticle[] = [];
   private slices: Slice[] = [];
   private screenShake = 0;
+  private screenPulse = 0;
   private spawnCursor = 0;
   private currentSlice: Array<{ x: number; y: number }> = [];
+  private scorePopups: ScorePopup[] = [];
   private scene = new SceneRenderer();
   private comboFlash = 0;
   private lastCombo = 0;
@@ -95,8 +98,10 @@ export class FruitSlice {
     this.particles = [];
     this.slices = [];
     this.screenShake = 0;
+    this.screenPulse = 0;
     this.spawnCursor = 0;
     this.currentSlice = [];
+    this.scorePopups = [];
     this.comboFlash = 0;
     this.lastCombo = 0;
     this.setState('playing');
@@ -169,6 +174,7 @@ export class FruitSlice {
 
   private endRun(): void {
     if (this.state !== 'playing') return;
+    fruitSfx.gameOver();
     this.setState('gameOver');
     this.onGameOver(this.score, Math.floor(this.time * 1000));
   }
@@ -185,10 +191,22 @@ export class FruitSlice {
     if (fruit.sliced) return;
     fruit.sliced = true;
     this.combo += 1;
-    this.score += this.fruitPoints();
-    sfx.click();
+    const pts = this.fruitPoints();
+    this.score += pts;
+    fruitSfx.slice();
+    fruitSfx.splash();
     createJuiceBurst(this.particles, fruit.x, fruit.y, fruit.type);
-    this.screenShake = 0.1;
+    this.scorePopups.push({
+      x: fruit.x, y: fruit.y - 20,
+      text: scorePopupText(pts, this.combo),
+      life: 0, maxLife: 1.1,
+      drift: (Math.random() - 0.5) * 12,
+    });
+    this.screenShake = this.combo >= 10 ? 0.18 : 0.06;
+    if (this.combo >= 5) this.screenPulse = 0.35;
+    else if (this.combo >= 3) this.screenPulse = 0.2;
+    if (this.combo >= 5) fruitSfx.perfectSlice();
+    else if (this.combo >= 2) fruitSfx.comboReward(Math.min(this.combo - 2, 4));
     if (this.combo > this.lastCombo) {
       this.comboFlash = 0.5;
       this.lastCombo = this.combo;
@@ -202,7 +220,7 @@ export class FruitSlice {
     this.combo = 0;
     this.lastCombo = 0;
     this.score = Math.max(0, this.score - BOMB_PENALTY);
-    sfx.jump();
+    fruitSfx.bombHit();
     createBombBurst(this.particles, bomb.x, bomb.y);
     this.screenShake = 0.2;
   }
@@ -224,7 +242,10 @@ export class FruitSlice {
     }
 
     this.screenShake = Math.max(0, this.screenShake - dt * 8);
+    this.screenPulse = Math.max(0, this.screenPulse - dt * 2.5);
     this.comboFlash = Math.max(0, this.comboFlash - dt * 2);
+    updateScorePopups(this.scorePopups, dt);
+    this.scorePopups = this.scorePopups.filter((p) => p.life < p.maxLife);
 
     // Ramp difficulty with time: spawn faster + everything moves faster, so it
     // becomes progressively harder to keep up (≈2× speed at 45s, 3× at 90s).
@@ -310,11 +331,13 @@ export class FruitSlice {
       combo: this.combo,
       comboFlash: this.comboFlash,
       screenShake: this.screenShake,
+      screenPulse: this.screenPulse,
       fruits: this.fruits,
       bombs: this.bombs,
       particles: this.particles,
       slices: this.slices,
       currentSlice: this.currentSlice,
+      scorePopups: this.scorePopups,
       fruitRadius: FRUIT_RADIUS,
       bombRadius: BOMB_RADIUS,
     });

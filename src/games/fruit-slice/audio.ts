@@ -9,6 +9,7 @@ class FruitSliceAudio {
   muted = localStorage.getItem(MUTE_KEY) === '1';
 
   private ensureCtx(): AudioContext | null {
+    this.muted = localStorage.getItem(MUTE_KEY) === '1';
     if (this.muted) return null;
     if (!this.ctx) this.ctx = new AudioContext();
     if (this.ctx.state === 'suspended') void this.ctx.resume();

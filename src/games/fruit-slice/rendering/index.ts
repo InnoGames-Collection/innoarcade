@@ -10,14 +10,17 @@ import {
   createJuiceBurst, createBombBurst, updateParticles, drawParticles,
 } from './drawParticles';
 import { drawSliceTrail, drawComboEffect } from './drawEffects';
+import { drawScorePopups } from './drawScoreFeedback';
 import {
-  drawSunWash, drawFruitBloom, drawWarmGrade, drawDepthVignette, drawPlayfieldFocus,
+  drawSunWash, drawFruitBloom, drawWarmGrade, drawDepthVignette,
+  drawPlayfieldFocus, drawScreenPulse,
 } from './drawLighting';
-import type { RenderSnapshot, VfxParticle } from './types';
+import type { RenderSnapshot } from './types';
 import { RW as W, RH as H } from './types';
 
-export type { VfxParticle, RenderSnapshot };
+export type { VfxParticle, RenderSnapshot, ScorePopup } from './types';
 export { createJuiceBurst, createBombBurst, updateParticles };
+export { updateScorePopups, scorePopupText } from './drawScoreFeedback';
 
 /** Main rendering engine — composes every draw pass per frame. */
 export class SceneRenderer {
@@ -53,9 +56,13 @@ export class SceneRenderer {
     for (const fruit of snap.fruits) {
       if (fruit.sliced) {
         const alpha = Math.max(0, 1 - fruit.sliceTime / 0.3);
-        const off = fruit.sliceTime * 60;
-        drawSlicedHalf(ctx, fruit.x - off, fruit.y + off * 0.3, snap.fruitRadius, fruit.type, -1, alpha);
-        drawSlicedHalf(ctx, fruit.x + off, fruit.y + off * 0.3, snap.fruitRadius, fruit.type, 1, alpha);
+        if (fruit.sliceTime < 0.05) {
+          drawFruit(ctx, fruit.x, fruit.y, snap.fruitRadius, fruit.type, fruit.rot, fruit.sliceTime);
+        } else {
+          const off = fruit.sliceTime * 60;
+          drawSlicedHalf(ctx, fruit.x - off, fruit.y + off * 0.3, snap.fruitRadius, fruit.type, -1, alpha);
+          drawSlicedHalf(ctx, fruit.x + off, fruit.y + off * 0.3, snap.fruitRadius, fruit.type, 1, alpha);
+        }
       } else {
         drawFruit(ctx, fruit.x, fruit.y, snap.fruitRadius, fruit.type, fruit.rot);
       }
@@ -69,11 +76,13 @@ export class SceneRenderer {
       drawSliceTrail(ctx, snap.currentSlice, 0, 0.15);
     }
     drawParticles(ctx, snap.particles);
+    drawScorePopups(ctx, snap.scorePopups);
     if (snap.combo >= 2 && snap.comboFlash > 0) {
       drawComboEffect(ctx, snap.combo, snap.comboFlash, W / 2, H * 0.35);
     }
 
     // ── Layer 4: post-process ──
+    drawScreenPulse(ctx, snap.screenPulse);
     drawWarmGrade(ctx);
     drawDepthVignette(ctx);
 

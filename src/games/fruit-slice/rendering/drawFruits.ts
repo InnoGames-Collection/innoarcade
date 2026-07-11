@@ -28,11 +28,24 @@ export function fruitPalette(type: FruitType): Palette {
   return PAL[type];
 }
 
-function dropShadow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a = 0.28): void {
+import { RH as H } from './types';
+
+/** Dynamic shadow — scales with fruit height for depth. */
+function dropShadow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  const heightFactor = Math.max(0.35, 1 - (y / H) * 0.55);
+  const scaleX = 0.7 + heightFactor * 0.35;
+  const scaleY = 0.15 + heightFactor * 0.2;
+  const alpha = 0.12 + heightFactor * 0.22;
+  const offsetY = r * (0.75 + (1 - heightFactor) * 0.2);
+
   ctx.save();
-  ctx.fillStyle = `rgba(10,30,8,${a})`;
+  ctx.fillStyle = `rgba(8,25,6,${alpha})`;
   ctx.beginPath();
-  ctx.ellipse(x, y + r * 0.88, r * 0.95, r * 0.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y + offsetY, r * scaleX, r * scaleY, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(8,25,6,${alpha * 0.4})`;
+  ctx.beginPath();
+  ctx.ellipse(x, y + offsetY, r * scaleX * 1.3, r * scaleY * 1.4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -41,10 +54,22 @@ export function drawFruit(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, radius: number,
   type: FruitType, rotation: number,
+  sliceTime = 0,
 ): void {
   dropShadow(ctx, x, y, radius);
+
+  // Brief squash at slice moment — visual only
+  let squashX = 1;
+  let squashY = 1;
+  if (sliceTime > 0 && sliceTime < 0.06) {
+    const t = sliceTime / 0.06;
+    squashX = 1 + (1 - t) * 0.18;
+    squashY = 1 - (1 - t) * 0.14;
+  }
+
   ctx.save();
   ctx.translate(x, y);
+  ctx.scale(squashX, squashY);
   ctx.rotate(rotation);
   if (type === 'banana') paintBanana(ctx, radius, PAL.banana);
   else if (type === 'cherry') paintCherry(ctx, radius, PAL.cherry);

@@ -41,17 +41,29 @@ export interface RenderSlice {
   createdAt: number;
 }
 
+/** Floating score text — presentation only. */
+export interface ScorePopup {
+  x: number;
+  y: number;
+  text: string;
+  life: number;
+  maxLife: number;
+  drift: number;
+}
+
 /** Immutable frame description produced by the game engine each render tick. */
 export interface RenderSnapshot {
   time: number;
   combo: number;
   comboFlash: number;
   screenShake: number;
+  screenPulse: number;
   fruits: RenderFruit[];
   bombs: RenderBomb[];
   particles: VfxParticle[];
   slices: RenderSlice[];
   currentSlice: Array<{ x: number; y: number }>;
+  scorePopups: ScorePopup[];
   fruitRadius: number;
   bombRadius: number;
 }

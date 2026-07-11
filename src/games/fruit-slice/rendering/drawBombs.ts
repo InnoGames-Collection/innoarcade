@@ -1,13 +1,20 @@
 // Bomb rendering — stylized metal sphere with fuse.
 
+import { RH as H } from './types';
+
 export function drawBomb(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, radius: number, time: number,
 ): void {
+  const heightFactor = Math.max(0.35, 1 - (y / H) * 0.55);
+  const scaleX = 0.7 + heightFactor * 0.35;
+  const scaleY = 0.15 + heightFactor * 0.2;
+  const alpha = 0.14 + heightFactor * 0.24;
+
   ctx.save();
-  ctx.fillStyle = 'rgba(10,30,8,0.32)';
+  ctx.fillStyle = `rgba(8,25,6,${alpha})`;
   ctx.beginPath();
-  ctx.ellipse(x, y + radius * 0.9, radius * 0.92, radius * 0.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y + radius * (0.75 + (1 - heightFactor) * 0.2), radius * scaleX, radius * scaleY, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
