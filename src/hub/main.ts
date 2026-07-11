@@ -74,16 +74,8 @@ function promoBannerSrcset(img: string): string {
 function promoSlideHtml(p: PromoSlide, extraClass = ''): string {
   const bright = p.img.includes('ad-banner-2') ? ' promo-slide--bright' : '';
   const cls = `promo-slide promo-slide-img${bright}${extraClass ? ` ${extraClass}` : ''}`;
-  const img = `<img src="${escapeHtml(p.img)}"${promoBannerSrcset(p.img)} alt="" class="promo-banner-img" loading="lazy" decoding="async" />`;
-  const overlay = p.href
-    ? `<div class="promo-slide-overlay">
-        <p class="promo-slide-caption">${escapeHtml(p.alt)}</p>
-        <span class="promo-slide-cta">${t('hub.playNow')}</span>
-      </div>`
-    : `<div class="promo-slide-overlay promo-slide-overlay--static">
-        <p class="promo-slide-caption">${escapeHtml(p.alt)}</p>
-      </div>`;
-  const media = `<div class="promo-slide-media">${img}${overlay}</div>`;
+  const img = `<img src="${escapeHtml(p.img)}"${promoBannerSrcset(p.img)} alt="${escapeHtml(p.alt)}" class="promo-banner-img" loading="lazy" decoding="async" />`;
+  const media = `<div class="promo-slide-media">${img}</div>`;
   if (p.href) {
     return `<a href="${escapeHtml(p.href)}" class="${cls}" aria-label="${escapeHtml(p.alt)}">${media}</a>`;
   }
