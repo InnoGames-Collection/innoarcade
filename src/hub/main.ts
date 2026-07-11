@@ -274,6 +274,19 @@ function xpLevelBounds(lifetimeXp: number): { level: number; floor: number; ceil
   return { level, floor, ceiling };
 }
 
+function popCounter(el: HTMLElement): void {
+  el.classList.remove('counter-pop');
+  void el.offsetWidth;
+  el.classList.add('counter-pop');
+  el.addEventListener('animationend', () => el.classList.remove('counter-pop'), { once: true });
+}
+
+function setCounterText(el: HTMLElement | null | undefined, next: string): void {
+  if (!el || el.textContent === next) return;
+  el.textContent = next;
+  popCounter(el);
+}
+
 function renderMyStats(): void {
   const bar = document.querySelector('#playerBar');
   if (!bar) return;
@@ -282,6 +295,24 @@ function renderMyStats(): void {
   const span = Math.max(1, ceiling - floor);
   const pct = Math.min(100, Math.round(((xp - floor) / span) * 100));
   const nextXp = ceiling;
+  const levelStr = String(level);
+  const weeklyStr = fmtRp(rpWeekly());
+  const monthlyStr = fmtRp(rpMonthly());
+  const xpSubStr = `${xp.toLocaleString()} / ${nextXp.toLocaleString()}`;
+
+  const strip = bar.querySelector('.player-strip');
+  if (strip) {
+    setCounterText(strip.querySelector<HTMLElement>('.ps-level .ps-val'), levelStr);
+    setCounterText(strip.querySelector<HTMLElement>('.ps-rp-weekly .ps-val'), weeklyStr);
+    setCounterText(strip.querySelector<HTMLElement>('.ps-rp-monthly .ps-val'), monthlyStr);
+    const fill = strip.querySelector<HTMLElement>('.ps-bar-fill');
+    const barEl = strip.querySelector<HTMLElement>('.ps-bar');
+    const sub = strip.querySelector<HTMLElement>('.ps-sub');
+    if (fill) fill.style.width = `${pct}%`;
+    if (barEl) barEl.setAttribute('aria-valuenow', String(pct));
+    if (sub && sub.textContent !== xpSubStr) sub.textContent = xpSubStr;
+    return;
+  }
 
   bar.innerHTML = `
     <div class="player-strip">
@@ -892,16 +923,32 @@ function renderSidebar(): void {
   }
 
   const dash = document.querySelector('#sidebarDashboard');
+  const dashOpts = {
+    level,
+    xpPct: pct,
+    xp,
+    nextXp: ceiling,
+    coins: balanceSync(),
+    gamesPlayed: getGamesPlayedToday() || getRecentGames().length,
+    rank: getWeeklyRank(),
+  };
   if (dash) {
-    dash.innerHTML = sidebarDashboardHtml({
-      level,
-      xpPct: pct,
-      xp,
-      nextXp: ceiling,
-      coins: balanceSync(),
-      gamesPlayed: getGamesPlayedToday() || getRecentGames().length,
-      rank: getWeeklyRank(),
-    });
+    const card = dash.querySelector('.dash-card');
+    if (card) {
+      setCounterText(card.querySelector<HTMLElement>('.dash-level strong'), String(level));
+      const stats = card.querySelectorAll<HTMLElement>('.dash-stat strong');
+      setCounterText(stats[0], dashOpts.xp.toLocaleString());
+      setCounterText(stats[1], String(dashOpts.gamesPlayed));
+      const rankStr = dashOpts.rank != null && dashOpts.rank > 0 ? `#${dashOpts.rank}` : '—';
+      setCounterText(stats[2], rankStr);
+      setCounterText(stats[3], dashOpts.coins.toLocaleString());
+      const fill = card.querySelector<HTMLElement>('.dash-bar-fill');
+      const barEl = card.querySelector<HTMLElement>('.dash-bar');
+      if (fill) fill.style.width = `${pct}%`;
+      if (barEl) barEl.setAttribute('aria-valuenow', String(pct));
+    } else {
+      dash.innerHTML = sidebarDashboardHtml(dashOpts);
+    }
   }
 
   const missions = document.querySelector('#sidebarMissions');
@@ -934,7 +981,7 @@ function renderActivityTicker(): void {
 function updateOnlineCountDisplays(): void {
   const label = formatOnlineCount(getOnlineCount());
   document.querySelectorAll<HTMLElement>('[data-online-count]').forEach((el) => {
-    el.textContent = label;
+    setCounterText(el, label);
   });
 }
 
@@ -955,8 +1002,9 @@ function renderNotifBadge(): void {
   const n = unreadNotifCount();
   bell.hidden = !isConfigured();
   if (n > 0) {
+    const text = n > 9 ? '9+' : String(n);
     badge.hidden = false;
-    badge.textContent = n > 9 ? '9+' : String(n);
+    setCounterText(badge, text);
   } else {
     badge.hidden = true;
   }
