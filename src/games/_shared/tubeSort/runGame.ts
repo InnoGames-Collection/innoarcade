@@ -186,6 +186,7 @@ export function runTubeSortGame(
 
   function showMenu(): void {
     mount.innerHTML = '';
+    if (isWater) document.body.classList.add('ws-at-mode-menu');
     renderModeMenu(mount, theme.gameId, theme.gemVariant, (mode) => {
       startSession(mode, sessionSeed(mode, theme.gameId));
     });

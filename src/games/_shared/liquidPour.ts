@@ -7,6 +7,7 @@ import { ballSortPourSound, isBallSortPage } from '../ball-sort/audio';
 import { isWaterSortPage, waterSortPourSound } from '../water-sort/audio';
 import {
   clearStreamCanvas,
+  drawConnectedPourStream,
   drawLiquidStream,
   drawSplashParticles,
   drawLandingRipple,
@@ -379,15 +380,11 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
         const fromFill = Math.max(0, fromData.length - fromHidden - drained);
         const toFill = toData.length - toHidden + drained;
         const fromSurface = tubeLiquidSurfaceOnBoard(board, fromTube, fromFill, fromCap);
-        const fromPoint = {
-          x: fromMouth.x,
-          y: Math.min(fromSurface.y, fromMouth.y + 6),
-        };
         const pourProgress = amount > 0 ? drained / amount : 1;
-        const streamW = Math.max(12, Math.min(20, fromTube.getBoundingClientRect().width * 0.28));
-        drawLiquidStream(
-          streamCtx, fromPoint, toMouth, colorId, streamW, elapsed * 0.005,
-          Math.min(1, streamAlpha * 1.15), { progress: pourProgress, phase: elapsed * 0.005 },
+        const streamW = Math.max(14, Math.min(22, fromTube.getBoundingClientRect().width * 0.32));
+        drawConnectedPourStream(
+          streamCtx, fromSurface, fromMouth, toMouth, colorId, streamW, elapsed * 0.005,
+          Math.min(1, streamAlpha * 1.2), { progress: pourProgress, phase: elapsed * 0.005 },
         );
         const destSurface = tubeLiquidSurfaceOnBoard(board, toTube, toFill, toCap);
         drawLandingRipple(
@@ -421,10 +418,8 @@ async function animateWaterPour(opts: PourAnimOptions): Promise<void> {
   }
 
   fluidManager.triggerRipple(toIdx, 820);
-  fluidManager.triggerWobble(toIdx, 1100);
-  fluidManager.triggerWobble(fromIdx, 680);
   fluidManager.triggerWobble(fromIdx, 950);
-  fluidManager.triggerWobble(toIdx, 950);
+  fluidManager.triggerWobble(toIdx, 1100);
   fluidManager.render(fromIdx, tubes[fromIdx], { capacity: fromCap, hiddenBottom: fromHidden });
   fluidManager.render(toIdx, tubes[toIdx], { capacity: toCap, hiddenBottom: toHidden });
   playPourSound('land');

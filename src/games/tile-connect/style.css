@@ -25,8 +25,10 @@
   width: 100%;
   max-width: 380px;
   --tc-board-scale: 1.15;
+  --tc-origin-x: 50%;
+  --tc-origin-y: 50%;
   transform: scale(var(--tc-board-scale));
-  transform-origin: center center;
+  transform-origin: var(--tc-origin-x) var(--tc-origin-y);
   transition: transform 0.38s cubic-bezier(0.34, 1.2, 0.64, 1);
   will-change: transform;
 }

@@ -14,11 +14,19 @@ const BALL_MODE_ICONS: Record<string, string> = {
 };
 
 const WATER_MODE_ILLUSTRATIONS: Record<string, string> = {
-  classic: '🧪',
-  endless: '🌊',
-  daily: '💧',
-  tournament: '🏆',
+  classic: 'classic',
+  endless: 'endless',
+  daily: 'daily',
+  tournament: 'tournament',
 };
+
+function modeCardArt(modeId: string): HTMLElement {
+  const art = el('div', {
+    class: `ws-mode-card__art ws-mode-card__art--${WATER_MODE_ILLUSTRATIONS[modeId] ?? 'classic'}`,
+    'aria-hidden': 'true',
+  });
+  return art;
+}
 
 function renderWaterSortModeMenu(
   mount: HTMLElement,
@@ -27,17 +35,6 @@ function renderWaterSortModeMenu(
   document.body.classList.add('ws-at-mode-menu');
 
   const wrap = el('div', { class: 'ws-mode-screen' });
-
-  const hero = el('div', { class: 'ws-mode-hero' });
-  const heroArt = el('div', { class: 'ws-mode-hero__art', 'aria-hidden': 'true' });
-  heroArt.appendChild(el('span', { class: 'ws-mode-hero__tube ws-mode-hero__tube--a' }));
-  heroArt.appendChild(el('span', { class: 'ws-mode-hero__tube ws-mode-hero__tube--b' }));
-  heroArt.appendChild(el('span', { class: 'ws-mode-hero__tube ws-mode-hero__tube--c' }));
-  hero.appendChild(heroArt);
-  hero.appendChild(el('h1', { class: 'ws-mode-hero__title', text: t('ts.modes.title') }));
-  hero.appendChild(el('p', { class: 'ws-mode-hero__sub', text: t('ts.modes.sub') }));
-  wrap.appendChild(hero);
-
   const grid = el('div', { class: 'ws-mode-grid' });
 
   const cards: Array<{
@@ -58,10 +55,7 @@ function renderWaterSortModeMenu(
         class: `ws-mode-card ws-mode-card--${m.id} ws-mode-card--locked`,
         'aria-disabled': 'true',
       });
-      card.appendChild(el('span', {
-        class: 'ws-mode-card__illus',
-        text: WATER_MODE_ILLUSTRATIONS[m.id] ?? '🏆',
-      }));
+      card.appendChild(modeCardArt(m.id));
       card.appendChild(el('span', { class: 'ws-mode-card__label', text: m.label }));
       card.appendChild(el('span', { class: 'ws-mode-card__desc', text: m.desc }));
       card.appendChild(el('span', { class: 'ws-mode-card__badge', text: 'Soon' }));
@@ -75,10 +69,7 @@ function renderWaterSortModeMenu(
           onStart(m.id as SessionMode);
         },
       });
-      btn.appendChild(el('span', {
-        class: 'ws-mode-card__illus',
-        text: WATER_MODE_ILLUSTRATIONS[m.id] ?? '💧',
-      }));
+      btn.appendChild(modeCardArt(m.id));
       btn.appendChild(el('span', { class: 'ws-mode-card__label', text: m.label }));
       btn.appendChild(el('span', { class: 'ws-mode-card__desc', text: m.desc }));
       grid.appendChild(btn);

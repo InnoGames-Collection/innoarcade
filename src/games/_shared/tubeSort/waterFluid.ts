@@ -554,6 +554,131 @@ export interface StreamDrawOpts {
   progress?: number;
 }
 
+/** Build pour path: surface → lip → gravity arc → destination. */
+function buildPourPath(
+  surface: StreamPoint,
+  lip: StreamPoint,
+  dest: StreamPoint,
+  phase: number,
+): StreamPoint[] {
+  const path: StreamPoint[] = [surface];
+  if (surface.y > lip.y + 3) {
+    const rise = 8;
+    for (let i = 1; i <= rise; i++) {
+      const t = i / rise;
+      const ease = t * t * (3 - 2 * t);
+      path.push({
+        x: surface.x + (lip.x - surface.x) * ease * 0.45,
+        y: surface.y + (lip.y - surface.y) * ease,
+      });
+    }
+  }
+  const lipPt = path[path.length - 1];
+  if (Math.hypot(lipPt.x - lip.x, lipPt.y - lip.y) > 2) path.push(lip);
+  const arc = streamCurvePoints(lip, dest, phase, 30);
+  for (let i = 1; i < arc.length; i++) path.push(arc[i]);
+  return path;
+}
+
+function drawStreamRibbon(
+  ctx: CanvasRenderingContext2D,
+  points: StreamPoint[],
+  colors: LiquidPalette,
+  baseWidth: number,
+  progress: number,
+  alpha: number,
+  phase: number,
+): void {
+  const n = points.length;
+  if (n < 2) return;
+
+  const left: StreamPoint[] = [];
+  const right: StreamPoint[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const taper = (1 - t * 0.65) * (0.65 + progress * 0.35);
+    const w = baseWidth * taper;
+    const p = points[i];
+    const prev = points[Math.max(0, i - 1)];
+    const next = points[Math.min(n - 1, i + 1)];
+    const tx = next.x - prev.x;
+    const ty = next.y - prev.y;
+    const len = Math.sqrt(tx * tx + ty * ty) || 1;
+    const nx = -ty / len;
+    const ny = tx / len;
+    left.push({ x: p.x + nx * w * 0.5, y: p.y + ny * w * 0.5 });
+    right.push({ x: p.x - nx * w * 0.5, y: p.y - ny * w * 0.5 });
+  }
+
+  const from = points[0];
+  const to = points[n - 1];
+
+  ctx.beginPath();
+  ctx.moveTo(left[0].x, left[0].y);
+  for (let i = 1; i < n; i++) ctx.lineTo(left[i].x, left[i].y);
+  for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i].x, right[i].y);
+  ctx.closePath();
+
+  const streamGrad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+  streamGrad.addColorStop(0, colors.light);
+  streamGrad.addColorStop(0.3, colors.mid);
+  streamGrad.addColorStop(0.75, colors.mid);
+  streamGrad.addColorStop(1, colors.dark);
+  ctx.fillStyle = streamGrad;
+  ctx.globalAlpha = alpha * 0.96;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(left[0].x, left[0].y);
+  for (let i = 1; i < n; i++) ctx.lineTo(left[i].x, left[i].y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = baseWidth * 0.14;
+  ctx.globalAlpha = alpha * 0.75;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(left[Math.floor(n * 0.15)].x, left[Math.floor(n * 0.15)].y);
+  for (let i = Math.floor(n * 0.15) + 1; i < Math.floor(n * 0.7); i++) {
+    ctx.lineTo(left[i].x + (right[i].x - left[i].x) * 0.35, left[i].y);
+  }
+  ctx.strokeStyle = colors.shine;
+  ctx.lineWidth = baseWidth * 0.2;
+  ctx.globalAlpha = alpha * 0.68;
+  ctx.stroke();
+
+  const sourceBulge = baseWidth * 0.9;
+  const srcGrad = ctx.createRadialGradient(from.x, from.y, 0, from.x, from.y, sourceBulge);
+  srcGrad.addColorStop(0, colors.mid);
+  srcGrad.addColorStop(0.4, colors.light);
+  srcGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.globalAlpha = alpha * 0.92;
+  ctx.fillStyle = srcGrad;
+  ctx.beginPath();
+  ctx.ellipse(from.x, from.y + 1, sourceBulge * 0.62, sourceBulge * 0.78, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = alpha * 0.5;
+  ctx.fillStyle = colors.glow;
+  ctx.beginPath();
+  ctx.ellipse(to.x, to.y + 3, baseWidth * 0.8, 5.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = alpha * 0.78;
+  ctx.fillStyle = colors.mid;
+  const droplets = 12;
+  for (let i = 0; i < droplets; i++) {
+    const t = ((phase * 3 + i / droplets) % 1) * progress;
+    const idx = Math.min(n - 2, Math.floor(t * (n - 1)));
+    const frac = t * (n - 1) - idx;
+    const px = points[idx].x + (points[idx + 1].x - points[idx].x) * frac;
+    const py = points[idx].y + (points[idx + 1].y - points[idx].y) * frac;
+    const dr = baseWidth * (0.1 + 0.05 * Math.sin(phase * 3 + i));
+    ctx.beginPath();
+    ctx.ellipse(px, py, dr, dr * 1.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function streamCurvePoints(
   from: StreamPoint,
   to: StreamPoint,
@@ -590,101 +715,34 @@ export function drawLiquidStream(
   const colors = liquidColors(colorId);
   const progress = opts?.progress ?? 1;
   const points = streamCurvePoints(from, to, phase);
-  const n = points.length;
-
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  drawStreamRibbon(ctx, points, colors, baseWidth, progress, alpha, phase);
+  ctx.restore();
+}
 
-  const left: StreamPoint[] = [];
-  const right: StreamPoint[] = [];
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const taper = (1 - t * 0.62) * (0.6 + progress * 0.4);
-    const w = baseWidth * taper;
-    const p = points[i];
-    const prev = points[Math.max(0, i - 1)];
-    const next = points[Math.min(n - 1, i + 1)];
-    const tx = next.x - prev.x;
-    const ty = next.y - prev.y;
-    const len = Math.sqrt(tx * tx + ty * ty) || 1;
-    const nx = -ty / len;
-    const ny = tx / len;
-    left.push({ x: p.x + nx * w * 0.5, y: p.y + ny * w * 0.5 });
-    right.push({ x: p.x - nx * w * 0.5, y: p.y - ny * w * 0.5 });
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(left[0].x, left[0].y);
-  for (let i = 1; i < n; i++) ctx.lineTo(left[i].x, left[i].y);
-  for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i].x, right[i].y);
-  ctx.closePath();
-
-  const streamGrad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
-  streamGrad.addColorStop(0, colors.light);
-  streamGrad.addColorStop(0.35, colors.mid);
-  streamGrad.addColorStop(0.85, colors.dark);
-  ctx.fillStyle = streamGrad;
-  ctx.globalAlpha = alpha * 0.94;
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(left[0].x, left[0].y);
-  for (let i = 1; i < n; i++) ctx.lineTo(left[i].x, left[i].y);
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = baseWidth * 0.12;
-  ctx.globalAlpha = alpha * 0.7;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(left[0].x, left[0].y);
-  for (let i = 1; i < n; i++) ctx.lineTo(left[i].x, left[i].y);
-  ctx.strokeStyle = colors.shine;
-  ctx.lineWidth = baseWidth * 0.22;
-  ctx.globalAlpha = alpha * 0.62;
-  ctx.stroke();
-
-  const sourceBulge = baseWidth * 0.85;
-  const srcGrad = ctx.createRadialGradient(from.x, from.y, 0, from.x, from.y, sourceBulge);
-  srcGrad.addColorStop(0, colors.mid);
-  srcGrad.addColorStop(0.45, colors.light);
-  srcGrad.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.globalAlpha = alpha * 0.88;
-  ctx.fillStyle = srcGrad;
-  ctx.beginPath();
-  ctx.ellipse(from.x, from.y + 1, sourceBulge * 0.6, sourceBulge * 0.75, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.globalAlpha = alpha * 0.45;
-  ctx.fillStyle = colors.glow;
-  ctx.beginPath();
-  ctx.ellipse(to.x, to.y + 3, baseWidth * 0.75, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.globalAlpha = alpha * 0.72;
-  ctx.fillStyle = colors.mid;
-  const droplets = 10;
-  for (let i = 0; i < droplets; i++) {
-    const t = ((phase * 2.8 + i / droplets) % 1) * progress;
-    const idx = Math.min(n - 2, Math.floor(t * (n - 1)));
-    const frac = t * (n - 1) - idx;
-    const px = points[idx].x + (points[idx + 1].x - points[idx].x) * frac;
-    const py = points[idx].y + (points[idx + 1].y - points[idx].y) * frac;
-    const dr = baseWidth * (0.09 + 0.06 * Math.sin(phase * 3 + i));
-    ctx.beginPath();
-    ctx.ellipse(px, py, dr, dr * 1.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.globalAlpha = alpha * 0.5;
-  ctx.strokeStyle = colors.dark;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(right[0].x, right[0].y);
-  for (let i = 1; i < n; i++) ctx.lineTo(right[i].x, right[i].y);
-  ctx.stroke();
-
+/** Continuous pour stream from liquid surface through lip to destination. */
+export function drawConnectedPourStream(
+  ctx: CanvasRenderingContext2D,
+  surface: StreamPoint,
+  lip: StreamPoint,
+  dest: StreamPoint,
+  colorId: number,
+  baseWidth: number,
+  phase: number,
+  alpha = 1,
+  opts?: StreamDrawOpts,
+): void {
+  const colors = liquidColors(colorId);
+  const progress = opts?.progress ?? 1;
+  const points = buildPourPath(surface, lip, dest, phase);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  drawStreamRibbon(ctx, points, colors, baseWidth, progress, alpha, phase);
   ctx.restore();
 }
 

@@ -16,7 +16,7 @@ import { tcSfx } from './sounds';
 import {
   animateCountUp,
   animateHudValue,
-  boardScaleForRemaining,
+  boardClusterLayout,
   centerOf,
   drawConnectionLine,
   findConnectionPath,
@@ -156,9 +156,12 @@ function render(mount: HTMLElement): void {
     pauseHintFn = showHint;
 
     function updateBoardLayout(): void {
-      const rem = remaining(board);
-      const scale = boardScaleForRemaining(rem, initialTiles);
-      boardWrap.style.setProperty('--tc-board-scale', scale.toFixed(3));
+      const layout = boardClusterLayout(board, ROWS, COLS, remaining(board), initialTiles);
+      boardWrap.style.setProperty('--tc-board-scale', layout.scale.toFixed(3));
+      boardWrap.style.setProperty('--tc-origin-x', layout.originX);
+      boardWrap.style.setProperty('--tc-origin-y', layout.originY);
+      grid.style.gap = layout.gap;
+      grid.style.padding = layout.pad;
     }
 
     function paint(): void {

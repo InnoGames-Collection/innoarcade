@@ -168,8 +168,61 @@ export function spawnMatchBurst(
 export function boardScaleForRemaining(remaining: number, initial: number): number {
   const ratio = initial > 0 ? remaining / initial : 1;
   const base = 1.15;
-  const boost = (1 - ratio) * 0.14;
-  return Math.min(base + boost, 1.32);
+  const boost = (1 - ratio) * 0.16;
+  return Math.min(base + boost, 1.36);
+}
+
+export interface BoardClusterLayout {
+  scale: number;
+  originX: string;
+  originY: string;
+  gap: string;
+  pad: string;
+}
+
+/** Visual-only layout — centers and scales the occupied tile cluster. */
+export function boardClusterLayout(
+  board: (string | null)[][],
+  rows: number,
+  cols: number,
+  remaining: number,
+  initial: number,
+): BoardClusterLayout {
+  let minR = rows;
+  let maxR = -1;
+  let minC = cols;
+  let maxC = -1;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!board[r][c]) continue;
+      minR = Math.min(minR, r);
+      maxR = Math.max(maxR, r);
+      minC = Math.min(minC, c);
+      maxC = Math.max(maxC, c);
+    }
+  }
+
+  const fillRatio = initial > 0 ? remaining / initial : 1;
+  const gap = fillRatio < 0.35 ? '3px' : fillRatio < 0.65 ? '4px' : '5px';
+  const pad = fillRatio < 0.35 ? '7px' : fillRatio < 0.65 ? '9px' : '10px';
+
+  if (maxR < 0) {
+    return {
+      scale: boardScaleForRemaining(remaining, initial),
+      originX: '50%',
+      originY: '50%',
+      gap,
+      pad,
+    };
+  }
+
+  const originX = `${(((minC + maxC + 1) / 2) / cols) * 100}%`;
+  const originY = `${(((minR + maxR + 1) / 2) / rows) * 100}%`;
+  const bboxFill = ((maxR - minR + 1) * (maxC - minC + 1)) / (rows * cols);
+  const clusterBoost = (1 - bboxFill) * 0.12;
+  const scale = Math.min(boardScaleForRemaining(remaining, initial) * (1 + clusterBoost), 1.38);
+
+  return { scale, originX, originY, gap, pad };
 }
 
 export function spawnParticles(
