@@ -8,16 +8,58 @@
   </head>
   <body class="game-shell casual-shell brain-shell" data-game="tile-connect">
     <div id="stage" class="fc-stage game-shell-stage">
-      <div id="fcBackdrop" class="fc-backdrop" aria-hidden="true"></div>
+      <div id="fcBackdrop" class="fc-backdrop" aria-hidden="true">
+        <div class="tc-bg-layer">
+          <div class="tc-bg-ray"></div>
+          <div class="tc-bg-orb tc-bg-orb--1"></div>
+          <div class="tc-bg-orb tc-bg-orb--2"></div>
+          <div class="tc-bg-orb tc-bg-orb--3"></div>
+          <div class="tc-bg-diamond tc-bg-diamond--1"></div>
+          <div class="tc-bg-diamond tc-bg-diamond--2"></div>
+          <div class="tc-bg-diamond tc-bg-diamond--3"></div>
+        </div>
+      </div>
       <div id="fcPlayFrame" class="fc-playframe hidden">
         <button id="closeBtn" class="gp-close gp-close-corner hidden" aria-label="Close">✕</button>
+        <div class="tc-hud-actions">
+          <button type="button" id="tcSettingsBtn" class="tc-settings-btn" aria-label="Sound">🔊</button>
+        </div>
         <div id="lq-mount"></div>
       </div>
       <div id="menuOverlay" class="game-overlay">
-        <div class="game-panel panel-clean">
+        <div class="game-panel panel-clean tc-menu-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close">✕</button>
+          <div class="tc-menu-hero">
+            <div class="tc-menu-icon" aria-hidden="true">🔗</div>
+            <div class="tc-menu-title">Tile Connect</div>
+            <div class="tc-menu-sub">Link matching tiles with paths that bend twice</div>
+          </div>
+          <div class="tc-mode-grid" id="tcModeGrid">
+            <button type="button" class="tc-mode-card tc-mode-card--classic" data-tc-mode="classic">
+              <span class="tc-mode-card__icon" aria-hidden="true">🎯</span>
+              <span class="tc-mode-card__label">Classic</span>
+              <span class="tc-mode-card__desc">Clear 5 boards of matching pairs</span>
+            </button>
+            <button type="button" class="tc-mode-card tc-mode-card--endless" data-tc-mode="endless">
+              <span class="tc-mode-card__icon" aria-hidden="true">♾️</span>
+              <span class="tc-mode-card__label">Endless</span>
+              <span class="tc-mode-card__desc">Relax and connect at your pace</span>
+            </button>
+            <button type="button" class="tc-mode-card tc-mode-card--daily tc-mode-card--locked" data-tc-mode="daily" disabled>
+              <span class="tc-mode-card__icon" aria-hidden="true">📅</span>
+              <span class="tc-mode-card__label">Daily Challenge</span>
+              <span class="tc-mode-card__desc">A fresh board every day</span>
+              <span class="tc-mode-card__badge">Soon</span>
+            </button>
+            <button type="button" class="tc-mode-card tc-mode-card--tournament tc-mode-card--locked" data-tc-mode="tournament" disabled>
+              <span class="tc-mode-card__icon" aria-hidden="true">🏆</span>
+              <span class="tc-mode-card__label">Tournament</span>
+              <span class="tc-mode-card__desc">Compete nationwide</span>
+              <span class="tc-mode-card__badge">Soon</span>
+            </button>
+          </div>
           <div class="shell-free-menu" id="freeMenu"></div>
-          <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
+          <button id="startBtn" class="visually-hidden" data-i18n="hub.play">Play</button>
         </div>
       </div>
       <div id="overOverlay" class="game-overlay hidden" aria-hidden="true">
@@ -30,8 +72,16 @@
             <div class="shell-over-stat"><span data-i18n="td.score">Score</span><strong id="finalScore">0</strong></div>
             <div class="shell-over-stat"><span data-i18n="td.best">Best</span><strong id="finalBest">—</strong></div>
           </div>
+          <div class="tc-over-stats">
+            <div class="tc-over-stat"><span>Time Taken</span><strong id="tcOverTime">0:00</strong></div>
+            <div class="tc-over-stat"><span>Best Combo</span><strong id="tcOverCombo">×0</strong></div>
+            <div class="tc-over-stat"><span>Accuracy</span><strong id="tcOverAccuracy">—</strong></div>
+            <div class="tc-over-stat"><span>Result</span><strong id="tcOverResult">—</strong></div>
+          </div>
           <div class="shell-run-reward" id="runReward"></div>
           <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
+          <button type="button" id="tcLeaderBtn" class="btn">Leaderboard</button>
+          <button type="button" id="tcHomeBtn" class="btn">Home</button>
         </div>
       </div>
     </div>

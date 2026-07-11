@@ -8,30 +8,59 @@
   </head>
   <body class="game-shell quiz-shell" data-game="ethiopian-quiz">
     <div id="stage" class="fq-stage game-shell-stage">
-      <div id="fqBackdrop" class="fq-backdrop" aria-hidden="true"></div>
+      <div id="fqBackdrop" class="fq-backdrop eq-backdrop" aria-hidden="true">
+        <div class="eq-bg-layer" aria-hidden="true">
+          <div class="eq-bg-orb eq-bg-orb--1"></div>
+          <div class="eq-bg-orb eq-bg-orb--2"></div>
+          <div class="eq-bg-orb eq-bg-orb--3"></div>
+          <div class="eq-bg-shape eq-bg-shape--1"></div>
+          <div class="eq-bg-shape eq-bg-shape--2"></div>
+        </div>
+        <div id="eqBgParticles" class="eq-bg-particles" aria-hidden="true"></div>
+      </div>
 
       <div id="fqPlayFrame" class="fq-playframe hidden">
         <button id="closeBtn" class="gp-close gp-close-corner hidden" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
 
-        <div class="fq-stats">
+        <div class="eq-hud-row">
+          <div class="eq-hud-glass">
+            <span class="eq-hud-label" data-i18n="td.score">Score</span>
+            <span class="eq-hud-value" id="eqHudScore">0</span>
+          </div>
+
+          <div class="eq-timer-wrap" id="eqTimerWrap" aria-label="Time remaining">
+            <svg class="eq-timer-svg" viewBox="0 0 96 96" aria-hidden="true">
+              <circle class="eq-timer-track" cx="48" cy="48" r="42" />
+              <circle class="eq-timer-ring eq-timer--green" id="eqTimerRing" cx="48" cy="48" r="42" />
+            </svg>
+            <span class="eq-timer-label" id="eqTimerLabel">10</span>
+          </div>
+
+          <div class="eq-hud-glass">
+            <span class="eq-hud-label" data-i18n="eq.correctProgress">Correct</span>
+            <span class="eq-hud-value" id="eqHudCorrect">0/10</span>
+          </div>
+        </div>
+
+        <div class="eq-progress">
+          <span class="eq-progress-label" id="eqProgressLabel">Question 1 of 10</span>
+          <div class="eq-progress-track">
+            <div class="eq-progress-fill" id="eqProgressFill"></div>
+          </div>
+        </div>
+
+        <!-- Legacy stats — shell updates these; visually hidden -->
+        <div class="fq-stats eq-stats-legacy" aria-hidden="true">
           <div class="fq-stat">
-            <span class="fq-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span>
-            <span class="fq-stat-label" data-i18n="eq.question">Question</span>
             <span class="fq-stat-value" id="fqStatQ">—</span>
           </div>
           <div class="fq-stat">
-            <span class="fq-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M12 5V3M5 3l2 2M19 3l-2 2"/></svg></span>
-            <span class="fq-stat-label" data-i18n="eq.correctProgress">Correct</span>
             <span class="fq-stat-value" id="fqStatSession">—</span>
           </div>
           <div class="fq-stat">
-            <span class="fq-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-            <span class="fq-stat-label" data-i18n="eq.questionTime">This Q</span>
             <span class="fq-stat-value" id="fqStatQTime">—</span>
           </div>
           <div class="fq-stat fq-stat-score">
-            <span class="fq-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.3L12 14.8 7.2 16.8l.9-5.3L4.2 7.7l5.4-.8L12 2z"/></svg></span>
-            <span class="fq-stat-label" data-i18n="td.score">Score</span>
             <span class="fq-stat-value" id="fqStatScore">0</span>
           </div>
         </div>
@@ -41,16 +70,49 @@
           <div class="fq-options" id="fq-options"></div>
         </div>
 
-        <div class="fq-hud">
+        <div class="eq-hud-actions">
+          <button type="button" id="eqSettingsPlayBtn" class="eq-icon-btn" aria-label="Settings" title="Settings">⚙</button>
           <button type="button" id="pauseBtn" class="fq-pause-btn" data-i18n="td.pause">Pause</button>
         </div>
       </div>
 
       <div id="menuOverlay" class="game-overlay">
-        <div class="game-panel panel-clean">
+        <div class="game-panel eq-menu-panel panel-clean">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
+
+          <div class="eq-menu-hero">
+            <div class="eq-menu-icon" aria-hidden="true">🇪🇹</div>
+            <h1 class="eq-menu-title">Ethiopian Quiz</h1>
+            <p class="eq-menu-sub" data-i18n="hub.play">Test your knowledge of Ethiopia</p>
+            <p class="eq-menu-best"><span data-i18n="td.best">Best</span>: <strong id="eqMenuBest">—</strong></p>
+          </div>
+
           <div class="shell-free-menu" id="freeMenu"></div>
-          <button id="startBtn" class="btn primary" data-i18n="hub.play">Play</button>
+
+          <button id="startBtn" class="btn primary eq-play-btn" data-i18n="hub.play">Play</button>
+
+          <div class="eq-menu-grid">
+            <button type="button" class="eq-menu-card" id="eqCardTourney">
+              <div class="eq-menu-card-icon">🏆</div>
+              <div class="eq-menu-card-label">Tournament</div>
+            </button>
+            <button type="button" class="eq-menu-card" id="eqCardDaily">
+              <div class="eq-menu-card-icon">📅</div>
+              <div class="eq-menu-card-label">Daily Challenge</div>
+            </button>
+            <button type="button" class="eq-menu-card" id="eqCardLb">
+              <div class="eq-menu-card-icon">📊</div>
+              <div class="eq-menu-card-label" data-i18n="hub.leaderboard">Leaderboard</div>
+            </button>
+            <button type="button" class="eq-menu-card" id="eqCardHowTo">
+              <div class="eq-menu-card-icon">❓</div>
+              <div class="eq-menu-card-label">How to Play</div>
+            </button>
+            <button type="button" class="eq-menu-card" id="eqCardSettings">
+              <div class="eq-menu-card-icon">⚙️</div>
+              <div class="eq-menu-card-label">Settings</div>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -64,18 +126,58 @@
       </div>
 
       <div id="overOverlay" class="game-overlay hidden" aria-hidden="true">
-        <div class="game-panel">
+        <div class="game-panel eq-results-panel">
           <button type="button" class="gp-close gp-close-corner" aria-label="Close" onclick="if(history.length>1){history.back()}else{location.href='../../'}">✕</button>
           <h2 data-i18n="td.gameOver">Game over</h2>
           <p id="fqOverSummary" class="fq-over-summary"></p>
           <p id="newBest" class="new-best hidden" data-i18n="td.newBest"></p>
+
           <div class="shell-over-final">
             <div class="shell-over-stat"><span data-i18n="td.score">Score</span><strong id="finalScore">0</strong></div>
             <div class="shell-over-stat"><span data-i18n="td.best">Best</span><strong id="finalBest">—</strong></div>
           </div>
+
+          <div class="eq-results-grid">
+            <div class="eq-result-stat"><span>Accuracy</span><strong id="eqResAccuracy">—</strong></div>
+            <div class="eq-result-stat"><span>Fastest</span><strong id="eqResFastest">—</strong></div>
+            <div class="eq-result-stat"><span>Avg Response</span><strong id="eqResAverage">—</strong></div>
+            <div class="eq-result-stat"><span>Best Streak</span><strong id="eqResStreak">—</strong></div>
+            <div class="eq-result-stat" style="grid-column: 1 / -1"><span>Rank</span><strong id="eqResRank">—</strong></div>
+          </div>
+
           <div class="shell-run-reward" id="runReward"></div>
-          <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
+
+          <div class="eq-results-actions">
+            <button id="againBtn" class="btn primary" data-i18n="td.restart">Play again</button>
+            <button type="button" id="eqLbBtn" class="btn">Leaderboard</button>
+            <button type="button" id="eqHomeBtn" class="btn">Home</button>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <div id="eqFxLayer" class="eq-fx-layer" aria-hidden="true"></div>
+
+    <div id="eqHowToPanel" class="eq-sub-panel hidden" role="dialog" aria-label="How to play">
+      <div class="eq-sub-panel-inner">
+        <h3>How to Play</h3>
+        <ul>
+          <li>Answer 10 questions about Ethiopia</li>
+          <li>You have 10 seconds per question</li>
+          <li>Earn points for correct answers — faster answers earn bonus points</li>
+          <li>Pausing costs points, so use it wisely</li>
+          <li>Beat your best score and climb the ranks!</li>
+        </ul>
+        <button type="button" id="eqHowToClose" class="btn primary" style="width:100%">Got it</button>
+      </div>
+    </div>
+
+    <div id="eqSettingsPanel" class="eq-sub-panel hidden" role="dialog" aria-label="Settings">
+      <div class="eq-sub-panel-inner">
+        <h3>Settings</h3>
+        <p>Adjust sound for the best experience.</p>
+        <button type="button" id="eqMuteBtn" class="btn" style="width:100%;margin-bottom:10px">🔊 Sound on</button>
+        <button type="button" id="eqSettingsClose" class="btn primary" style="width:100%">Close</button>
       </div>
     </div>
 

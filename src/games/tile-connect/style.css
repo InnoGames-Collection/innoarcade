@@ -1,55 +1,137 @@
 .tc-wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   padding: 4px 8px 16px;
+  width: 100%;
+}
+
+.tc-board-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
 }
 
 .tc-board {
   display: grid;
-  gap: 4px;
-  padding: 8px;
-  border-radius: 12px;
-  max-width: 360px;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 22px;
+  width: 100%;
 }
 
+/* Premium glossy tiles */
 .tc-tile {
+  position: relative;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(18px, 5vw, 24px);
-  background: linear-gradient(160deg, #ffffff 0%, #e8f4dc 45%, #c5ddb0 100%);
-  border-radius: 10px;
+  font-size: clamp(18px, 5vw, 26px);
+  border-radius: 12px;
   cursor: pointer;
-  border: 2px solid rgba(255, 255, 255, 0.65);
+  border: 2px solid rgba(255, 255, 255, 0.7);
   box-shadow:
-    inset 0 -4px 0 rgba(79, 158, 22, 0.18),
-    inset 0 2px 0 rgba(255, 255, 255, 0.85),
-    0 4px 10px rgba(0, 0, 0, 0.12);
-  transition: transform 0.1s, box-shadow 0.1s;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    inset 0 -5px 0 rgba(0, 0, 0, 0.12),
+    inset 0 2px 0 rgba(255, 255, 255, 0.9),
+    0 4px 12px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 0.15s cubic-bezier(0.34, 1.3, 0.64, 1),
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+  z-index: 2;
+  overflow: hidden;
 }
 
-.tc-tile:hover:not(.tc-empty) { transform: scale(1.04); }
-.tc-tile--sel { box-shadow: 0 0 0 3px var(--game-accent, #4f9e16); transform: scale(1.06); }
-.tc-tile--hint { box-shadow: 0 0 0 3px #f39c12; animation: tc-pulse 0.9s ease infinite; }
-.tc-tile.tc-empty { visibility: hidden; pointer-events: none; }
+.tc-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    148deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tc-tile::after {
+  content: '';
+  position: absolute;
+  top: 8%;
+  left: 12%;
+  width: 38%;
+  height: 28%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.75) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tc-tile--c0 { background: linear-gradient(160deg, #fff 0%, #e8f8e0 50%, #b8e0a0 100%); }
+.tc-tile--c1 { background: linear-gradient(160deg, #fff 0%, #e0f0ff 50%, #a8d0f8 100%); }
+.tc-tile--c2 { background: linear-gradient(160deg, #fff 0%, #fff4e0 50%, #f8d8a0 100%); }
+.tc-tile--c3 { background: linear-gradient(160deg, #fff 0%, #f0e8ff 50%, #d0b8f8 100%); }
+.tc-tile--c4 { background: linear-gradient(160deg, #fff 0%, #ffe8f0 50%, #f8b8d0 100%); }
+.tc-tile--c5 { background: linear-gradient(160deg, #fff 0%, #e8fff8 50%, #a8f0e0 100%); }
+
+.tc-tile:hover:not(.tc-empty):not(.tc-tile--match) {
+  transform: scale(1.05) translateY(-1px);
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.12),
+    inset 0 2px 0 rgba(255, 255, 255, 0.9),
+    0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.tc-tile--sel {
+  box-shadow:
+    0 0 0 3px var(--tc-blue, #1f74e0),
+    0 0 20px rgba(31, 116, 224, 0.45),
+    inset 0 -5px 0 rgba(0, 0, 0, 0.12),
+    inset 0 2px 0 rgba(255, 255, 255, 0.9);
+  transform: scale(1.08);
+  z-index: 3;
+}
+
+.tc-tile--hint {
+  box-shadow:
+    0 0 0 3px #f39c12,
+    0 0 16px rgba(243, 156, 18, 0.4),
+    inset 0 -5px 0 rgba(0, 0, 0, 0.12);
+  animation: tc-pulse 0.9s ease infinite;
+}
+
+.tc-tile--match {
+  animation: tc-match-pop 0.42s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
+  z-index: 4;
+}
+
+@keyframes tc-match-pop {
+  0% { transform: scale(1); filter: brightness(1); }
+  40% { transform: scale(1.15); filter: brightness(1.2); box-shadow: 0 0 24px rgba(108, 197, 47, 0.6); }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.tc-tile.tc-empty {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .tc-toolbar {
   display: flex;
   justify-content: center;
-}
-
-.tc-hint-btn {
-  font-size: 13px;
-  padding: 6px 14px;
+  width: 100%;
 }
 
 @keyframes tc-pulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  50% { transform: scale(1.06); }
 }
 
 .tc-hint {

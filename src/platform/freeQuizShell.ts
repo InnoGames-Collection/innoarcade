@@ -25,6 +25,33 @@ export interface FreeQuizItem {
 
 export const QUIZ_QUESTIONS_PER_SESSION = 10;
 
+export type FreeQuizPhase = 'menu' | 'playing' | 'paused' | 'over';
+
+/** Optional presentation hooks — gameplay logic unchanged; callbacks are display-only. */
+export interface FreeQuizPresentation {
+  onPhase?: (phase: FreeQuizPhase) => void;
+  onQuestionShow?: (ctx: { index: number; total: number; secondsLimit: number }) => void;
+  onTimerTick?: (left: number, total: number) => void;
+  onStats?: (ctx: { score: number; correct: number; total: number; qNum: number; qLeft: number }) => void;
+  onAnswer?: (ctx: { correct: boolean; responseMs: number; qLeft: number }) => void;
+  onTimeUp?: () => void;
+  onGameOver?: (ctx: {
+    score: number;
+    correct: number;
+    total: number;
+    isRecord: boolean;
+    durationMs: number;
+  }) => void;
+  onMenuReady?: () => void;
+}
+
+export interface FreeQuizSfx {
+  correct?: () => void;
+  wrong?: () => void;
+  timeUp?: () => void;
+  menuClick?: () => void;
+}
+
 export interface FreeQuizShellConfig {
   gameId: string;
   /** Full question bank — reshuffled at each play / replay. */
@@ -41,6 +68,10 @@ export interface FreeQuizShellConfig {
   twoColOptions?: boolean;
   /** Points deducted each time the player pauses (default: half of pointsPerCorrect, min 5). */
   pauseCost?: number;
+  /** Display-only hooks for premium polish (optional). */
+  presentation?: FreeQuizPresentation;
+  /** Override default shell SFX (optional). */
+  sfx?: FreeQuizSfx;
 }
 
 const RECENT_QUIZ_SESSIONS = 2;
@@ -89,7 +120,7 @@ function saveSessionQuestionKeys(gameId: string, keys: string[]): void {
   }
 }
 
-type Phase = 'menu' | 'playing' | 'paused' | 'over';
+type Phase = FreeQuizPhase;
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector<T>(sel)!;
 
@@ -136,6 +167,13 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
   let qTimer: ReturnType<typeof setInterval> | undefined;
   let timerPaused = false;
   let finishPending = false;
+  let qShownAt = 0;
+
+  const pres = config.presentation;
+  const playCorrect = config.sfx?.correct ?? (() => sfx.coin());
+  const playWrong = config.sfx?.wrong ?? (() => sfx.click());
+  const playTimeUp = config.sfx?.timeUp ?? (() => sfx.click());
+  const playMenuClick = config.sfx?.menuClick ?? (() => sfx.click());
 
   const elQ = $('#fq-question');
   const elOpts = $('#fq-options');
@@ -158,6 +196,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
 
   function refreshMenu(): void {
     $('#freeMenu').innerHTML = renderFreeMenuHtml(host, serverBest);
+    pres?.onMenuReady?.();
   }
 
   function showMenu(): void {
@@ -198,6 +237,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     if (next === 'playing' && prev === 'menu') pushShellHistory();
     if (next === 'paused' && prev !== 'paused') pushShellHistory();
     if (next === 'over' && prev !== 'over') pushShellHistory();
+    pres?.onPhase?.(next);
   }
 
   function goMenu(): void {
@@ -229,14 +269,29 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     $('#closeBtn').classList.add('hidden');
     overlay.classList.remove('hidden');
     overlay.setAttribute('aria-hidden', 'false');
+    pres?.onGameOver?.({
+      score,
+      correct,
+      total: questionCount,
+      isRecord,
+      durationMs: Date.now() - runStart,
+    });
   }
 
   function updateStats(): void {
     const qNum = phase === 'playing' ? Math.min(answered + 1, questionCount) : Math.min(answered, questionCount);
+    const score = liveScore();
     $('#fqStatQ').textContent = String(qNum);
     $('#fqStatSession').textContent = `${correct}/${questionCount}`;
     $('#fqStatQTime').textContent = phase === 'playing' ? `${Math.max(0, qLeft)}s` : '—';
-    $('#fqStatScore').textContent = String(liveScore());
+    $('#fqStatScore').textContent = String(score);
+    pres?.onStats?.({
+      score,
+      correct,
+      total: questionCount,
+      qNum,
+      qLeft: Math.max(0, qLeft),
+    });
   }
 
   function clearQTimer(): void {
@@ -254,6 +309,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
       if (phase !== 'playing' || timerPaused || locked) return;
       qLeft--;
       updateStats();
+      pres?.onTimerTick?.(Math.max(0, qLeft), questionSeconds);
       if (qLeft <= 0) questionTimeUp();
     }, 1000);
   }
@@ -293,6 +349,7 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     }
     locked = false;
     qLeft = questionSeconds;
+    qShownAt = Date.now();
     elQ.textContent = q.prompt;
     const order = shuffle([0, 1, 2, 3] as const);
     elOpts.innerHTML = order.map((oi) =>
@@ -301,12 +358,23 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     elOpts.querySelectorAll<HTMLButtonElement>('.fq-opt').forEach((b) => {
       b.addEventListener('click', () => answer(q, Number(b.dataset.i), b));
     });
+    pres?.onQuestionShow?.({
+      index: answered + 1,
+      total: questionCount,
+      secondsLimit: questionSeconds,
+    });
+    pres?.onTimerTick?.(qLeft, questionSeconds);
     updateStats();
+    elQ.classList.remove('eq-q-enter');
+    void elQ.offsetWidth;
+    elQ.classList.add('eq-q-enter');
   }
 
   function questionTimeUp(): void {
     if (locked || phase !== 'playing' || finishPending) return;
     locked = true;
+    playTimeUp();
+    pres?.onTimeUp?.();
     answered++;
     updateStats();
     setTimeout(() => advanceAfterAnswer(), 400);
@@ -325,15 +393,17 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     if (locked || phase !== 'playing' || finishPending) return;
     locked = true;
     const right = choice === q.answer;
+    const responseMs = Math.max(0, Date.now() - qShownAt);
     if (right) {
       correct++;
       speedBonus += Math.max(0, qLeft);
       btn.classList.add('ok');
-      sfx.coin();
+      playCorrect();
     } else {
       btn.classList.add('bad');
-      sfx.click();
+      playWrong();
     }
+    pres?.onAnswer?.({ correct: right, responseMs, qLeft: Math.max(0, qLeft) });
     answered++;
     updateStats();
     setTimeout(() => advanceAfterAnswer(), right ? 450 : 650);
@@ -433,8 +503,14 @@ export function wireFreeQuizShell(config: FreeQuizShellConfig): void {
     await beginFreeRound();
   }
 
-  $('#startBtn').addEventListener('click', () => void onPlayOrEnter());
-  $('#againBtn').addEventListener('click', () => void onPlayOrEnter());
+  $('#startBtn').addEventListener('click', () => {
+    playMenuClick();
+    void onPlayOrEnter();
+  });
+  $('#againBtn').addEventListener('click', () => {
+    playMenuClick();
+    void onPlayOrEnter();
+  });
   $('#restartBtn').addEventListener('click', () => void restartFromPause());
   $('#resumeBtn').addEventListener('click', () => resumeQuiz());
   $('#pauseBtn').addEventListener('click', () => pauseQuiz());
