@@ -150,11 +150,6 @@ canvas.addEventListener('pointercancel', () => {
 
 wireMutePause($('#muteBtn'), $('#pauseBtn'), game, bpSfx);
 
-$('#settingsBtn').addEventListener('click', () => {
-  bpSfx.click();
-  if (game.state === 'playing') game.pause();
-});
-
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) game.pause();
 });

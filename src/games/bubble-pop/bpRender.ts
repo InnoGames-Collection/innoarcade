@@ -52,6 +52,8 @@ export function drawPremiumBackground(
   h: number,
   time: number,
   bgParticles: BgParticle[],
+  playTop = 32,
+  playBottom = h - 44,
 ): void {
   const sky = ctx.createLinearGradient(0, 0, 0, h);
   sky.addColorStop(0, '#0e3d5c');
@@ -72,6 +74,7 @@ export function drawPremiumBackground(
     const bx = ((i * 137 + time * 8) % (w + 100)) - 50;
     const by = 60 + i * 110 + Math.sin(time * 0.5 + i) * 20;
     const br = 18 + i * 6;
+    if (by > playTop && by < playBottom) continue;
     ctx.save();
     ctx.globalAlpha = 0.06 + i * 0.01;
     const bg = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.3, 1, bx, by, br);
@@ -86,6 +89,7 @@ export function drawPremiumBackground(
   }
 
   for (const p of bgParticles) {
+    if (p.y > playTop && p.y < playBottom) continue;
     ctx.save();
     ctx.globalAlpha = p.alpha * (0.7 + Math.sin(time * 2 + p.x) * 0.3);
     const c = p.hue === 'green' ? 'rgba(94,232,154,0.9)' : 'rgba(120,180,255,0.9)';
@@ -98,6 +102,52 @@ export function drawPremiumBackground(
     ctx.fill();
     ctx.restore();
   }
+}
+
+export function getPlayfieldBounds(
+  canvasW: number,
+  topY: number,
+  bottomY: number,
+): { x: number; y: number; w: number; h: number; r: number } {
+  const pad = 14;
+  const inset = 5;
+  const frameTop = topY - 28;
+  const frameBottom = bottomY + 8;
+  return {
+    x: pad + inset,
+    y: frameTop + inset,
+    w: canvasW - (pad + inset) * 2,
+    h: frameBottom - frameTop - inset * 2,
+    r: 13,
+  };
+}
+
+export function applyPlayfieldClip(
+  ctx: CanvasRenderingContext2D,
+  canvasW: number,
+  topY: number,
+  bottomY: number,
+): void {
+  const b = getPlayfieldBounds(canvasW, topY, bottomY);
+  ctx.beginPath();
+  roundRect(ctx, b.x, b.y, b.w, b.h, b.r);
+  ctx.clip();
+}
+
+export function drawPlayfieldInterior(
+  ctx: CanvasRenderingContext2D,
+  canvasW: number,
+  topY: number,
+  bottomY: number,
+): void {
+  const b = getPlayfieldBounds(canvasW, topY, bottomY);
+  const fill = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
+  fill.addColorStop(0, 'rgba(12, 55, 78, 0.55)');
+  fill.addColorStop(1, 'rgba(8, 40, 58, 0.65)');
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  roundRect(ctx, b.x, b.y, b.w, b.h, b.r);
+  ctx.fill();
 }
 
 export function drawPlayfieldFrame(

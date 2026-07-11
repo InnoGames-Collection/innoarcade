@@ -120,19 +120,15 @@ body.game-shell[data-game="bubble-pop"] #game {
 }
 
 .bp-hud {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
   flex-shrink: 0;
 }
 
 .bp-hud-cards {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 5px;
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .bp-hud-card {
@@ -211,8 +207,10 @@ body.game-shell[data-game="bubble-pop"] #game {
 
 .bp-hud-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   gap: 5px;
+  margin-left: auto;
   flex-shrink: 0;
 }
 

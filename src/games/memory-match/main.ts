@@ -177,6 +177,7 @@ function showOverOverlay(): void {
   const cleared = pairs === PAIR_COUNT;
   panel.classList.toggle('mm-victory', cleared);
 
+  $('#mmFinalScore').textContent = lastFinalScore.toLocaleString();
   $('#mmFinalTime').textContent = fmtTime(spentSeconds());
   $('#mmFinalBest').textContent = SCORE_PLACEHOLDER;
   $('#mmOverRank').innerHTML = `${t('td.rank')} <strong>…</strong>`;

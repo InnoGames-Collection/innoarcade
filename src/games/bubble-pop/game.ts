@@ -12,8 +12,8 @@ import {
 import {
   type BgParticle, type CannonState,
   initBgParticles, updateBgParticles,
-  drawPremiumBackground, drawPlayfieldFrame, drawPremiumBubble,
-  drawPremiumCannon, drawAimGuide,
+  drawPremiumBackground, drawPlayfieldFrame, drawPlayfieldInterior, applyPlayfieldClip,
+  drawPremiumBubble, drawPremiumCannon, drawAimGuide,
 } from './bpRender';
 
 export const W = 480;
@@ -237,8 +237,15 @@ export class BubblePop {
     ctx.save();
     ctx.translate(shake * (Math.random() - 0.5), shake * (Math.random() - 0.5));
 
-    drawPremiumBackground(ctx, W, H, this.time, this.bgParticles);
+    drawPremiumBackground(
+      ctx, W, H, this.time, this.bgParticles,
+      PLAYFIELD_TOP - 28, PLAYFIELD_BOTTOM + 8,
+    );
     drawPlayfieldFrame(ctx, W, PLAYFIELD_TOP, PLAYFIELD_BOTTOM, DANGER_Y, this.time);
+    drawPlayfieldInterior(ctx, W, PLAYFIELD_TOP, PLAYFIELD_BOTTOM);
+
+    ctx.save();
+    applyPlayfieldClip(ctx, W, PLAYFIELD_TOP, PLAYFIELD_BOTTOM);
     this.drawGridBubbles(ctx);
 
     if (this.flight) {
@@ -248,6 +255,11 @@ export class BubblePop {
     if (this.aimActive && !this.flight) {
       drawAimGuide(ctx, CANNON_X, CANNON_Y, this.aimAngle, BUBBLE_R, W, this.time);
     }
+
+    drawImpacts(ctx, this.impacts);
+    drawFxParticles(ctx, this.fxParticles);
+    drawFloatTexts(ctx, this.floatTexts);
+    ctx.restore();
 
     const cannonState: CannonState = {
       aimAngle: this.aimAngle,
@@ -262,9 +274,6 @@ export class BubblePop {
       this.drawBubble(ctx, x, y, c, s);
     });
 
-    drawImpacts(ctx, this.impacts);
-    drawFxParticles(ctx, this.fxParticles);
-    drawFloatTexts(ctx, this.floatTexts);
     drawComboBanners(ctx, W, this.comboBanners);
 
     if (this.lightPulse > 0) {
