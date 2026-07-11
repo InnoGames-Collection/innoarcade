@@ -182,7 +182,10 @@ export function featuredTournamentBannerHtml(opts: FeaturedBannerOpts): string {
   const bannerClass = opts.cadence === 'weekly' ? 'weekly-banner' : 'weekly-banner monthly-banner';
   return `
     <article class="${bannerClass} featured-tournament-card">
-      <div class="wb-glow" aria-hidden="true">${opts.gameIcon}</div>
+      <div class="wb-deco" aria-hidden="true">
+        <span class="wb-bubbles"></span>
+        <span class="wb-glow">${opts.gameIcon}</span>
+      </div>
       <div class="wb-body">
         <span class="wb-eyebrow" data-i18n="${eyebrowKey}">${t(eyebrowKey)}</span>
         <h2 class="wb-title">${escapeHtml(opts.title)}</h2>

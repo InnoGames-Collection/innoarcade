@@ -48,8 +48,8 @@ const userBests: Record<string, number> = {};
 // --- Promo banner carousel --------------------------------------------------
 interface PromoSlide { img: string; alt: string; href?: string }
 const PROMOS_FALLBACK: PromoSlide[] = [
-  { img: '/brand/ad-banner-1.png', alt: 'Every Score Counts — climb the leaderboard', href: '#games' },
   { img: '/brand/ad-banner-2.png', alt: 'Weekly Fruit Slice Tournament', href: '#featuredTournaments' },
+  { img: '/brand/ad-banner-1.png', alt: 'Every Score Counts — climb the leaderboard', href: '#games' },
   { img: '/brand/ad-banner-3.png', alt: 'Monthly Memory Match Tournament', href: '#featuredTournaments' },
   { img: '/brand/ad-banner-4.png', alt: 'Win up to 50,000 ETB — Monthly & Weekly Tournaments', href: '#featuredTournaments' },
 ];
@@ -66,7 +66,8 @@ let promoIdx = 0;
 const PROMO_INTERVAL_MS = 4500;
 
 function promoSlideHtml(p: PromoSlide, extraClass = ''): string {
-  const cls = `promo-slide promo-slide-img${extraClass ? ` ${extraClass}` : ''}`;
+  const bright = p.img.includes('ad-banner-2') ? ' promo-slide--bright' : '';
+  const cls = `promo-slide promo-slide-img${bright}${extraClass ? ` ${extraClass}` : ''}`;
   const img = `<img src="${escapeHtml(p.img)}" alt="" class="promo-banner-img" loading="lazy" decoding="async" />`;
   const overlay = p.href
     ? `<div class="promo-slide-overlay">
