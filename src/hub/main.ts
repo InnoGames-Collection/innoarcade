@@ -757,7 +757,12 @@ function renderContinuePlaying(): void {
       const game = getGame(r.gameId);
       if (!game) return null;
       userBests[game.id] = r.lastScore;
-      return { game, lastScore: r.lastScore, progressPct: progressPctForGame(game, r.lastScore) };
+      return {
+        game,
+        lastScore: r.lastScore,
+        progressPct: progressPctForGame(game, r.lastScore),
+        lastPlayedAt: r.lastPlayedAt,
+      };
     })
     .filter((x): x is NonNullable<typeof x> => !!x);
   if (!rows.length) {
@@ -767,6 +772,13 @@ function renderContinuePlaying(): void {
   }
   section.hidden = false;
   host.innerHTML = continuePlayingHtml(lang(), rows);
+  requestAnimationFrame(() => {
+    host.querySelectorAll<HTMLElement>('.cp-progress-fill').forEach((el) => {
+      const pct = el.dataset.pct ?? '0';
+      el.style.width = '0%';
+      requestAnimationFrame(() => { el.style.width = `${pct}%`; });
+    });
+  });
 }
 
 function renderComingSoon(): void {

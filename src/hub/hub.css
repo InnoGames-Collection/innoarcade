@@ -1606,22 +1606,120 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .footer-col a { display: block; color: rgba(255,255,255,0.78); text-decoration: none; font-size: 0.85rem; padding: 0.2rem 0; }
 .hub-footer--full .footer-brand { border-top: 1px solid rgba(255,255,255,0.12); padding-top: 1.25rem; }
 
-.cp-list { display: flex; flex-direction: column; gap: 0.65rem; }
+.cp-list { display: flex; flex-direction: column; gap: 0.75rem; }
 .cp-card {
   display: grid;
-  grid-template-columns: 3.2rem 1fr;
-  gap: 0.75rem;
+  grid-template-columns: 3.5rem 1fr;
+  gap: 0.85rem;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.85rem 0.9rem;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.cp-thumb { font-size: 2rem; text-align: center; }
-.cp-title { font-size: 0.92rem; font-weight: 800; margin: 0 0 0.35rem; }
-.cp-pct { font-size: 0.68rem; color: var(--muted); }
-.cp-btn { margin-top: 0.45rem; width: 100%; text-align: center; font-size: 0.78rem; padding: 0.35rem; }
+.cp-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.cp-thumb {
+  font-size: 2.1rem;
+  text-align: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #eaf8d8 0%, #cdeda4 100%);
+  box-shadow: inset 0 0 0 1px rgba(79, 158, 22, 0.08);
+}
+.cp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.cp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.cp-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.cp-last {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cp-progress { display: flex; flex-direction: column; gap: 0.28rem; }
+.cp-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.cp-progress-lbl {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cp-pct {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.cp-progress-track {
+  height: 6px;
+  background: #eef4e8;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.cp-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-brand);
+  box-shadow: 0 0 8px rgba(79, 158, 22, 0.35);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin-top: 0.1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.48rem 0.85rem;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.cp-btn:active { transform: scale(0.97); }
+.cp-btn-arrow {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 0.55rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-card { transition: none; }
+  .cp-card:hover { transform: none; }
+  .cp-progress-fill { transition: none; }
+}
 .dc-claimed { text-align: center; color: var(--accent); font-weight: 700; font-size: 0.85rem; margin: 0.35rem 0 0; }
 
 /* Phase 3 — activity ticker + notifications */

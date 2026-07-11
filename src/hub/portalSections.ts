@@ -40,6 +40,19 @@ export function fmtCountdown(end: number, lang: Lang): string {
   return `${c.hours}${hShort(lang)} ${c.minutes}${mShort(lang)} ${c.seconds}${sShort(lang)}`;
 }
 
+export function fmtLastPlayed(iso: string): string {
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return '';
+  const diffMs = Math.max(0, Date.now() - ts);
+  const mins = Math.floor(diffMs / 60_000);
+  const hours = Math.floor(diffMs / 3_600_000);
+  const days = Math.floor(diffMs / 86_400_000);
+  if (mins < 1) return t('hub.playedJustNow');
+  if (mins < 60) return t('hub.playedMinutesAgo').replace('{n}', String(mins));
+  if (hours < 24) return t('hub.playedHoursAgo').replace('{n}', String(hours));
+  return t('hub.playedDaysAgo').replace('{n}', String(Math.min(days, 99)));
+}
+
 export function sectionHead(emoji: string, titleKey: I18nKey, link?: { href: string; labelKey: I18nKey }): string {
   const linkHtml = link
     ? `<a class="section-link" href="${link.href}">${t(link.labelKey)} →</a>`
@@ -503,19 +516,36 @@ export function hScrollShelf(games: GameMeta[], cardHtml: (g: GameMeta) => strin
 
 export function continuePlayingHtml(
   langCode: Lang,
-  rows: { game: GameMeta; lastScore: number; progressPct: number }[],
+  rows: { game: GameMeta; lastScore: number; progressPct: number; lastPlayedAt: string }[],
 ): string {
   if (!rows.length) return '';
-  const cards = rows.map(({ game, progressPct }) => {
+  const cards = rows.map(({ game, progressPct, lastPlayedAt }) => {
     const gname = langCode === 'am' ? game.nameAm : game.nameEn;
+    const lastLabel = fmtLastPlayed(lastPlayedAt);
+    const lastHtml = lastLabel
+      ? `<time class="cp-last" datetime="${escapeHtml(lastPlayedAt)}">${escapeHtml(lastLabel)}</time>`
+      : '';
     return `
       <article class="cp-card">
-        <div class="cp-thumb">${game.icon}</div>
+        <div class="cp-thumb" aria-hidden="true">${game.icon}</div>
         <div class="cp-body">
-          <h4 class="cp-title">${escapeHtml(gname)}</h4>
-          <div class="mission-bar"><div class="mission-bar-fill" style="width:${progressPct}%"></div></div>
-          <span class="cp-pct">${progressPct}%</span>
-          <a class="btn primary cp-btn" href="${game.route}" data-game-id="${game.id}" data-i18n="hub.continue">${t('hub.continue')}</a>
+          <div class="cp-head">
+            <h4 class="cp-title">${escapeHtml(gname)}</h4>
+            ${lastHtml}
+          </div>
+          <div class="cp-progress">
+            <div class="cp-progress-meta">
+              <span class="cp-progress-lbl" data-i18n="hub.progress">${t('hub.progress')}</span>
+              <span class="cp-pct">${progressPct}%</span>
+            </div>
+            <div class="cp-progress-track" role="progressbar" aria-valuenow="${progressPct}" aria-valuemin="0" aria-valuemax="100">
+              <div class="cp-progress-fill" data-pct="${progressPct}" style="width:0%"></div>
+            </div>
+          </div>
+          <a class="btn primary cp-btn" href="${game.route}" data-game-id="${game.id}">
+            <span data-i18n="hub.resume">${t('hub.resume')}</span>
+            <span class="cp-btn-arrow" aria-hidden="true">▶</span>
+          </a>
         </div>
       </article>`;
   }).join('');
