@@ -58,6 +58,8 @@ through an Edge Function (the same integrity boundary as scores).
 > review in Ethiopia before launch. The code ships the mechanism; the legal
 > posture is a separate decision.
 
+**Go-live integration:** see [docs/SUBSCRIPTION_PORTAL_INTEGRATION.md](docs/SUBSCRIPTION_PORTAL_INTEGRATION.md) for the middleware subscription portal plan (SMS, billing rails, portal handoff checklist).
+
 ### Backend demo (mocked SMS + TeleBirr)
 
 The platform runs in two modes, switched by env:
